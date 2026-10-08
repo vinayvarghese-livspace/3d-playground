@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Renamer (BETA)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Bump ?v= on a file whenever it changes so browsers fetch the new copy. -->
+  <link rel="stylesheet" href="styles.css?v=02">
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="container header-inner">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">IR</div>
+        <h1 class="brand-title">Image Renamer</h1>
+        <span class="badge badge-beta">BETA</span>
+      </div>
+      <div class="header-meta">
+        <span id="data-updated-wrap">Data last updated: <strong id="data-updated">—</strong></span>
+        <span class="sep">|</span>
+        <span>Author: <strong id="author-name">—</strong> · <a href="#" id="change-author" class="link">change</a></span>
+      </div>
+    </div>
+  </header>
+
+  <section class="beta-note" aria-label="Beta notice">
+    <div class="container beta-note-inner">
+      <svg class="icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+      <span>Beta version: always check the generated file names and images against the Data sheet before use.</span>
+    </div>
+  </section>
+
+  <main class="container main">
+
+    <!-- Loading -->
+    <div id="view-loading" class="card loading-card">
+      <span class="spinner spinner-teal"></span>
+      <span>Loading naming data…</span>
+    </div>
+
+    <!-- Data load failure -->
+    <div id="view-data-error" class="error-panel" hidden>
+      <div class="error-panel-body">
+        <div class="error-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <div>
+          <h2>Connection or parse error</h2>
+          <p>Naming data could not be loaded. Refresh the page or contact the admin.</p>
+        </div>
+      </div>
+      <button type="button" id="btn-retry" class="btn btn-danger">Retry</button>
+    </div>
+
+    <!-- Main workbench -->
+    <div id="view-main" class="stack" hidden>
+
+      <!-- Step 1 -->
+      <section class="card card-pad" aria-label="Product details">
+        <h2 class="step-title">Step 1: Product Specifications</h2>
+        <div class="form-grid">
+          <div class="field">
+            <label for="ean-input">EAN Code <span class="req">*</span></label>
+            <input id="ean-input" type="text" inputmode="numeric" maxlength="13" class="input mono" placeholder="e.g. 8909327036353" autocomplete="off">
+            <p class="hint" id="ean-hint">13 digits</p>
+          </div>
+
+          <div class="field combo">
+            <label for="pt-search">Product Type <span class="req">*</span></label>
+            <div class="input-icon-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input id="pt-search" type="text" class="input input-with-icon" placeholder="Search type..." autocomplete="off"
+                     role="combobox" aria-expanded="false" aria-controls="pt-list" aria-autocomplete="list">
+            </div>
+            <ul id="pt-list" class="suggest" role="listbox" hidden></ul>
+            <p class="warn-inline" id="pt-warning" hidden>
+              <svg class="icon-sm" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+              Choose a product type from the list.
+            </p>
+          </div>
+
+          <div class="field" id="variant-field">
+            <label for="variant-select">Variant</label>
+            <div class="select-wrap">
+              <select id="variant-select" class="input" disabled>
+                <option>Select product type first</option>
+              </select>
+              <svg class="select-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            </div>
+            <p class="hint">Shown only when the product type has variants</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Shot list -->
+      <section class="card shot-card" id="shot-card" aria-label="Shot list">
+        <div class="card-head">
+          <div class="card-head-left">
+            <h2 class="card-title" id="shots-title">Shots</h2>
+            <span class="muted">(Auto-configured from naming data sheet)</span>
+          </div>
+          <div class="card-head-right">
+            <span class="pill" id="fill-count">0 of 0 shots filled</span>
+            <button type="button" id="btn-clear-all" class="btn btn-outline btn-sm btn-clear-all" disabled>Clear all</button>
+          </div>
+        </div>
+        <div class="shot-subhead">
+          <span id="drop-sub">JPG or PNG only. Minimum 3000 × 3000 px, square (1:1).</span>
+          <span id="target-output">Target output: 3000 × 3000 px PNG</span>
+        </div>
+        <p class="drop-msg" id="drop-msg" hidden></p>
+        <input type="file" id="row-file-input" accept="image/jpeg,image/png" hidden>
+        <div class="table-wrap">
+          <div class="drop-banner" id="drop-banner" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+            <strong id="drop-banner-title">Drop to add images</strong>
+            <span id="drop-banner-text"></span>
+          </div>
+          <table class="shot-table">
+            <thead>
+              <tr>
+                <th class="c-seq">Seq</th>
+                <th class="c-name">Image Name</th>
+                <th class="c-code">Shot Code</th>
+                <th class="c-img">Image</th>
+                <th class="c-out">Output File Name</th>
+                <th class="c-status">Status</th>
+                <th class="c-action">Action</th>
+              </tr>
+            </thead>
+            <tbody id="shot-body"></tbody>
+          </table>
+          <div class="table-empty" id="table-empty">Choose a product type to see its shot list.</div>
+        </div>
+      </section>
+
+      <!-- Actions -->
+      <section class="card card-pad" aria-label="Execution actions">
+        <div class="action-row">
+          <div id="action-reason" class="reason" hidden></div>
+          <button type="button" id="btn-generate" class="btn btn-primary" disabled>
+            <span class="spinner" hidden></span>
+            <span class="btn-label">Generate images</span>
+          </button>
+        </div>
+        <div id="progress" class="progress-box" hidden>
+          <div class="row-between progress-text">
+            <span class="mono strong" id="progress-file"></span>
+            <span id="progress-step"></span>
+          </div>
+          <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+        </div>
+        <p class="hint mt">Each PNG downloads separately. Your browser may ask to allow multiple downloads.</p>
+      </section>
+
+      <!-- Results -->
+      <section class="card card-pad" id="results" aria-label="Last generation results" hidden>
+        <div class="row-between results-head">
+          <div class="card-head-left">
+            <h2 class="card-title">Last generation</h2>
+            <span class="dot"></span>
+            <span class="muted strong" id="results-time"></span>
+          </div>
+          <span class="muted" id="results-batch"></span>
+        </div>
+        <ul class="results-list" id="results-list"></ul>
+        <p class="hint mt">Check these files against the Data sheet before use.</p>
+      </section>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    <p>Image Renamer · Beta · Images are processed in your browser and never uploaded.</p>
+  </footer>
+
+  <!-- Author modal -->
+  <div id="author-modal" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="author-title">
+      <h2 id="author-title">Enter your name</h2>
+      <p class="muted">Your name is saved in this browser and added as the Author in every generated image.</p>
+      <form id="author-form">
+        <label for="author-input">Your name</label>
+        <input id="author-input" type="text" class="input" placeholder="e.g. Vinay" autocomplete="name">
+        <div class="modal-actions">
+          <button type="button" id="btn-author-cancel" class="btn btn-ghost btn-sm" hidden>Cancel</button>
+          <button type="submit" id="btn-author-continue" class="btn btn-primary btn-sm" disabled>Continue</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="data.js?v=01"></script>
+  <script src="app.js?v=01"></script>
+</body>
+</html>
