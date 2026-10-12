@@ -15,8 +15,13 @@ if errorlevel 1 (
     pause
     exit /b 1
   )
+  for /f "usebackq delims=" %%p in (`powershell -NoProfile -Command "[Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')"`) do set "PATH=%%p"
+)
+
+where node >nul 2>&1
+if errorlevel 1 (
   echo.
-  echo Node.js installed. Close this window and double-click Setup.bat again to finish.
+  echo Node.js was installed. Close this window and double-click Setup.bat again to finish.
   pause
   exit /b 0
 )
@@ -37,5 +42,6 @@ call start-chrome.bat login
 echo.
 echo 1. Sign in to Adobe Firefly in the Chrome window that opened.
 echo 2. Close that Chrome window.
-echo 3. Open index.html in Chrome. If the upscaler is offline, click "Start" next to it.
+echo 3. Open https://vinayvarghese-livspace.github.io/3d-playground/ (or index.html) in Chrome.
+echo 4. If the upscaler shows offline, click "Start" next to it and allow Chrome's prompts.
 pause

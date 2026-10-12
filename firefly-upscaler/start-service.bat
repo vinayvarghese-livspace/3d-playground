@@ -3,6 +3,9 @@ rem Starts the upscaler Chrome (if it isn't running) and the local service used 
 rem Usage: start-service.bat [hidden]
 cd /d "%~dp0"
 
+rem Chrome (which launches this through the page's Start button) may predate the Node.js install, so reload PATH.
+where node >nul 2>&1 || call :refresh_path
+
 where node >nul 2>&1
 if errorlevel 1 (
   echo Node.js is not installed. Install the LTS version from https://nodejs.org and run this again.
@@ -33,3 +36,8 @@ if not errorlevel 1 (
 )
 
 node server.js
+exit /b
+
+:refresh_path
+for /f "usebackq delims=" %%p in (`powershell -NoProfile -Command "[Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')"`) do set "PATH=%%p"
+exit /b 0
