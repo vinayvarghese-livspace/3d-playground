@@ -1,0 +1,16 @@
+{
+  "name": "firefly-upscaler",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Batch upscale images on Adobe Firefly by driving your own logged-in Chrome",
+  "main": "upscale.js",
+  "scripts": {
+    "start": "node upscale.js",
+    "service": "node server.js",
+    "check": "node check-login.js",
+    "inspect": "node inspect.js"
+  },
+  "dependencies": {
+    "playwright-core": "^1.48.0"
+  }
+}

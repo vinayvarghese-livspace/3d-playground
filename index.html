@@ -3,21 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Image Renamer (BETA)</title>
+  <title>3D Playground (BETA V1.1)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Bump ?v= on a file whenever it changes so browsers fetch the new copy. -->
-  <link rel="stylesheet" href="styles.css?v=02">
+  <link rel="stylesheet" href="styles.css?v=04">
 </head>
 <body>
 
   <header class="app-header">
     <div class="container header-inner">
       <div class="brand">
-        <div class="brand-logo" aria-hidden="true">IR</div>
-        <h1 class="brand-title">Image Renamer</h1>
-        <span class="badge badge-beta">BETA</span>
+        <div class="brand-logo" aria-hidden="true">3D</div>
+        <h1 class="brand-title">3D Playground</h1>
+        <span class="badge badge-beta">BETA V1.1</span>
       </div>
       <div class="header-meta">
         <span id="data-updated-wrap">Data last updated: <strong id="data-updated">—</strong></span>
@@ -105,12 +105,20 @@
           </div>
           <div class="card-head-right">
             <span class="pill" id="fill-count">0 of 0 shots filled</span>
+            <label class="switch" title="Upscale images under the output size 2x with Adobe Firefly before generating">
+              <input type="checkbox" id="upscale-toggle" role="switch" checked>
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-label">AI upscale</span>
+            </label>
             <button type="button" id="btn-clear-all" class="btn btn-outline btn-sm btn-clear-all" disabled>Clear all</button>
           </div>
         </div>
         <div class="shot-subhead">
           <span id="drop-sub">JPG or PNG only. Minimum 3000 × 3000 px, square (1:1).</span>
-          <span id="target-output">Target output: 3000 × 3000 px PNG</span>
+          <span class="subhead-right">
+            <span class="pill svc" id="svc-status" hidden><span class="svc-dot"></span><span id="svc-text">Upscaler: checking…</span><a href="playground3d://start" id="svc-start" class="svc-start" hidden>Start</a></span>
+            <span id="target-output">Target output: 3000 × 3000 px PNG</span>
+          </span>
         </div>
         <p class="drop-msg" id="drop-msg" hidden></p>
         <input type="file" id="row-file-input" accept="image/jpeg,image/png" hidden>
@@ -128,6 +136,7 @@
                 <th class="c-code">Shot Code</th>
                 <th class="c-img">Image</th>
                 <th class="c-out">Output File Name</th>
+                <th class="c-upscale">Upscale</th>
                 <th class="c-status">Status</th>
                 <th class="c-action">Action</th>
               </tr>
@@ -154,7 +163,11 @@
           </div>
           <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
         </div>
-        <p class="hint mt">Each PNG downloads separately. Your browser may ask to allow multiple downloads.</p>
+        <div class="save-row">
+          <svg class="icon-sm" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
+          <span>Save to: <strong id="save-dest">—</strong></span>
+        </div>
+        <p class="hint mt">All PNGs are downloaded together as one zip with a folder named after the EAN code inside.</p>
       </section>
 
       <!-- Results -->
@@ -174,7 +187,7 @@
   </main>
 
   <footer class="app-footer">
-    <p>Image Renamer · Beta · Images are processed in your browser and never uploaded.</p>
+    <p>3D Playground · Beta V1.1 · Images are processed in your browser. With AI upscale on, images under the output size are sent to Adobe Firefly through the upscaler on this PC.</p>
   </footer>
 
   <!-- Author modal -->
@@ -193,7 +206,7 @@
     </div>
   </div>
 
-  <script src="data.js?v=01"></script>
-  <script src="app.js?v=01"></script>
+  <script src="data.js?v=02"></script>
+  <script src="app.js?v=05"></script>
 </body>
 </html>
