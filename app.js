@@ -81,6 +81,7 @@
     svcStatus: $('svc-status'),
     svcText: $('svc-text'),
     svcStart: $('svc-start'),
+    svcSetup: $('svc-setup'),
     saveDest: $('save-dest')
   };
 
@@ -659,6 +660,7 @@
     el.svcStatus.className = `pill svc ${look[0]}`;
     el.svcText.textContent = look[1];
     el.svcStart.hidden = state.service !== 'offline' && state.service !== 'nochrome';
+    el.svcSetup.hidden = state.service !== 'offline';
   }
 
   // The link opens start-service.bat through the playground3d:// handler that Setup.bat registers.
@@ -873,7 +875,7 @@
         level: 'error',
         text: state.service === 'nochrome'
           ? 'AI upscale: the Firefly Chrome window is not open. Click Start next to the upscaler status, or turn AI upscale off.'
-          : 'AI upscale service is not running. Click Start next to "Upscaler offline", or turn AI upscale off. First time on this PC: run Setup.bat (installs Node.js).' +
+          : 'AI upscale service is not running. Click Start next to "Upscaler offline", or turn AI upscale off. First time on this PC: click Setup, extract the zip to your user folder and run Setup.bat (installs Node.js).' +
             (location.protocol === 'https:' ? ' If Chrome asks to access devices on your local network, click Allow.' : '')
       };
     }

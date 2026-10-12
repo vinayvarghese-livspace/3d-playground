@@ -1,7 +1,8 @@
-# Builds dist\3D-Playground.zip with only what another PC needs to run the app and the AI upscaler.
+# Builds dist\3d-playground.zip with only what another PC needs to run the app and the AI upscaler.
+# The zip is committed, so the hosted page links to it: rebuild before each push.
 $root = Split-Path $PSScriptRoot -Parent
 $stage = Join-Path $env:TEMP '3D-Playground'
-$zip = Join-Path $root 'dist\3D-Playground.zip'
+$zip = Join-Path $root 'dist\3d-playground.zip'
 
 Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path "$stage\firefly-upscaler" -Force | Out-Null

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Bump ?v= on a file whenever it changes so browsers fetch the new copy. -->
-  <link rel="stylesheet" href="styles.css?v=04">
+  <link rel="stylesheet" href="styles.css?v=05">
 </head>
 <body>
 
@@ -116,7 +116,7 @@
         <div class="shot-subhead">
           <span id="drop-sub">JPG or PNG only. Minimum 3000 × 3000 px, square (1:1).</span>
           <span class="subhead-right">
-            <span class="pill svc" id="svc-status" hidden><span class="svc-dot"></span><span id="svc-text">Upscaler: checking…</span><a href="playground3d://start" id="svc-start" class="svc-start" hidden>Start</a></span>
+            <span class="pill svc" id="svc-status" hidden><span class="svc-dot"></span><span id="svc-text">Upscaler: checking…</span><a href="playground3d://start" id="svc-start" class="svc-start" hidden>Start</a><a href="https://vinayvarghese-livspace.github.io/3d-playground/dist/3d-playground.zip" id="svc-setup" class="svc-start" title="First time on this PC: download, extract and run Setup.bat" download hidden>Setup</a></span>
             <span id="target-output">Target output: 3000 × 3000 px PNG</span>
           </span>
         </div>
@@ -188,6 +188,7 @@
 
   <footer class="app-footer">
     <p>3D Playground · Beta V1.1 · Images are processed in your browser. With AI upscale on, images under the output size are sent to Adobe Firefly through the upscaler on this PC.</p>
+    <p>New PC? <a class="link" href="https://vinayvarghese-livspace.github.io/3d-playground/dist/3d-playground.zip" download>Download the AI upscaler setup</a>, extract it to your user folder and run Setup.bat.</p>
   </footer>
 
   <!-- Author modal -->
@@ -207,6 +208,6 @@
   </div>
 
   <script src="data.js?v=02"></script>
-  <script src="app.js?v=06"></script>
+  <script src="app.js?v=07"></script>
 </body>
 </html>
