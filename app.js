@@ -621,9 +621,9 @@
       const res = await serviceFetch('/health', { signal: AbortSignal.timeout(3000) });
       next = (await res.json()).chrome ? 'online' : 'nochrome';
     } catch (err) {
-      next = 'offline';
+      next = (await localNetworkPermission()) === 'denied' ? 'blocked' : 'offline';
     }
-    if (state.service === 'starting' && next !== 'online' && Date.now() < state.startingUntil) return;
+    if (state.service === 'starting' && next === 'offline' && Date.now() < state.startingUntil) return;
     if (next === state.service) return;
     state.service = next;
     renderServiceStatus();
@@ -632,6 +632,20 @@
 
   setInterval(checkService, SERVICE_CHECK_MS);
 
+  // A hosted page needs Chrome's local network permission to reach the upscaler; the name differs between Chrome versions.
+  async function localNetworkPermission() {
+    if (!navigator.permissions) return 'unknown';
+    let result = 'unknown';
+    for (const name of ['loopback-network', 'local-network-access', 'local-network']) {
+      try {
+        const { state: perm } = await navigator.permissions.query({ name });
+        if (perm === 'denied') return 'denied';
+        if (perm === 'prompt') result = 'prompt';
+      } catch (_) { /* not supported in this browser */ }
+    }
+    return result;
+  }
+
   function renderServiceStatus() {
     el.svcStatus.hidden = !state.upscaleOn;
     const look = {
@@ -639,7 +653,8 @@
       starting: ['amber', 'Upscaler: starting…'],
       online: ['green', 'Upscaler connected'],
       nochrome: ['amber', 'Upscaler: Firefly Chrome not open'],
-      offline: ['red', 'Upscaler offline']
+      offline: ['red', 'Upscaler offline'],
+      blocked: ['red', 'Upscaler blocked by Chrome']
     }[state.service];
     el.svcStatus.className = `pill svc ${look[0]}`;
     el.svcText.textContent = look[1];
@@ -845,12 +860,21 @@
     if (!ready.length) return { level: 'warn', text: 'Add at least one image.' };
     if (ready.some(needsUpscale) && state.service !== 'online') {
       if (state.service === 'checking') return { level: 'info', text: 'Checking the AI upscale service…' };
-      if (state.service === 'starting') return { level: 'info', text: 'Starting the AI upscaler… this takes about 15 seconds.' };
+      if (state.service === 'starting') {
+        return { level: 'info', text: 'Starting the AI upscaler… this takes about 15 seconds. If Chrome asks to access devices on your local network, click Allow.' };
+      }
+      if (state.service === 'blocked') {
+        return {
+          level: 'error',
+          text: 'Chrome is blocking this page from reaching the upscaler on this PC. Click the icon left of the address bar, set "Local network access" to Allow, then reload the page.'
+        };
+      }
       return {
         level: 'error',
         text: state.service === 'nochrome'
           ? 'AI upscale: the Firefly Chrome window is not open. Click Start next to the upscaler status, or turn AI upscale off.'
-          : 'AI upscale service is not running. Click Start next to "Upscaler offline", or turn AI upscale off. First time on this PC: run Setup.bat (installs Node.js).'
+          : 'AI upscale service is not running. Click Start next to "Upscaler offline", or turn AI upscale off. First time on this PC: run Setup.bat (installs Node.js).' +
+            (location.protocol === 'https:' ? ' If Chrome asks to access devices on your local network, click Allow.' : '')
       };
     }
     return null;
