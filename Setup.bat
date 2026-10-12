@@ -1,7 +1,9 @@
 @echo off
 setlocal
 title 3D Playground - AI upscale setup
+rem Install folder: an existing install first, else D:\3d-playground on a local writable D drive, else the user folder.
 set "HOME_DIR=%USERPROFILE%\3d-playground"
+for /f "usebackq delims=" %%p in (`powershell -NoProfile -Command "$d='D:\3d-playground'; $u=Join-Path $env:USERPROFILE '3d-playground'; if (Test-Path ($d+'\firefly-upscaler')) { $d } elseif (Test-Path ($u+'\firefly-upscaler')) { $u } else { try { $i=[IO.DriveInfo]::new('D'); if (-not ($i.IsReady -and $i.DriveType -eq 'Fixed')) { throw 'no D' }; $null=New-Item -ItemType Directory $d -Force -ErrorAction Stop; $t=$d+'\.write-test'; Set-Content $t 'x' -ErrorAction Stop; Remove-Item $t; $d } catch { $u } }"`) do set "HOME_DIR=%%p"
 set "PAGE=https://vinayvarghese-livspace.github.io/3d-playground/?setup=1"
 
 if not "%~1"=="copied" (
@@ -67,6 +69,8 @@ echo  [4/5] Adobe sign-in
 call start-chrome.bat login >nul
 echo        A Chrome window opened on Adobe Firefly.
 echo        - Sign in with your Adobe account (already signed in? nothing to do).
+echo        - Using your company Google account? Approve Google's 2-Step
+echo          Verification on your phone or enter the code in that window.
 echo        - Then CLOSE that Chrome window.
 echo.
 echo        Press any key here once that Chrome window is closed ...
@@ -79,9 +83,10 @@ timeout /t 3 /nobreak >nul
 call :open_page
 echo.
 echo  ==============================================
-echo    Setup complete.
-echo    If Chrome asks to open the upscaler or to
-echo    access your local network, click Allow.
+echo    Setup complete. No need to click Start.
+echo    The page turns green within a minute.
+echo    If Chrome asks to access your local network,
+echo    click Allow. You can close this window.
 echo  ==============================================
 echo.
 pause

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Bump ?v= on a file whenever it changes so browsers fetch the new copy. -->
-  <link rel="stylesheet" href="styles.css?v=06">
+  <link rel="stylesheet" href="styles.css?v=07">
 </head>
 <body>
 
@@ -131,7 +131,7 @@
         <div class="shot-subhead">
           <span id="drop-sub">JPG or PNG only. Minimum 3000 × 3000 px, square (1:1).</span>
           <span class="subhead-right">
-            <span class="pill svc" id="svc-status" hidden><span class="svc-dot"></span><span id="svc-text">Upscaler: checking…</span><a href="playground3d://start" id="svc-start" class="svc-start" hidden>Start</a><button type="button" id="svc-setup" class="svc-start" title="First time on this PC? Open the setup guide" hidden>Setup help</button></span>
+            <span class="pill svc" id="svc-status" hidden><span class="svc-dot"></span><span id="svc-text">Upscaler: checking…</span><a href="playground3d://start" id="svc-start" class="svc-start" hidden>Start</a><button type="button" id="svc-setup" class="svc-start" title="Open Settings → AI upscale setup" hidden>⚙ Settings › AI upscale setup</button></span>
             <span id="target-output">Target output: 3000 × 3000 px PNG</span>
           </span>
         </div>
@@ -202,9 +202,7 @@
   </main>
 
   <footer class="app-footer">
-    <p>3D Playground · Beta V1.1 · Images are processed in your browser. With AI upscale on, images under the output size are sent to Adobe Firefly through the upscaler on this PC.</p>
-    <p>Using AI upscale on a new PC? <a class="link" href="#" id="footer-setup">Open the setup guide</a></p>
-  </footer>
+    <p>3D Playground · Beta V1.1 · Images are processed in your browser. With AI upscale on, images under the output size are sent to Adobe Firefly through the upscaler on this PC.</p>  </footer>
 
   <!-- Author modal -->
   <div id="author-modal" class="modal-backdrop" hidden>
@@ -248,6 +246,7 @@
             <li>A Windows PC with <strong>Google Chrome</strong></li>
             <li>An <strong>Adobe account with Firefly</strong> (comes with Photoshop or a similar Adobe plan)</li>
             <li>Internet connection</li>
+            <li>A <strong>D: drive</strong>. The setup installs to <strong>D:\3d-playground</strong>. If the PC has no D drive, it uses your user folder instead.</li>
           </ul>
         </div>
 
@@ -273,21 +272,21 @@
             <h3>Run Setup.bat</h3>
             <p>In that folder, double-click <span class="kbd">Setup.bat</span>. A black window opens and shows what it is doing. Leave it open.</p>
             <p class="tip">If Windows says <em>"Windows protected your PC"</em>, click <strong>More info</strong>, then <strong>Run anyway</strong>.</p>
-            <p class="tip">It copies everything to your user folder and, the first time, installs Node.js (the program that runs the upscaler). This can take a few minutes.</p>
+            <p class="tip">It copies everything to <strong>D:\3d-playground</strong> (or to your user folder if the PC has no D drive) and, the first time, installs Node.js (the program that runs the upscaler). This can take a few minutes.</p>
           </li>
           <li>
             <h3>Sign in to Adobe</h3>
-            <p>A Chrome window opens on Adobe Firefly. Click <strong>Sign in</strong> and log in with your Adobe account, including any verification code.</p>
+            <p>A Chrome window opens on Adobe Firefly. Click <strong>Sign in</strong> and log in with your Adobe account.</p>
+            <p>If you sign in with your company <strong>Google</strong> account, Google may ask for <strong>2-Step Verification</strong>: approve the prompt on your phone or enter the code. Finish it in this same window.</p>
+            <p class="tip">If Google says <em>"Your sign-in settings don't meet your organization's 2-Step Verification policy"</em>, turn on 2-Step Verification for your Google account first (Google Account › Security), then sign in again.</p>
             <p>When you see the Firefly page, <strong>close that Chrome window</strong>. Then go back to the black window and press any key.</p>
           </li>
           <li>
-            <h3>Allow Chrome to connect</h3>
-            <p>The upscaler starts and this page opens. If Chrome asks:</p>
-            <ul>
-              <li><em>"Open 3D Playground upscaler?"</em>: tick <strong>Always allow</strong>, then click <strong>Open</strong>.</li>
-              <li><em>"…wants to access devices on your local network"</em>: click <strong>Allow</strong>.</li>
-            </ul>
-            <p>The status at the top of this guide turns green: <strong>Upscaler connected</strong>. You're done.</p>
+            <h3>Wait for the green status</h3>
+            <p>The black window now starts the upscaler by itself and opens this page with this guide. <strong>You don't need to click Start.</strong> A Firefly Chrome window also opens: leave it open.</p>
+            <p>If Chrome asks <em>"…wants to access devices on your local network"</em>, click <strong>Allow</strong>.</p>
+            <p>Within a minute, the status at the top of this guide turns green: <strong>Upscaler connected</strong>. You're done, and you can close the black window.</p>
+            <p class="tip">Still not green after a minute? Click <strong>Start</strong> at the top of this guide. If Chrome asks <em>"Open 3D Playground upscaler?"</em>, tick <strong>Always allow</strong> and click <strong>Open</strong>.</p>
           </li>
         </ol>
 
@@ -298,16 +297,16 @@
 
         <details class="setup-help">
           <summary>Something not working?</summary>
-          <p>The installed files are in your <strong>3d-playground</strong> folder. To open it, paste this into the File Explorer address bar and press Enter:</p>
+          <p id="setup-path-text">The installed files are in <strong>D:\3d-playground</strong>. If the PC has no D drive, they are in your user folder instead. To open that, paste this into the File Explorer address bar and press Enter:</p>
           <div class="copy-row">
             <code id="setup-path">%USERPROFILE%\3d-playground</code>
             <button type="button" class="btn btn-outline btn-sm" data-copy="setup-path">Copy</button>
           </div>
           <dl>
             <dt>Clicking Start does nothing</dt>
-            <dd>Run <span class="kbd">Setup.bat</span> again from the 3d-playground folder.</dd>
+            <dd>Run <span class="kbd">Setup.bat</span> again from the 3d-playground folder, or repeat steps 1 to 4.</dd>
             <dt>It stays on "starting…" and then goes offline</dt>
-            <dd>Click the <em>3D Playground upscaler</em> window on the taskbar and read the message. Running <span class="kbd">Setup.bat</span> again fixes most problems.</dd>
+            <dd>Check that you clicked <strong>Allow</strong> if Chrome asked about your local network (see the next item). Then click the <em>3D Playground upscaler</em> window on the taskbar and read the message. Running <span class="kbd">Setup.bat</span> again fixes most problems.</dd>
             <dt>"Upscaler blocked by Chrome"</dt>
             <dd>Click the icon to the left of the web address, set <strong>Local network access</strong> to <strong>Allow</strong>, then reload the page.</dd>
             <dt>"Not signed in to Firefly"</dt>
@@ -333,6 +332,6 @@
   </div>
 
   <script src="data.js?v=02"></script>
-  <script src="app.js?v=08"></script>
+  <script src="app.js?v=09"></script>
 </body>
 </html>

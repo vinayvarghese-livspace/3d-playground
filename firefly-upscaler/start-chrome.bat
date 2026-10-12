@@ -22,6 +22,17 @@ if /I "%~1"=="login" (
   exit /b 0
 )
 
+powershell -NoProfile -Command "try { Invoke-RestMethod http://127.0.0.1:9222/json/version -TimeoutSec 2 | Out-Null; exit 0 } catch { exit 1 }"
+if not errorlevel 1 (
+  echo Chrome is already running on port 9222.
+  exit /b 0
+)
+
+rem A Chrome left running on this profile without the debugging port (for example the sign-in window, still
+rem running in the background) would take over this launch, so close it first.
+powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter 'Name=''chrome.exe''' | Where-Object { $_.CommandLine -like ('*' + $env:PROFILE + '*') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
+timeout /t 2 /nobreak >nul
+
 if /I "%~1"=="hidden" (
   start "" "%CHROME%" %COMMON% --window-position=-32000,-32000 --window-size=1600,1000 "%URL%"
 ) else if /I "%~1"=="headless" (

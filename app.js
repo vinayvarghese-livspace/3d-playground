@@ -29,7 +29,9 @@
     rowTarget: -1,
     upscaleOn: true,
     service: 'checking',
-    startingUntil: 0
+    startingUntil: 0,
+    startFailed: false,
+    folder: ''
   };
 
   const $ = (id) => document.getElementById(id);
@@ -273,8 +275,11 @@
   $('btn-setup-close').addEventListener('click', closeSetupModal);
   $('btn-setup-done').addEventListener('click', closeSetupModal);
   el.setupModal.addEventListener('click', (e) => { if (e.target === el.setupModal) closeSetupModal(); });
-  $('footer-setup').addEventListener('click', (e) => { e.preventDefault(); openSetupModal(); });
-  if (new URLSearchParams(location.search).has('setup')) openSetupModal();
+  // Setup.bat opens the page with ?setup=1 right after starting the upscaler, so wait for it instead of showing Start.
+  if (new URLSearchParams(location.search).has('setup')) {
+    openSetupModal();
+    waitForUpscaler(90000);
+  }
 
   el.setupModal.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-copy]');
@@ -687,11 +692,20 @@
     let next;
     try {
       const res = await serviceFetch('/health', { signal: AbortSignal.timeout(3000) });
-      next = (await res.json()).chrome ? 'online' : 'nochrome';
+      const health = await res.json();
+      next = health.chrome ? 'online' : 'nochrome';
+      if (health.folder && health.folder !== state.folder) {
+        state.folder = health.folder;
+        renderServiceStatus();
+      }
     } catch (err) {
       next = (await localNetworkPermission()) === 'denied' ? 'blocked' : 'offline';
     }
-    if (state.service === 'starting' && next === 'offline' && Date.now() < state.startingUntil) return;
+    if (state.service === 'starting' && (next === 'offline' || next === 'nochrome')) {
+      if (Date.now() < state.startingUntil) return;
+      state.startFailed = true;
+    }
+    if (next === 'online') state.startFailed = false;
     if (next === state.service) return;
     state.service = next;
     renderServiceStatus();
@@ -729,15 +743,25 @@
     el.svcStart.hidden = state.service !== 'offline' && state.service !== 'nochrome';
     el.svcSetup.hidden = state.service !== 'offline' && state.service !== 'blocked';
 
+    const needsSetup = state.upscaleOn && (state.service === 'offline' || state.service === 'blocked');
+    el.btnSettings.classList.toggle('has-alert', needsSetup);
+    el.menuSetup.classList.toggle('has-alert', needsSetup);
+    if (state.folder) {
+      $('setup-path-text').textContent = 'The installed files are in this folder. To open it, paste this into the File Explorer address bar and press Enter:';
+      $('setup-path').textContent = state.folder;
+    }
+
     el.setupStart.hidden = el.svcStart.hidden;
     el.setupPill.className = `pill svc ${look[0]}`;
     el.setupPillText.textContent = look[1].replace(/^Upscaler: /, '');
     el.setupStatusText.textContent = {
       checking: 'Checking whether the upscaler is running on this PC…',
-      starting: 'Starting… this takes about 15 seconds.',
+      starting: 'Starting the upscaler… this can take up to a minute. If Chrome asks to access devices on your local network, click Allow.',
       online: 'All set. AI upscale is ready to use on this PC.',
       nochrome: 'The upscaler is running, but the Firefly Chrome window is closed. Click Start.',
-      offline: 'Not running on this PC. New PC? Follow the steps below. Already set up? Click Start.',
+      offline: state.startFailed
+        ? 'The upscaler did not respond. Click the "3D Playground upscaler" window on the taskbar to read its message, then click Start again. See also Something not working below.'
+        : 'Not running on this PC. New PC? Follow the steps below. Already set up? Click Start.',
       blocked: 'Chrome is blocking the connection. See "Upscaler blocked by Chrome" under Something not working.'
     }[state.service];
   }
@@ -745,20 +769,21 @@
   el.svcSetup.addEventListener('click', openSetupModal);
 
   // The link opens start-service.bat through the playground3d:// handler that Setup.bat registers.
-  el.svcStart.addEventListener('click', startUpscaler);
-  el.setupStart.addEventListener('click', startUpscaler);
+  el.svcStart.addEventListener('click', () => waitForUpscaler(60000));
+  el.setupStart.addEventListener('click', () => waitForUpscaler(60000));
 
-  function startUpscaler() {
+  function waitForUpscaler(ms) {
     if (state.processing) return;
     state.service = 'starting';
-    state.startingUntil = Date.now() + 60000;
+    state.startFailed = false;
+    state.startingUntil = Date.now() + ms;
     renderServiceStatus();
     renderActions();
     let tries = 0;
     const poll = setInterval(async () => {
       tries++;
       await checkService();
-      if (state.service !== 'starting' || tries >= 31) clearInterval(poll);
+      if (state.service !== 'starting' || tries >= ms / 2000 + 1) clearInterval(poll);
     }, 2000);
   }
 
@@ -952,15 +977,17 @@
       if (state.service === 'blocked') {
         return {
           level: 'error',
-          text: 'Chrome is blocking this page from reaching the upscaler on this PC. Click the icon left of the address bar, set "Local network access" to Allow, then reload the page.'
+          text: 'Chrome is blocking this page from reaching the upscaler on this PC. Click the icon left of the address bar, set "Local network access" to Allow, then reload the page. More help: ⚙ Settings › AI upscale setup.'
         };
       }
       return {
         level: 'error',
         text: state.service === 'nochrome'
           ? 'AI upscale: the Firefly Chrome window is not open. Click Start next to the upscaler status, or turn AI upscale off.'
-          : 'AI upscale service is not running. Click Start next to "Upscaler offline", or turn AI upscale off. First time on this PC: click Setup, extract the zip to your user folder and run Setup.bat (installs Node.js).' +
-            (location.protocol === 'https:' ? ' If Chrome asks to access devices on your local network, click Allow.' : '')
+          : state.startFailed
+            ? 'The AI upscaler did not respond. Click the "3D Playground upscaler" window on the taskbar to read its message, then click Start again. More help: ⚙ Settings › AI upscale setup.'
+            : 'AI upscale service is not running. Click Start next to "Upscaler offline", or turn AI upscale off. First time on this PC: open ⚙ Settings › AI upscale setup.' +
+              (location.protocol === 'https:' ? ' If Chrome asks to access devices on your local network, click Allow.' : '')
       };
     }
     return null;

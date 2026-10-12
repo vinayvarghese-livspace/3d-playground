@@ -209,7 +209,8 @@ async function handle(req, res) {
       chrome: await chromeReachable(),
       scale: cfg.serviceScale,
       queued: pending.length,
-      busy: [...jobs.values()].some((j) => j.status === 'running')
+      busy: [...jobs.values()].some((j) => j.status === 'running'),
+      folder: path.dirname(__dirname)
     });
   }
 
