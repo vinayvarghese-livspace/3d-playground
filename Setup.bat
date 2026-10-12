@@ -77,20 +77,43 @@ echo        Press any key here once that Chrome window is closed ...
 pause >nul
 echo.
 
-echo  [5/5] Starting the upscaler and opening 3D Playground ...
+echo  [5/5] Starting the upscaler ...
+echo        A Firefly Chrome window opens again. This one is used by the
+echo        upscaler: leave it open (you can minimise it). Don't use it.
 start "3D Playground upscaler" /min "%HOME_DIR%\firefly-upscaler\start-service.bat"
-timeout /t 3 /nobreak >nul
+echo        Waiting for the upscaler to connect (up to 90 seconds) ...
+powershell -NoProfile -Command "$end = (Get-Date).AddSeconds(90); while ((Get-Date) -lt $end) { try { if ((Invoke-RestMethod http://127.0.0.1:5175/health -TimeoutSec 2).chrome) { exit 0 } } catch {}; Start-Sleep 2 }; exit 1"
+if errorlevel 1 goto :not_connected
+
+echo        Connected.
+echo.
+echo        Opening 3D Playground ...
 call :open_page
 echo.
 echo  ==============================================
-echo    Setup complete. No need to click Start.
-echo    The page turns green within a minute.
+echo    Setup complete.
+echo    3D Playground is now open in Chrome and shows
+echo    "Upscaler connected" in green.
 echo    If Chrome asks to access your local network,
-echo    click Allow. You can close this window.
+echo    click Allow.
 echo  ==============================================
 echo.
-pause
+echo  This window closes by itself in 30 seconds.
+timeout /t 30 >nul
 exit /b 0
+
+:not_connected
+echo.
+echo  The upscaler has not connected yet. Opening 3D Playground anyway ...
+call :open_page
+echo.
+echo  On the 3D Playground page, wait a minute. If it still shows
+echo  "Upscaler offline", click Start next to it. If that doesn't help,
+echo  click the "3D Playground upscaler" window on the taskbar and read
+echo  its message, or run Setup.bat again.
+echo.
+pause
+exit /b 1
 
 :refresh_path
 for /f "usebackq delims=" %%p in (`powershell -NoProfile -Command "[Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')"`) do set "PATH=%%p"
