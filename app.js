@@ -40,7 +40,15 @@
     btnRetry: $('btn-retry'),
     dataUpdated: $('data-updated'),
     authorName: $('author-name'),
-    changeAuthor: $('change-author'),
+    btnSettings: $('btn-settings'),
+    settingsMenu: $('settings-menu'),
+    menuAuthor: $('menu-author'),
+    menuSetup: $('menu-setup'),
+    setupModal: $('setup-modal'),
+    setupPill: $('setup-pill'),
+    setupPillText: $('setup-pill-text'),
+    setupStatusText: $('setup-status-text'),
+    setupStart: $('setup-start'),
     modal: $('author-modal'),
     authorForm: $('author-form'),
     authorInput: $('author-input'),
@@ -213,12 +221,71 @@
     closeAuthorModal();
   });
   el.authorCancel.addEventListener('click', closeAuthorModal);
-  el.changeAuthor.addEventListener('click', (e) => {
-    e.preventDefault();
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (!el.settingsMenu.hidden) closeSettingsMenu();
+    else if (!el.setupModal.hidden) closeSetupModal();
+    else if (!el.modal.hidden && el.modal.dataset.cancellable) closeAuthorModal();
+  });
+
+  /* ---------- Settings menu ---------- */
+
+  function closeSettingsMenu() {
+    el.settingsMenu.hidden = true;
+    el.btnSettings.setAttribute('aria-expanded', 'false');
+  }
+
+  el.btnSettings.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = el.settingsMenu.hidden;
+    el.settingsMenu.hidden = !open;
+    el.btnSettings.setAttribute('aria-expanded', String(open));
+  });
+  document.addEventListener('click', (e) => {
+    if (!el.settingsMenu.hidden && !el.settingsMenu.contains(e.target)) closeSettingsMenu();
+  });
+  el.menuAuthor.addEventListener('click', () => {
+    closeSettingsMenu();
     if (!state.processing) openAuthorModal(true);
   });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !el.modal.hidden && el.modal.dataset.cancellable) closeAuthorModal();
+  el.menuSetup.addEventListener('click', () => {
+    closeSettingsMenu();
+    openSetupModal();
+  });
+
+  /* ---------- AI upscale setup guide ---------- */
+
+  let setupPoll = null;
+
+  function openSetupModal() {
+    el.setupModal.hidden = false;
+    renderServiceStatus();
+    checkService();
+    clearInterval(setupPoll);
+    setupPoll = setInterval(checkService, 3000);
+  }
+
+  function closeSetupModal() {
+    el.setupModal.hidden = true;
+    clearInterval(setupPoll);
+  }
+
+  $('btn-setup-close').addEventListener('click', closeSetupModal);
+  $('btn-setup-done').addEventListener('click', closeSetupModal);
+  el.setupModal.addEventListener('click', (e) => { if (e.target === el.setupModal) closeSetupModal(); });
+  $('footer-setup').addEventListener('click', (e) => { e.preventDefault(); openSetupModal(); });
+  if (new URLSearchParams(location.search).has('setup')) openSetupModal();
+
+  el.setupModal.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-copy]');
+    if (!btn) return;
+    try {
+      await navigator.clipboard.writeText($(btn.dataset.copy).textContent);
+      btn.textContent = 'Copied';
+    } catch (_) {
+      btn.textContent = 'Select & copy';
+    }
+    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
   });
 
   /* ---------- EAN ---------- */
@@ -616,7 +683,7 @@
   }
 
   async function checkService() {
-    if (!state.upscaleOn || state.processing) return;
+    if ((!state.upscaleOn && el.setupModal.hidden) || state.processing) return;
     let next;
     try {
       const res = await serviceFetch('/health', { signal: AbortSignal.timeout(3000) });
@@ -660,11 +727,28 @@
     el.svcStatus.className = `pill svc ${look[0]}`;
     el.svcText.textContent = look[1];
     el.svcStart.hidden = state.service !== 'offline' && state.service !== 'nochrome';
-    el.svcSetup.hidden = state.service !== 'offline';
+    el.svcSetup.hidden = state.service !== 'offline' && state.service !== 'blocked';
+
+    el.setupStart.hidden = el.svcStart.hidden;
+    el.setupPill.className = `pill svc ${look[0]}`;
+    el.setupPillText.textContent = look[1].replace(/^Upscaler: /, '');
+    el.setupStatusText.textContent = {
+      checking: 'Checking whether the upscaler is running on this PC…',
+      starting: 'Starting… this takes about 15 seconds.',
+      online: 'All set. AI upscale is ready to use on this PC.',
+      nochrome: 'The upscaler is running, but the Firefly Chrome window is closed. Click Start.',
+      offline: 'Not running on this PC. New PC? Follow the steps below. Already set up? Click Start.',
+      blocked: 'Chrome is blocking the connection. See "Upscaler blocked by Chrome" under Something not working.'
+    }[state.service];
   }
 
+  el.svcSetup.addEventListener('click', openSetupModal);
+
   // The link opens start-service.bat through the playground3d:// handler that Setup.bat registers.
-  el.svcStart.addEventListener('click', () => {
+  el.svcStart.addEventListener('click', startUpscaler);
+  el.setupStart.addEventListener('click', startUpscaler);
+
+  function startUpscaler() {
     if (state.processing) return;
     state.service = 'starting';
     state.startingUntil = Date.now() + 60000;
@@ -676,7 +760,7 @@
       await checkService();
       if (state.service !== 'starting' || tries >= 31) clearInterval(poll);
     }, 2000);
-  });
+  }
 
   /* ---------- Save destination (one EAN.zip holding an EAN folder) ---------- */
 

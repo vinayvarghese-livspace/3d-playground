@@ -7,12 +7,18 @@ $zip = Join-Path $root 'dist\3d-playground.zip'
 Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path "$stage\firefly-upscaler" -Force | Out-Null
 
-'index.html', 'app.js', 'styles.css', 'data.js', 'README.md', 'Setup.bat', 'Start 3D Playground.bat' |
+'index.html', 'app.js', 'styles.css', 'data.js', 'README.md', 'Setup.bat', 'Start 3D Playground.bat', 'Sign in to Adobe.bat' |
   ForEach-Object { Copy-Item (Join-Path $root $_) $stage }
 
 'config.js', 'firefly.js', 'server.js', 'upscale.js', 'check-login.js', 'package.json', 'package-lock.json',
   'start-chrome.bat', 'start-service.bat', 'register-launcher.bat', '.gitignore' |
   ForEach-Object { Copy-Item (Join-Path $root "firefly-upscaler\$_") "$stage\firefly-upscaler" }
+
+# Batch files misbehave with LF line endings.
+Get-ChildItem $stage -Recurse -Filter *.bat | ForEach-Object {
+  $text = [IO.File]::ReadAllText($_.FullName) -replace "`r`n", "`n" -replace "`n", "`r`n"
+  [IO.File]::WriteAllText($_.FullName, $text)
+}
 
 New-Item -ItemType Directory -Path (Split-Path $zip) -Force | Out-Null
 Remove-Item $zip -Force -ErrorAction SilentlyContinue
