@@ -4,6 +4,7 @@
   const AUTHOR_KEY = 'imageRenamer.author';
   const BATCH_KEY = 'imageRenamer.lastBatchNumber';
   const LAST_GEN_KEY = 'imageRenamer.lastGeneration';
+  const UPSCALE_KEY = 'imageRenamer.upscaleOn';
   const ACCEPTED_TYPES = ['image/jpeg', 'image/png'];
   const OUTPUT_DPI = 72;
   const APP_VERSION = 'V1.1';
@@ -27,7 +28,7 @@
     suggestions: [],
     processing: false,
     rowTarget: -1,
-    upscaleOn: true,
+    upscaleOn: localStorage.getItem(UPSCALE_KEY) !== 'false',
     service: 'checking',
     startingUntil: 0,
     startFailed: false,
@@ -668,9 +669,12 @@
 
   /* ---------- AI upscale switch & service ---------- */
 
+  el.upscaleToggle.checked = state.upscaleOn;
+
   el.upscaleToggle.addEventListener('change', () => {
     if (state.processing) return;
     state.upscaleOn = el.upscaleToggle.checked;
+    localStorage.setItem(UPSCALE_KEY, String(state.upscaleOn));
     state.images.forEach(validateImage);
     if (state.upscaleOn) checkService();
     renderServiceStatus();
