@@ -3,26 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Playground (BETA V1.1)</title>
+  <title>3D Playground (BETA V1.2)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Bump ?v= on a file whenever it changes so browsers fetch the new copy. -->
-  <link rel="stylesheet" href="styles.css?v=07">
+  <link rel="stylesheet" href="tasks.css?v=54">
 </head>
-<body>
+<body class="view-renamer">
 
   <header class="app-header">
-    <div class="container header-inner">
+    <div class="header-inner">
       <div class="brand">
         <div class="brand-logo" aria-hidden="true">3D</div>
         <h1 class="brand-title">3D Playground</h1>
-        <span class="badge badge-beta">BETA V1.1</span>
+        <span class="badge badge-beta">BETA V1.2</span>
       </div>
+      <nav class="app-nav" aria-label="Sections">
+        <a class="app-nav-tab is-active" href="#renamer" id="tab-renamer" aria-current="page">Renamer</a>
+        <a class="app-nav-tab" href="#available" id="tab-available">
+          Available Tasks <span class="app-nav-count" id="tab-count-available">0</span>
+        </a>
+        <a class="app-nav-tab" href="#my" id="tab-my">
+          My Tasks <span class="app-nav-count" id="tab-count-my">0</span>
+        </a>
+      </nav>
       <div class="header-meta">
-        <span id="data-updated-wrap">Data last updated: <strong id="data-updated">—</strong></span>
+        <span class="meta-updated">Data last updated: <strong id="updated-text">—</strong></span>
+        <button type="button" class="icon-btn icon-btn-sm" id="btn-refresh" title="Refresh data" aria-label="Refresh data">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+        </button>
         <span class="sep">|</span>
-        <span>Author: <strong id="author-name">—</strong></span>
+        <span class="meta-author">Author: <strong id="user-name">—</strong></span>
         <div class="settings">
           <button type="button" id="btn-settings" class="icon-btn" aria-label="Settings" aria-haspopup="menu" aria-expanded="false" title="Settings">
             <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.53 1.53 0 01-2.29.95c-1.37-.84-2.94.73-2.1 2.1.54.89.06 2.04-.95 2.29-1.56.38-1.56 2.6 0 2.98 1.01.25 1.49 1.4.95 2.29-.84 1.37.73 2.94 2.1 2.1a1.53 1.53 0 012.29.95c.38 1.56 2.6 1.56 2.98 0a1.53 1.53 0 012.29-.95c1.37.84 2.94-.73 2.1-2.1a1.53 1.53 0 01.95-2.29c1.56-.38 1.56-2.6 0-2.98a1.53 1.53 0 01-.95-2.29c.84-1.37-.73-2.94-2.1-2.1a1.53 1.53 0 01-2.29-.95zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
@@ -32,9 +43,9 @@
               <svg class="icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
               <span>Change author name</span>
             </button>
-            <button type="button" role="menuitem" id="menu-setup" class="menu-item">
-              <svg class="icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.97.76l.84 3.38 3.38.84a1 1 0 010 1.94l-3.38.84-.84 3.38a1 1 0 01-1.94 0l-.84-3.38-3.38-.84a1 1 0 010-1.94l3.38-.84.84-3.38A1 1 0 0112 2z"/></svg>
-              <span>AI upscale setup</span>
+            <button type="button" role="menuitem" id="menu-refresh" class="menu-item">
+              <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+              <span>Refresh data</span>
             </button>
           </div>
         </div>
@@ -43,296 +54,123 @@
   </header>
 
   <section class="beta-note" aria-label="Beta notice">
-    <div class="container beta-note-inner">
+    <div class="beta-note-inner">
       <svg class="icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
       <span>Beta version: always check the generated file names and images against the Data sheet before use.</span>
     </div>
   </section>
 
-  <main class="container main">
+  <!-- Renamer UI (renamer.html) — live URL stays index.html#renamer -->
+  <iframe class="renamer-frame" id="renamer-frame" title="Image Renamer" hidden></iframe>
 
-    <!-- Loading -->
-    <div id="view-loading" class="card loading-card">
-      <span class="spinner spinner-teal"></span>
-      <span>Loading naming data…</span>
+  <section class="tp-toolbar" aria-label="Filters" data-tasks-chrome>
+    <div class="tp-title-wrap">
+      <h1 class="tp-title" id="view-title">Available Tasks</h1>
+      <span class="tp-count-pill" id="task-count">0 tasks</span>
+      <span class="tp-source" id="source-pill" hidden></span>
     </div>
-
-    <!-- Data load failure -->
-    <div id="view-data-error" class="error-panel" hidden>
-      <div class="error-panel-body">
-        <div class="error-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-        </div>
-        <div>
-          <h2>Connection or parse error</h2>
-          <p>Naming data could not be loaded. Refresh the page or contact the admin.</p>
-        </div>
+    <span class="tp-vsep" aria-hidden="true"></span>
+    <label class="tp-search">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <input type="text" id="search" placeholder="Search EAN or product name..." autocomplete="off" aria-label="Search EAN or product name">
+    </label>
+    <div class="tp-filters">
+      <div class="tp-select">
+        <select id="f-category" aria-label="Category"><option value="">All categories</option></select>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
       </div>
-      <button type="button" id="btn-retry" class="btn btn-danger">Retry</button>
+      <div class="tp-select">
+        <select id="f-template" aria-label="Template"><option value="">All Templates</option></select>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+      </div>
+      <div class="tp-select" data-available-only>
+        <select id="f-set" aria-label="Set or PCs">
+          <option value="">Any Set / PCs</option>
+          <option value="pcs">PCs</option>
+          <option value="set">Set (anything not PCs)</option>
+        </select>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+      </div>
+      <div class="tp-select" data-available-only>
+        <select id="f-artist" aria-label="Artist history"><option value="">Artist history: anyone</option></select>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+      </div>
     </div>
+    <div class="tp-group-wrap" data-available-only>
+      <span class="tp-label">Group:</span>
+      <div class="tp-seg" role="group" aria-label="Group by">
+        <button type="button" class="is-active" data-group="subTemplate">Sub-category + Template</button>
+        <button type="button" data-group="productTemplate">Product + Template</button>
+        <button type="button" data-group="template">Template</button>
+      </div>
+    </div>
+    <div class="tp-sort-wrap" data-available-only>
+      <span class="tp-label">Sort by:</span>
+      <div class="tp-select">
+        <select id="sort" aria-label="Sort by">
+          <option value="oldest">Oldest first</option>
+          <option value="newest">Newest first</option>
+          <option value="shots">Most shots</option>
+        </select>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+      </div>
+    </div>
+    <div class="tp-my-tabs" data-my-only role="tablist" aria-label="My Tasks buckets">
+      <button type="button" class="is-active" role="tab" aria-selected="true" data-my-bucket="active" id="my-tab-active">
+        Active <span class="tp-my-tab-count" id="my-count-active">0</span>
+      </button>
+      <button type="button" role="tab" aria-selected="false" data-my-bucket="completed" id="my-tab-completed">
+        Completed <span class="tp-my-tab-count" id="my-count-completed">0</span>
+      </button>
+    </div>
+  </section>
 
-    <!-- Main workbench -->
-    <div id="view-main" class="stack" hidden>
-
-      <!-- Step 1 -->
-      <section class="card card-pad" aria-label="Product details">
-        <h2 class="step-title">Step 1: Product Specifications</h2>
-        <div class="form-grid">
-          <div class="field">
-            <label for="ean-input">EAN Code <span class="req">*</span></label>
-            <input id="ean-input" type="text" inputmode="numeric" maxlength="13" class="input mono" placeholder="e.g. 8909327036353" autocomplete="off">
-            <p class="hint" id="ean-hint">13 digits</p>
-          </div>
-
-          <div class="field combo">
-            <label for="pt-search">Product Type <span class="req">*</span></label>
-            <div class="input-icon-wrap">
-              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-              <input id="pt-search" type="text" class="input input-with-icon" placeholder="Search type..." autocomplete="off"
-                     role="combobox" aria-expanded="false" aria-controls="pt-list" aria-autocomplete="list">
-            </div>
-            <ul id="pt-list" class="suggest" role="listbox" hidden></ul>
-            <p class="warn-inline" id="pt-warning" hidden>
-              <svg class="icon-sm" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-              Choose a product type from the list.
-            </p>
-          </div>
-
-          <div class="field" id="variant-field">
-            <label for="variant-select">Variant</label>
-            <div class="select-wrap">
-              <select id="variant-select" class="input" disabled>
-                <option>Select product type first</option>
-              </select>
-              <svg class="select-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-            </div>
-            <p class="hint">Shown only when the product type has variants</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- Shot list -->
-      <section class="card shot-card" id="shot-card" aria-label="Shot list">
-        <div class="card-head">
-          <div class="card-head-left">
-            <h2 class="card-title" id="shots-title">Shots</h2>
-            <span class="muted">(Auto-configured from naming data sheet)</span>
-          </div>
-          <div class="card-head-right">
-            <span class="pill" id="fill-count">0 of 0 shots filled</span>
-            <label class="switch" title="Upscale images under the output size 2x with Adobe Firefly before generating">
-              <input type="checkbox" id="upscale-toggle" role="switch" checked>
-              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
-              <span class="switch-label">AI upscale</span>
-            </label>
-            <button type="button" id="btn-clear-all" class="btn btn-outline btn-sm btn-clear-all" disabled>Clear all</button>
-          </div>
-        </div>
-        <div class="shot-subhead">
-          <span id="drop-sub">JPG or PNG only. Minimum 3000 × 3000 px, square (1:1).</span>
-          <span class="subhead-right">
-            <span class="pill svc" id="svc-status" hidden><span class="svc-dot"></span><span id="svc-text">Upscaler: checking…</span><a href="playground3d://start" id="svc-start" class="svc-start" hidden>Start</a><button type="button" id="svc-setup" class="svc-start" title="Open Settings → AI upscale setup" hidden>⚙ Settings › AI upscale setup</button></span>
-            <span id="target-output">Target output: 3000 × 3000 px PNG</span>
-          </span>
-        </div>
-        <p class="drop-msg" id="drop-msg" hidden></p>
-        <input type="file" id="row-file-input" accept="image/jpeg,image/png" hidden>
-        <div class="table-wrap">
-          <div class="drop-banner" id="drop-banner" hidden>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
-            <strong id="drop-banner-title">Drop to add images</strong>
-            <span id="drop-banner-text"></span>
-          </div>
-          <table class="shot-table">
-            <thead>
-              <tr>
-                <th class="c-seq">Seq</th>
-                <th class="c-name">Image Name</th>
-                <th class="c-code">Shot Code</th>
-                <th class="c-img">Image</th>
-                <th class="c-out">Output File Name</th>
-                <th class="c-upscale">Upscale</th>
-                <th class="c-status">Status</th>
-                <th class="c-action">Action</th>
-              </tr>
-            </thead>
-            <tbody id="shot-body"></tbody>
-          </table>
-          <div class="table-empty" id="table-empty">Choose a product type to see its shot list.</div>
-        </div>
-      </section>
-
-      <!-- Actions -->
-      <section class="card card-pad" aria-label="Execution actions">
-        <div class="action-row">
-          <div id="action-reason" class="reason" hidden></div>
-          <button type="button" id="btn-generate" class="btn btn-primary" disabled>
-            <span class="spinner" hidden></span>
-            <span class="btn-label">Generate images</span>
-          </button>
-        </div>
-        <div id="progress" class="progress-box" hidden>
-          <div class="row-between progress-text">
-            <span class="mono strong" id="progress-file"></span>
-            <span id="progress-step"></span>
-          </div>
-          <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
-        </div>
-        <div class="save-row">
-          <svg class="icon-sm" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
-          <span>Save to: <strong id="save-dest">—</strong></span>
-        </div>
-        <p class="hint mt">All PNGs are downloaded together as one zip with a folder named after the EAN code inside.</p>
-      </section>
-
-      <!-- Results -->
-      <section class="card card-pad" id="results" aria-label="Last generation results" hidden>
-        <div class="row-between results-head">
-          <div class="card-head-left">
-            <h2 class="card-title">Last generation</h2>
-            <span class="dot"></span>
-            <span class="muted strong" id="results-time"></span>
-          </div>
-          <span class="muted" id="results-batch"></span>
-        </div>
-        <ul class="results-list" id="results-list"></ul>
-        <p class="hint mt">Check these files against the Data sheet before use.</p>
-      </section>
+  <div class="tp-workbench" id="task-workbench" data-tasks-chrome>
+  <main class="tp-main" id="task-main">
+    <div class="tp-list" id="task-list">
+      <div class="tp-state"><span class="tp-spinner"></span>Loading tasks…</div>
     </div>
   </main>
 
-  <footer class="app-footer">
-    <p>3D Playground · Beta V1.1 · Images are processed in your browser. With AI upscale on, images under the output size are sent to Adobe Firefly through the upscaler on this PC.</p>  </footer>
-
-  <!-- Author modal -->
-  <div id="author-modal" class="modal-backdrop" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="author-title">
-      <h2 id="author-title">Enter your name</h2>
-      <p class="muted">Your name is saved in this browser and added as the Author in every generated image.</p>
-      <form id="author-form">
-        <label for="author-input">Your name</label>
-        <input id="author-input" type="text" class="input" placeholder="e.g. Vinay" autocomplete="name">
-        <div class="modal-actions">
-          <button type="button" id="btn-author-cancel" class="btn btn-ghost btn-sm" hidden>Cancel</button>
-          <button type="submit" id="btn-author-continue" class="btn btn-primary btn-sm" disabled>Continue</button>
-        </div>
-      </form>
+  <aside class="tp-drawer" id="drawer" aria-label="Task preview" hidden>
+    <div class="tp-drawer-head">
+      <span>Task Preview</span>
+      <button type="button" class="tp-icon-btn tp-icon-btn-sm" id="drawer-close" title="Close" aria-label="Close preview">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
     </div>
+    <div class="tp-drawer-body" id="drawer-body"></div>
+  </aside>
   </div>
 
-  <!-- AI upscale setup guide -->
-  <div id="setup-modal" class="modal-backdrop" hidden>
-    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="setup-title">
-      <div class="modal-head">
-        <div>
-          <h2 id="setup-title">AI upscale setup</h2>
-          <p class="muted">One-time setup for each PC. Takes about 10 minutes. No admin rights needed.</p>
-        </div>
-        <button type="button" id="btn-setup-close" class="icon-btn" aria-label="Close">
-          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.3 4.3a1 1 0 011.4 0L10 8.6l4.3-4.3a1 1 0 111.4 1.4L11.4 10l4.3 4.3a1 1 0 01-1.4 1.4L10 11.4l-4.3 4.3a1 1 0 01-1.4-1.4L8.6 10 4.3 5.7a1 1 0 010-1.4z" clip-rule="evenodd"/></svg>
-        </button>
-      </div>
+  <!-- Full-page My Tasks workspace (workflow choice + Primary / Replacement). UI mock only. -->
+  <section class="tw-workspace" id="task-workspace" hidden aria-label="Task workspace" data-tasks-chrome></section>
 
-      <div class="modal-body">
-        <div class="setup-status" id="setup-status">
-          <span class="pill svc" id="setup-pill"><span class="svc-dot"></span><span id="setup-pill-text">Checking…</span></span>
-          <span id="setup-status-text" class="setup-status-text">Checking whether the upscaler is running on this PC…</span>
-          <a href="playground3d://start" id="setup-start" class="btn btn-outline btn-sm" hidden>Start</a>
-        </div>
+  <div class="tp-menu" id="assign-menu" role="menu" hidden></div>
 
-        <div class="setup-need">
-          <strong>You need</strong>
-          <ul>
-            <li>A Windows PC with <strong>Google Chrome</strong></li>
-            <li>An <strong>Adobe account with Firefly</strong> (comes with Photoshop or a similar Adobe plan)</li>
-            <li>Internet connection</li>
-            <li>A <strong>D: drive</strong>. The setup installs to <strong>D:\3d-playground</strong>. If the PC has no D drive, it uses your user folder instead.</li>
-          </ul>
-        </div>
-
-        <ol class="setup-steps">
-          <li>
-            <h3>Download the setup file</h3>
-            <a class="btn btn-primary btn-sm" href="https://vinayvarghese-livspace.github.io/3d-playground/dist/3d-playground.zip" download>
-              <svg class="icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.3-7.7a1 1 0 011.4 0L9 10.6V3a1 1 0 112 0v7.6l1.3-1.3a1 1 0 111.4 1.4l-3 3a1 1 0 01-1.4 0l-3-3a1 1 0 010-1.4z" clip-rule="evenodd"/></svg>
-              Download 3d-playground.zip
-            </a>
-            <p>It is saved in your <strong>Downloads</strong> folder.</p>
-          </li>
-          <li>
-            <h3>Unblock the file</h3>
-            <p>Open <strong>Downloads</strong>, right-click <span class="kbd">3d-playground.zip</span> and choose <strong>Properties</strong>. At the bottom, tick <strong>Unblock</strong> and click <strong>OK</strong>.</p>
-            <p class="tip">No Unblock tick box? That's fine, skip this step.</p>
-          </li>
-          <li>
-            <h3>Extract the zip</h3>
-            <p>Right-click the zip, choose <strong>Extract All…</strong>, then click <strong>Extract</strong>. Keep the suggested place. A folder with the setup files opens.</p>
-          </li>
-          <li>
-            <h3>Run Setup.bat</h3>
-            <p>In that folder, double-click <span class="kbd">Setup.bat</span>. A black window opens and shows what it is doing. Leave it open.</p>
-            <p class="tip">If Windows says <em>"Windows protected your PC"</em>, click <strong>More info</strong>, then <strong>Run anyway</strong>.</p>
-            <p class="tip">It copies everything to <strong>D:\3d-playground</strong> (or to your user folder if the PC has no D drive) and, the first time, installs Node.js (the program that runs the upscaler). This can take a few minutes.</p>
-          </li>
-          <li>
-            <h3>Sign in to Adobe</h3>
-            <p>A Chrome window opens on Adobe Firefly. Click <strong>Sign in</strong> and log in with your Adobe account.</p>
-            <p>If you sign in with your company <strong>Google</strong> account, Google may ask for <strong>2-Step Verification</strong>: approve the prompt on your phone or enter the code. Finish it in this same window.</p>
-            <p class="tip">If Google says <em>"Your sign-in settings don't meet your organization's 2-Step Verification policy"</em>, turn on 2-Step Verification for your Google account first (Google Account › Security), then sign in again.</p>
-            <p>When you see the Firefly page, <strong>close that Chrome window</strong>. Then go back to the black window and press any key.</p>
-          </li>
-          <li>
-            <h3>Wait for the green status</h3>
-            <p>The black window now starts the upscaler by itself. <strong>You don't need to click Start.</strong></p>
-            <p>A Firefly Chrome window opens again. This one is used by the upscaler: leave it open (you can minimise it), but don't use it.</p>
-            <p>Once the upscaler is connected, the black window opens this page in front, with this guide showing a green <strong>Upscaler connected</strong> status. You're done. The black window closes by itself.</p>
-            <p>If Chrome asks <em>"…wants to access devices on your local network"</em>, click <strong>Allow</strong>.</p>
-            <p class="tip">Still not green after a minute? Click <strong>Start</strong> at the top of this guide. If Chrome asks <em>"Open 3D Playground upscaler?"</em>, tick <strong>Always allow</strong> and click <strong>Open</strong>.</p>
-          </li>
-        </ol>
-
-        <div class="setup-daily">
-          <strong>Every day after that</strong>
-          <p>Open this page. If it shows <em>Upscaler offline</em>, click <strong>Start</strong> next to it and wait about 15 seconds. A Firefly Chrome window and a small <em>3D Playground upscaler</em> window open: minimise them, but don't close them or use them while images are processing.</p>
-        </div>
-
-        <details class="setup-help">
-          <summary>Something not working?</summary>
-          <p id="setup-path-text">The installed files are in <strong>D:\3d-playground</strong>. If the PC has no D drive, they are in your user folder instead. To open that, paste this into the File Explorer address bar and press Enter:</p>
-          <div class="copy-row">
-            <code id="setup-path">%USERPROFILE%\3d-playground</code>
-            <button type="button" class="btn btn-outline btn-sm" data-copy="setup-path">Copy</button>
-          </div>
-          <dl>
-            <dt>Clicking Start does nothing</dt>
-            <dd>Run <span class="kbd">Setup.bat</span> again from the 3d-playground folder, or repeat steps 1 to 4.</dd>
-            <dt>It stays on "starting…" and then goes offline</dt>
-            <dd>Check that you clicked <strong>Allow</strong> if Chrome asked about your local network (see the next item). Then click the <em>3D Playground upscaler</em> window on the taskbar and read the message. Running <span class="kbd">Setup.bat</span> again fixes most problems.</dd>
-            <dt>"Upscaler blocked by Chrome"</dt>
-            <dd>Click the icon to the left of the web address, set <strong>Local network access</strong> to <strong>Allow</strong>, then reload the page.</dd>
-            <dt>"Not signed in to Firefly"</dt>
-            <dd>In the 3d-playground folder, double-click <span class="kbd">Sign in to Adobe.bat</span>, sign in, then close that Chrome window.</dd>
-            <dt>"Too many requests" or an upscale fails after several images</dt>
-            <dd>Adobe limits how fast images can be upscaled. Wait a few minutes and click Generate again.</dd>
-            <dt>"Windows protected your PC" keeps appearing</dt>
-            <dd>Click <strong>More info</strong>, then <strong>Run anyway</strong>, or unblock the zip (step 2) and extract it again.</dd>
-            <dt>"This app has been blocked by your system administrator"</dt>
-            <dd>Your company blocks these files. Ask IT to allow the 3d-playground folder.</dd>
-            <dt>You need to update the setup</dt>
-            <dd>Repeat steps 1 to 4 with a fresh download. Your Adobe sign-in is kept.</dd>
-            <dt>You don't need AI upscale</dt>
-            <dd>Turn off the <strong>AI upscale</strong> switch. The page then only accepts images of 3000 × 3000 px or more and needs no setup.</dd>
-          </dl>
-        </details>
-      </div>
-
-      <div class="modal-actions">
-        <button type="button" id="btn-setup-done" class="btn btn-primary btn-sm">Close</button>
-      </div>
-    </div>
+  <div class="tp-toast" id="toast" role="status" aria-live="polite" hidden>
+    <span class="tp-toast-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+    </span>
+    <span class="tp-toast-text" id="toast-text"></span>
+    <button type="button" class="tp-toast-undo" id="toast-undo">Undo</button>
+    <button type="button" class="tp-toast-close" id="toast-close" aria-label="Dismiss">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
   </div>
 
-  <script src="data.js?v=02"></script>
-  <script src="app.js?v=09"></script>
+  <div class="tp-modal-backdrop" id="name-modal" hidden>
+    <form class="tp-modal" id="name-form" role="dialog" aria-modal="true" aria-labelledby="name-title">
+      <h2 id="name-title">Enter your name</h2>
+      <p>Used to show which tasks are yours. Same name as the Author in the Renamer.</p>
+      <input type="text" id="name-input" class="tp-input" placeholder="e.g. Vinay" autocomplete="name">
+      <div class="tp-modal-actions">
+        <button type="button" class="tp-btn tp-btn-ghost" id="name-cancel">Cancel</button>
+        <button type="submit" class="tp-btn tp-btn-primary" id="name-save" disabled>Save</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="tasks.js?v=54"></script>
 </body>
 </html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<style>
+  body { font-family: Segoe UI, Arial, sans-serif; margin: 16px; color: #222; }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  .controls { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+  select, input { padding: 6px 8px; border: 1px solid #bbb; border-radius: 4px; }
+  #status { margin: 8px 0; font-size: 13px; }
+  #status.error { color: #c5221f; }
+  .wrap { overflow: auto; max-height: 78vh; border: 1px solid #ddd; }
+  table { border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid #e3e3e3; padding: 4px 6px; text-align: left; vertical-align: top; white-space: pre-wrap; max-width: 320px; }
+  th { position: sticky; top: 0; background: #f1f3f4; }
+  tr:nth-child(even) td { background: #fafafa; }
+  a { color: #0f766e; }
+</style>
+</head>
+<body>
+<h1>HH Multi Sheet Reader (read-only)</h1>
+<div class="controls">
+  <select id="sourceSelect"><option>Loading sheets...</option></select>
+  <select id="tabSelect"></select>
+  <input id="filter" placeholder="Filter rows (EAN, artist...)">
+</div>
+<div id="status"></div>
+<div class="wrap"><table id="grid"></table></div>
+
+<script>
+  const MAX_ROWS = 500;
+  let headers = [];
+  let rows = [];
+  let links = {};
+  let modified = '';
+
+  function setStatus(msg, isError) {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = isError ? 'error' : '';
+  }
+
+  function onError(err) { setStatus('Error: ' + (err.message || err), true); }
+
+  function currentSource() { return document.getElementById('sourceSelect').value; }
+
+  function loadSources() {
+    google.script.run.withSuccessHandler(sources => {
+      const sel = document.getElementById('sourceSelect');
+      sel.innerHTML = '';
+      sources.forEach(s => {
+        const o = document.createElement('option');
+        o.value = s.key;
+        o.textContent = s.label;
+        sel.appendChild(o);
+      });
+      if (sources.length) loadTabs();
+    }).withFailureHandler(onError).getSources();
+  }
+
+  function loadTabs() {
+    setStatus('Loading tabs...');
+    document.getElementById('grid').innerHTML = '';
+    google.script.run.withSuccessHandler(tabs => {
+      const sel = document.getElementById('tabSelect');
+      sel.innerHTML = '';
+      tabs.forEach(t => {
+        const o = document.createElement('option');
+        o.value = t.name;
+        o.textContent = t.name;
+        sel.appendChild(o);
+      });
+      if (tabs.length) loadTab(tabs[0].name);
+      else setStatus('No matching tabs found in this file.', true);
+    }).withFailureHandler(onError).getTabs(currentSource());
+  }
+
+  function loadTab(name) {
+    setStatus('Loading "' + name + '"... large tabs can take up to a minute.');
+    google.script.run.withSuccessHandler(data => {
+      const values = data.values || [];
+      headers = values.length ? values[0] : [];
+      // Keep the sheet row number (header is row 1) so rows can be checked against the sheet.
+      rows = values.slice(1).map((r, i) => ({ n: i + 2, i: i + 1, r })).filter(x => x.r.some(v => v !== ''));
+      links = data.links || {};
+      modified = data.modified ? new Date(data.modified).toLocaleString() : '';
+      render();
+    }).withFailureHandler(onError).getTabData(currentSource(), name);
+  }
+
+  function render() {
+    const q = document.getElementById('filter').value.trim().toLowerCase();
+    const visible = q ? rows.filter(x => x.r.some(v => v.toLowerCase().includes(q))) : rows;
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+
+    const thead = grid.createTHead().insertRow();
+    ['Row'].concat(headers).forEach(h => { const th = document.createElement('th'); th.textContent = h; thead.appendChild(th); });
+
+    const tbody = grid.createTBody();
+    visible.slice(0, MAX_ROWS).forEach(x => {
+      const tr = tbody.insertRow();
+      tr.insertCell().textContent = x.n;
+      headers.forEach((_, c) => {
+        const td = tr.insertCell();
+        const text = x.r[c] || '';
+        const url = links[x.i + ',' + c] || (/^https?:\/\/\S+$/.test(text) ? text : '');
+        if (url) {
+          const a = document.createElement('a');
+          a.href = url;
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.textContent = text || url;
+          td.appendChild(a);
+        } else {
+          td.textContent = text;
+        }
+      });
+    });
+
+    setStatus(rows.length + ' rows, ' + headers.length + ' columns' +
+      (modified ? ', file last saved ' + modified : '') + '. Showing ' +
+      Math.min(visible.length, MAX_ROWS) + ' of ' + visible.length + ' matching rows.');
+  }
+
+  document.getElementById('sourceSelect').addEventListener('change', loadTabs);
+  document.getElementById('tabSelect').addEventListener('change', e => loadTab(e.target.value));
+  document.getElementById('filter').addEventListener('input', render);
+  loadSources();
+</script>
+</body>
+</html>

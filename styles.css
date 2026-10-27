@@ -31,6 +31,11 @@
 [hidden] { display: none !important; }
 
 html, body { margin: 0; padding: 0; }
+/* Embedded inside index.html#renamer — shared shell already shows header + beta note. */
+body.is-embed .app-header,
+body.is-embed .app-footer,
+body.is-embed .beta-note { display: none !important; }
+body.is-embed { min-height: 0; }
 body {
   font-family: var(--font);
   background: var(--bg);
@@ -73,9 +78,16 @@ h1, h2, h3, p { margin: 0; }
   background: var(--teal); color: #fff; font-weight: 700; font-size: 13px;
   display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm);
 }
-.brand-title { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.brand-title { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; }
 .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
 .badge-beta { color: var(--amber); background: var(--amber-bg); border: 1px solid var(--amber-border); }
+.app-nav { display: flex; align-items: center; gap: 4px; margin-left: 20px; margin-right: auto; }
+.app-nav-tab {
+  padding: 6px 12px; border-radius: 6px; font-size: 14px; font-weight: 500;
+  color: var(--muted); text-decoration: none; transition: background-color 0.15s, color 0.15s;
+}
+.app-nav-tab:hover { color: var(--text); background: #F9FAFB; }
+.app-nav-tab.is-active { background: #F3F4F6; color: var(--teal); font-weight: 600; }
 .header-meta { display: flex; align-items: center; gap: 14px; font-size: 12px; color: var(--muted); }
 .header-meta strong { font-weight: 500; color: var(--text-2); }
 .header-meta .sep { color: #D1D5DB; }

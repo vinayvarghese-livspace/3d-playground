@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>3D Playground: Overview</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #202124; max-width: 820px; margin: 32px auto; padding: 0 16px; }
+  h1 { font-size: 22pt; margin-bottom: 4px; }
+  h2 { font-size: 16pt; margin-top: 28px; border-bottom: 1px solid #dadce0; padding-bottom: 4px; }
+  h3 { font-size: 13pt; margin-top: 20px; }
+  h4 { font-size: 11pt; margin-top: 16px; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 16px; }
+  th, td { border: 1px solid #bdc1c6; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #e8f0fe; font-weight: bold; }
+  code { font-family: "Courier New", monospace; }
+  .copy-tip { background: #fef7e0; border: 1px solid #f9ab00; padding: 8px 12px; font-size: 10pt; }
+</style>
+</head>
+<body>
+
+<p class="copy-tip"><b>To copy into Google Docs:</b> press Ctrl+A, then Ctrl+C, then paste into the Google Doc with Ctrl+V. Delete this yellow note after pasting.</p>
+
+<h1>3D Playground: Overview</h1>
+<p>
+<b>Live link:</b> <a href="https://vinayvarghese-livspace.github.io/3d-playground/">https://vinayvarghese-livspace.github.io/3d-playground/</a><br>
+<b>Source code:</b> <a href="https://github.com/vinayvarghese-livspace/3d-playground">https://github.com/vinayvarghese-livspace/3d-playground</a><br>
+<b>Current version:</b> Beta V1.2 (Tasks + Assign to live Render Tracker)
+</p>
+
+<!-- ================= PART 1 ================= -->
+
+<h2>Part 1: What it is and why we built it</h2>
+
+<h3>In one line</h3>
+<p>3D Playground turns a folder of product photos or renders into a ready-to-upload set of marketplace images: correctly named, correctly sized, in the correct order, in one click.</p>
+
+<h3>The problem before</h3>
+<p>Every product we list on a marketplace needs a set of images, and every set has to follow strict rules:</p>
+<ul>
+  <li><b>Exact file names.</b> Each image must be named EAN_Sequence_ShotCode.png, for example 8909327036353_02_H-FR.png. The main image is 8909327036353_MAIN.png.</li>
+  <li><b>A different shot list for every product type.</b> A vase needs different shots from a bedsheet or a pressure cooker. The naming sheet lists 216 product types across Decor, Soft Furnishing, Bath, Laundry, Kitchen, Bakeware and Tableware, and 24 of them have variants with their own shot lists.</li>
+  <li><b>Exact image specifications.</b> 3000 × 3000 px, square, PNG, white background.</li>
+  <li><b>Traceability.</b> Who prepared the image, and when.</li>
+</ul>
+
+<p>Doing this by hand meant:</p>
+<table>
+  <tr><th>Pain point</th><th>What it cost us</th></tr>
+  <tr><td>Looking up the right shot list in a large Excel sheet for every product</td><td>Time, and wrong shot codes when the wrong row was read</td></tr>
+  <tr><td>Typing long 13-digit EAN file names by copy-paste</td><td>Typos that are hard to spot and get images rejected or mismatched</td></tr>
+  <tr><td>Resizing and converting each image in Photoshop or another tool</td><td>Repetitive manual work for every single image</td></tr>
+  <tr><td>Images that came in smaller than 3000 px</td><td>Someone had to upscale them one by one in Adobe Firefly, then download, rename and resize again</td></tr>
+  <tr><td>No record of who prepared a file without checking the manually maintained sheet.</td><td>No traceability when something went wrong from the file.</td></tr>
+  <tr><td>Every person did it slightly differently</td><td>Inconsistent workflow across the team</td></tr>
+</table>
+
+<h3>What 3D Playground does</h3>
+<p>The user does three things:</p>
+<ol>
+  <li><b>Types the EAN</b> (the tool checks it is exactly 13 digits).</li>
+  <li><b>Picks the product type</b> from a searchable list (and a variant, if the product has one). The tool instantly shows the exact shot list for that product: sequence, shot name, shot code and the final file name for each row.</li>
+  <li><b>Drops in the images.</b> Drag a whole batch onto the table and they fill the rows in order, or drop a single image on a specific row.</li>
+</ol>
+<p>Then they click <b>Generate</b>, and the tool:</p>
+<ul>
+  <li>Checks every image (JPG or PNG, big enough, square) and clearly flags any that are wrong, with the reason, before anything is produced.</li>
+  <li>Upscales small images automatically with Adobe Firefly AI (V1.1, optional).</li>
+  <li>Converts every image to a 3000 × 3000 PNG.</li>
+  <li>Names every file correctly.</li>
+  <li>Stamps each file with the author's name, the software and the creation time, so anyone can see who made it (visible in Windows file Properties).</li>
+  <li>Downloads everything as one zip named after the EAN, with a folder inside it named after the EAN.</li>
+</ul>
+
+<h3>How it helps</h3>
+<ul>
+  <li><b>4x manual worktime saving per product.</b> Looking things up, renaming, resizing and upscaling are all automatic.</li>
+  <li><b>No naming mistakes.</b> File names are generated from the official naming sheet, never typed.</li>
+  <li><b>Problems are caught before upload, not after.</b> Wrong size, wrong shape or wrong file type are shown on the row, with a plain explanation.</li>
+  <li><b>Smaller images are no longer a dead end.</b> With AI upscale on, images from 2000 px up are enlarged by Firefly and used directly.</li>
+  <li><b>Everyone produces the same output.</b> Same rules, same names, same specs, whoever runs it.</li>
+  <li><b>Accountability.</b> Every file carries its author and creation time.</li>
+  <li><b>Private by default.</b> Without AI upscale, images never leave the computer. Everything happens inside the browser.</li>
+  <li><b>Nothing to install for basic use.</b> It is just a web link. AI upscale needs a one-time, roughly 10 minute setup per PC, with no admin rights needed.</li>
+  <li><b>No extra expense in using.</b> It uses free Firefly upscaler with no cost which comes from Photoshop subscription.</li>
+</ul>
+
+<!-- ================= PART 2 ================= -->
+
+<h2>Part 2: Technical explanation</h2>
+
+<h3>Architecture at a glance</h3>
+<p>There are two parts:</p>
+<ol>
+  <li><b>The web page</b> (hosted on GitHub Pages). This does all the core work in the browser.</li>
+  <li><b>The local upscaler</b> (V1.1, optional). A small Node.js program on the user's PC that drives Adobe Firefly on the user's behalf.</li>
+</ol>
+
+<table>
+  <tr><th>Where</th><th>What runs there</th><th>Role</th></tr>
+  <tr><td>GitHub</td><td>Repository and GitHub Pages</td><td>Stores the code and version history; publishes the web page and the setup zip</td></tr>
+  <tr><td>User's PC: Chrome</td><td>The 3D Playground page</td><td>Checks, resizes, names, adds metadata and zips the images, all in the browser</td></tr>
+  <tr><td>User's PC: local service (optional)</td><td>Node.js upscaler on 127.0.0.1:5175</td><td>Receives only the images that need upscaling and queues them</td></tr>
+  <tr><td>User's PC: dedicated Chrome window (optional)</td><td>Chrome signed in to the user's Adobe account</td><td>Controlled by the service to upload images to Firefly and download the upscaled results</td></tr>
+  <tr><td>Adobe</td><td>Firefly upscale</td><td>Performs the 2x AI upscale</td></tr>
+</table>
+
+<p><b>Flow:</b> GitHub Pages delivers the page to Chrome. The page does the work itself. If an image is too small and AI upscale is on, the page sends it to the local service, which uses the dedicated Chrome window to run it through Firefly and returns the upscaled image to the page.</p>
+
+<h3>Part A: The web page</h3>
+<p><b>Technology:</b> plain HTML, CSS and JavaScript (index.html, styles.css, app.js, data.js). No frameworks, no build step, and no external libraries apart from Google Fonts.</p>
+
+<table>
+  <tr><th>Concern</th><th>How it is done</th><th>Why</th></tr>
+  <tr><td>Naming rules</td><td>The Excel naming sheet is converted to data.js by a script (tools/convert-naming-data.ps1) that reads the .xlsx directly, with no Excel needed. The page shows "Data last updated" from the sheet's timestamp.</td><td>The sheet stays the single source of truth; updating the rules means re-running the script and pushing.</td></tr>
+  <tr><td>Image checks</td><td>The browser reads each image's width and height and checks the file type, the minimum size and the 1:1 ratio.</td><td>Problems are caught before generation, per row, with a reason.</td></tr>
+  <tr><td>Resize and convert</td><td>An HTML canvas draws the image centred on a white 3000 × 3000 square.</td><td>Built into every browser, nothing to install.</td></tr>
+  <tr><td>PNG encoding</td><td>Custom 24-bit RGB PNG encoder using the browser's built-in compression, with 72 DPI set.</td><td>The browser's own export always writes 32-bit RGBA with no DPI (shown as 96 DPI), which doesn't match the spec.</td></tr>
+  <tr><td>Metadata</td><td>Writes Author, Title, Description, Software and Creation Time as PNG text chunks and as XMP.</td><td>Windows Explorer and most photo tools read XMP, other tools read the text chunks; writing both covers both.</td></tr>
+  <tr><td>Zip download</td><td>A small zip writer built into app.js, with no compression because PNGs are already compressed.</td><td>One clean download, no library needed.</td></tr>
+  <tr><td>Memory</td><td>The author name, the AI upscale on/off choice, a batch counter and the last generation summary are saved in the browser's local storage.</td><td>No login or database needed for these per-user preferences.</td></tr>
+</table>
+
+<p><b>Backend readiness:</b> naming data is loaded through a single function (loadNamingData) that currently reads data.js. It is marked to be swapped for a Supabase query once the backend table is ready, so the move to a live database only changes that one function.</p>
+
+<h3>Part B: The AI upscaler (V1.1)</h3>
+<p>Adobe Firefly has no simple public upscale API we can use with a normal Adobe subscription. So, instead of an API, the upscaler <b>operates the Firefly website the same way a person would</b>, using the user's own Adobe login.</p>
+
+<h4>Components (folder firefly-upscaler)</h4>
+<ul>
+  <li><b>A dedicated Chrome window</b> (start-chrome.bat). It uses its own Chrome profile, so the Adobe sign-in is kept separate from the user's everyday browser and survives restarts. It is opened with a local-only remote-control port (127.0.0.1:9222).</li>
+  <li><b>Firefly automation</b> (firefly.js). Uses playwright-core (the only dependency) to connect to that Chrome window, open the Firefly upscale page, upload the image, choose 2x, wait for the result and download it. It detects Firefly's "too many requests" pop-ups and HTTP 429 responses, waits 15 seconds and retries the same image (up to 3 times). If the Firefly window was closed or lost, it reconnects once automatically.</li>
+  <li><b>Local service</b> (server.js). A small web server that only listens on the PC itself (127.0.0.1:5175). The page talks to it with four calls:
+    <ul>
+      <li>GET /health: is the service running and is the Firefly Chrome window open?</li>
+      <li>POST /jobs: send an image, get back a job ID.</li>
+      <li>GET /jobs/:id: job progress from 0 to 100, its stage and its place in the queue.</li>
+      <li>GET /jobs/:id/result: the upscaled image.</li>
+    </ul>
+  </li>
+</ul>
+
+<h4>How a generate run works with AI upscale on</h4>
+<ol>
+  <li>Any image smaller than 3000 px (2000 px minimum) is marked for upscaling.</li>
+  <li>All those images are sent to the local service at once; the service processes them one at a time with a 5 second gap, to stay friendly with Firefly's limits.</li>
+  <li>While Firefly works on the next image, the page is already converting finished ones, so the waiting overlaps.</li>
+  <li>Each row has its own progress ring in the Upscale column, and the main progress bar gives AI upscales more weight because they take far longer than conversion.</li>
+  <li>The upscaled 2x result (for example 4000 px) is scaled to exactly 3000 × 3000 and goes through the same PNG, metadata and zip steps as any other image.</li>
+</ol>
+
+<h4>Safety</h4>
+<ul>
+  <li>The service only accepts connections from the PC itself, and only from approved pages (GitHub Pages, localhost or a local file), so other websites can't use it.</li>
+  <li>Images under 80 MB only; temporary results are deleted after download or after 15 minutes.</li>
+  <li>Images only leave the PC when AI upscale is on, and only the images that need it, going straight to the user's own Adobe Firefly account.</li>
+  <li>Network logs remove login tokens before writing.</li>
+</ul>
+
+<h4>Live status on the page</h4>
+<p>A status pill shows <b>Upscaler connected</b> (green), <b>starting</b> or <b>Firefly Chrome not open</b> (amber), or <b>offline</b> or <b>blocked by Chrome</b> (red). When something is wrong, the Generate button explains exactly what to do instead of failing silently. The page also detects Chrome's newer "local network access" permission block and tells the user how to allow it.</p>
+
+<h3>Why the simple hosting and distribution approach</h3>
+<p>We deliberately avoided servers, app stores and installers.</p>
+<table>
+  <tr><th>Choice</th><th>Why it was chosen</th></tr>
+  <tr><td><b>GitHub repository</b></td><td>Free version history. Every change is a commit, so we can see what changed and roll back.</td></tr>
+  <tr><td><b>GitHub Pages for the page</b></td><td>Free, HTTPS by default, no server to run or patch. Pushing to main publishes the new version. A single link works for everyone.</td></tr>
+  <tr><td><b>GitHub Pages for the setup zip too</b></td><td>The same push that updates the page updates the download (dist/3d-playground.zip). There is no separate file share, email attachment or Drive link to keep in sync.</td></tr>
+  <tr><td><b>Processing in the browser</b></td><td>No server costs, no upload wait, and images stay private. Scales to any number of users at no cost.</td></tr>
+  <tr><td><b>Local upscaler instead of a cloud server</b></td><td>Each user's own Adobe subscription and login are used. No shared credentials, no hosting costs, and Adobe's limits apply per user rather than to one shared account.</td></tr>
+  <tr><td><b>Plain HTML, CSS and JS</b></td><td>Nothing to build, nothing to upgrade, and anyone on the team can read and edit it.</td></tr>
+  <tr><td><b>Version numbers on file links</b></td><td>Each file link carries a version number that is increased whenever the file changes, so browsers always fetch the latest copy after a release.</td></tr>
+</table>
+
+<h3>How the link and the required pieces reach each user</h3>
+<p><b>Everyone (basic use):</b> just the link, <a href="https://vinayvarghese-livspace.github.io/3d-playground/">https://vinayvarghese-livspace.github.io/3d-playground/</a>. Nothing else is needed.</p>
+
+<p><b>AI upscale (one time per PC, about 10 minutes, no admin rights):</b></p>
+<ol>
+  <li>In the page, open <b>Settings › AI upscale setup</b> (gear icon). The guide is built into the page and shows live status as the user goes.</li>
+  <li>Download 3d-playground.zip from the button in the guide (hosted on the same GitHub Pages site).</li>
+  <li>Unblock and extract the zip, then double-click <b>Setup.bat</b>, which:
+    <ul>
+      <li>Copies everything to D:\3d-playground (or the user's own folder if the PC has no usable D drive), and unblocks the files.</li>
+      <li>Installs Node.js <b>for this user only</b> through Windows' built-in winget if it's missing, then installs the upscaler.</li>
+      <li>Registers a playground3d:// link for the current user only, so the page's <b>Start</b> button can launch the upscaler.</li>
+      <li>Opens Chrome on Adobe Firefly for a one-time sign-in (including Google 2-Step Verification for company accounts).</li>
+      <li>Starts the upscaler, waits until it is actually connected, then opens 3D Playground with a green "Upscaler connected" status, and closes by itself.</li>
+    </ul>
+  </li>
+  <li><b>Every day after that:</b> open the link. If it says "Upscaler offline", click <b>Start</b>.</li>
+</ol>
+
+<p><b>Shipping an update:</b> the developer runs tools/make-package.ps1 (rebuilds the zip with only the files another PC needs, and fixes .bat line endings so Windows runs them correctly), then pushes. The page updates for everyone straight away. For upscaler updates, users repeat the setup with a fresh download; their Adobe sign-in is kept.</p>
+
+<!-- ================= VERSIONS ================= -->
+
+<h2>Version history</h2>
+
+<h3>Beta (V1.0): "Image Renamer", 8 Oct 2026</h3>
+<p>The first release. It covered the core renaming and conversion job, entirely in the browser.</p>
+<ul>
+  <li>EAN entry with 13-digit validation.</li>
+  <li>Searchable product type list with variants, generated from the Excel naming sheet (216 product types, 7 categories).</li>
+  <li>A live shot list showing the final output file name for every row.</li>
+  <li>Drag-and-drop images onto the table (a batch fills the rows in order, or drop one on a specific row).</li>
+  <li>Checks for file type (JPG/PNG), minimum 3000 × 3000 px and a square ratio, with per-row status.</li>
+  <li>Converts to 3000 × 3000, 24-bit, 72 DPI PNG with a white background.</li>
+  <li>Author, Software and Creation Time metadata; the author name is remembered in the browser.</li>
+  <li>"Last generation" summary.</li>
+  <li><b>Files were downloaded one at a time</b>, one download per image.</li>
+  <li>100% client-side: nothing was uploaded, and there was nothing to install.</li>
+</ul>
+<p><b>Limits of the beta:</b> images smaller than 3000 px were simply rejected, and a full product meant many separate downloads that had to be gathered into a folder by hand.</p>
+
+<h3>Beta V1.1: "3D Playground", 12 to 13 Oct 2026</h3>
+<p>Renamed to <b>3D Playground</b>, with AI upscaling and a much smoother output and setup.</p>
+
+<h4>New features</h4>
+<ul>
+  <li><b>AI upscale with Adobe Firefly.</b> An on/off switch (remembered in the browser). When it's on, the minimum accepted size drops from 3000 px to 2000 px, and smaller images are upscaled 2x by Firefly before conversion.</li>
+  <li><b>Upscale column</b> with a per-image progress ring, queue position and timing.</li>
+  <li><b>Live upscaler status</b> with a one-click <b>Start</b> button.</li>
+  <li><b>One EAN.zip download</b> containing an EAN folder with all the images, instead of separate files.</li>
+  <li><b>Settings menu</b> (gear icon) with "Change author name" and a step-by-step <b>AI upscale setup guide</b> built into the page, with live status, troubleshooting answers and a "copy folder path" button.</li>
+  <li><b>Hosted setup zip:</b> the installer is downloaded straight from the page.</li>
+  <li><b>Setup.bat:</b> a guided 5-step, no-admin installer, plus "Start 3D Playground.bat" and "Sign in to Adobe.bat" shortcuts.</li>
+</ul>
+
+<h4>Reliability fixes after the V1.1 release (12 to 13 Oct)</h4>
+<ul>
+  <li>Clear message when Chrome blocks the hosted page from reaching the local upscaler (Chrome's local network access permission).</li>
+  <li>Finds Node.js even when Chrome was already open before Node.js was installed.</li>
+  <li>.bat files are kept in Windows line endings so they always run correctly.</li>
+  <li>Installs to D:\3d-playground when possible, otherwise the user folder.</li>
+  <li>Recovers automatically from a sign-in Chrome window left running in the background.</li>
+  <li>No need to click Start after setup: setup starts the upscaler itself, and opens the page only once the upscaler is actually connected.</li>
+  <li>The guide explains the second Firefly Chrome window (leave it open, don't use it) and covers Google 2-Step Verification.</li>
+  <li>The AI upscale switch setting is remembered between visits.</li>
+</ul>
+
+<h3>Summary of changes</h3>
+<table>
+  <tr><th></th><th>Beta (V1.0)</th><th>Beta V1.1</th></tr>
+  <tr><td><b>Name</b></td><td>Image Renamer</td><td>3D Playground</td></tr>
+  <tr><td><b>Minimum image size</b></td><td>3000 px</td><td>2000 px with AI upscale (3000 px without)</td></tr>
+  <tr><td><b>Small images</b></td><td>Rejected</td><td>Upscaled 2x by Adobe Firefly</td></tr>
+  <tr><td><b>Output</b></td><td>One download per image</td><td>One EAN.zip with an EAN folder</td></tr>
+  <tr><td><b>Install needed</b></td><td>None</td><td>None for basic use; one-time Setup.bat for AI upscale</td></tr>
+  <tr><td><b>Data leaves the PC</b></td><td>Never</td><td>Only images that need upscaling, to the user's own Firefly account</td></tr>
+  <tr><td><b>Help</b></td><td>None in the page</td><td>Settings menu with a full setup guide and troubleshooting</td></tr>
+  <tr><td><b>Preferences remembered</b></td><td>Author name</td><td>Author name and AI upscale on/off</td></tr>
+</table>
+</body>
+</html>

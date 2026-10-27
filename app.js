@@ -7,7 +7,7 @@
   const UPSCALE_KEY = 'imageRenamer.upscaleOn';
   const ACCEPTED_TYPES = ['image/jpeg', 'image/png'];
   const OUTPUT_DPI = 72;
-  const APP_VERSION = 'V1.1';
+  const APP_VERSION = 'V1.2';
 
   // Local Firefly upscale service (firefly-upscaler/server.js) running on the user's PC.
   const UPSCALE_URL = 'http://127.0.0.1:5175';
@@ -1535,6 +1535,8 @@
   }
 
   /* ---------- Boot ---------- */
+
+  if (/[?&]embed=1(?:&|$)/.test(location.search)) document.body.classList.add('is-embed');
 
   el.btnRetry.addEventListener('click', init);
   loadAuthor();

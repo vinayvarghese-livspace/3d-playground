@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Playground (PREVIEW · V1.2)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tasks.css?v=54">
+</head>
+<body class="view-renamer">
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">3D</div>
+        <h1 class="brand-title">3D Playground</h1>
+        <span class="badge badge-beta">PREVIEW V1.2</span>
+      </div>
+      <nav class="app-nav" aria-label="Sections">
+        <a class="app-nav-tab is-active" href="#renamer" id="tab-renamer" aria-current="page">Renamer</a>
+        <a class="app-nav-tab" href="#available" id="tab-available">
+          Available Tasks <span class="app-nav-count" id="tab-count-available">0</span>
+        </a>
+        <a class="app-nav-tab" href="#my" id="tab-my">
+          My Tasks <span class="app-nav-count" id="tab-count-my">0</span>
+        </a>
+      </nav>
+      <div class="header-meta">
+        <span class="meta-updated">Data last updated: <strong id="updated-text">—</strong></span>
+        <button type="button" class="icon-btn icon-btn-sm" id="btn-refresh" title="Refresh data" aria-label="Refresh data">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+        </button>
+        <span class="sep">|</span>
+        <span class="meta-author">Author: <strong id="user-name">—</strong></span>
+        <div class="settings">
+          <button type="button" id="btn-settings" class="icon-btn" aria-label="Settings" aria-haspopup="menu" aria-expanded="false" title="Settings">
+            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.53 1.53 0 01-2.29.95c-1.37-.84-2.94.73-2.1 2.1.54.89.06 2.04-.95 2.29-1.56.38-1.56 2.6 0 2.98 1.01.25 1.49 1.4.95 2.29-.84 1.37.73 2.94 2.1 2.1a1.53 1.53 0 012.29.95c.38 1.56 2.6 1.56 2.98 0a1.53 1.53 0 012.29-.95c1.37.84 2.94-.73 2.1-2.1a1.53 1.53 0 01.95-2.29c1.56-.38 1.56-2.6 0-2.98a1.53 1.53 0 01-.95-2.29c.84-1.37-.73-2.94-2.1-2.1a1.53 1.53 0 01-2.29-.95zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
+          </button>
+          <div id="settings-menu" class="menu" role="menu" hidden>
+            <button type="button" role="menuitem" id="menu-author" class="menu-item">
+              <svg class="icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
+              <span>Change author name</span>
+            </button>
+            <button type="button" role="menuitem" id="menu-refresh" class="menu-item">
+              <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+              <span>Refresh data</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="beta-note" aria-label="Beta notice">
+    <div class="beta-note-inner">
+      <svg class="icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+      <span>Beta version: always check the generated file names and images against the Data sheet before use.</span>
+    </div>
+  </section>
+
+  <!-- Renamer UI (renamer.html) — live URL stays index.html#renamer -->
+  <iframe class="renamer-frame" id="renamer-frame" title="Image Renamer" hidden></iframe>
+
+  <section class="tp-toolbar" aria-label="Filters" data-tasks-chrome>
+    <div class="tp-title-wrap">
+      <h1 class="tp-title" id="view-title">Available Tasks</h1>
+      <span class="tp-count-pill" id="task-count">0 tasks</span>
+      <span class="tp-source" id="source-pill" hidden></span>
+    </div>
+    <span class="tp-vsep" aria-hidden="true"></span>
+    <label class="tp-search">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <input type="text" id="search" placeholder="Search EAN or product name..." autocomplete="off" aria-label="Search EAN or product name">
+    </label>
+    <div class="tp-filters">
+      <div class="tp-select">
+        <select id="f-category" aria-label="Category"><option value="">All categories</option></select>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+      </div>
+      <div class="tp-select">
+        <select id="f-template" aria-label="Template"><option value="">All Templates</option></select>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+      </div>
+      <div class="tp-select" data-available-only>
+        <select id="f-set" aria-label="Set or PCs">
+          <option value="">Any Set / PCs</option>
+          <option value="pcs">PCs</option>
+          <option value="set">Set (anything not PCs)</option>
+        </select>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+      </div>
+      <div class="tp-select" data-available-only>
+        <select id="f-artist" aria-label="Artist history"><option value="">Artist history: anyone</option></select>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+      </div>
+    </div>
+    <div class="tp-group-wrap" data-available-only>
+      <span class="tp-label">Group:</span>
+      <div class="tp-seg" role="group" aria-label="Group by">
+        <button type="button" class="is-active" data-group="subTemplate">Sub-category + Template</button>
+        <button type="button" data-group="productTemplate">Product + Template</button>
+        <button type="button" data-group="template">Template</button>
+      </div>
+    </div>
+    <div class="tp-sort-wrap" data-available-only>
+      <span class="tp-label">Sort by:</span>
+      <div class="tp-select">
+        <select id="sort" aria-label="Sort by">
+          <option value="oldest">Oldest first</option>
+          <option value="newest">Newest first</option>
+          <option value="shots">Most shots</option>
+        </select>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+      </div>
+    </div>
+    <div class="tp-my-tabs" data-my-only role="tablist" aria-label="My Tasks buckets">
+      <button type="button" class="is-active" role="tab" aria-selected="true" data-my-bucket="active" id="my-tab-active">
+        Active <span class="tp-my-tab-count" id="my-count-active">0</span>
+      </button>
+      <button type="button" role="tab" aria-selected="false" data-my-bucket="completed" id="my-tab-completed">
+        Completed <span class="tp-my-tab-count" id="my-count-completed">0</span>
+      </button>
+    </div>
+  </section>
+
+  <div class="tp-workbench" id="task-workbench" data-tasks-chrome>
+  <main class="tp-main" id="task-main">
+    <div class="tp-list" id="task-list">
+      <div class="tp-state"><span class="tp-spinner"></span>Loading tasks…</div>
+    </div>
+  </main>
+
+  <aside class="tp-drawer" id="drawer" aria-label="Task preview" hidden>
+    <div class="tp-drawer-head">
+      <span>Task Preview</span>
+      <button type="button" class="tp-icon-btn tp-icon-btn-sm" id="drawer-close" title="Close" aria-label="Close preview">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <div class="tp-drawer-body" id="drawer-body"></div>
+  </aside>
+  </div>
+
+  <!-- Full-page My Tasks workspace (workflow choice + Primary / Replacement). UI mock only. -->
+  <section class="tw-workspace" id="task-workspace" hidden aria-label="Task workspace" data-tasks-chrome></section>
+
+  <div class="tp-menu" id="assign-menu" role="menu" hidden></div>
+
+  <div class="tp-toast" id="toast" role="status" aria-live="polite" hidden>
+    <span class="tp-toast-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+    </span>
+    <span class="tp-toast-text" id="toast-text"></span>
+    <button type="button" class="tp-toast-undo" id="toast-undo">Undo</button>
+    <button type="button" class="tp-toast-close" id="toast-close" aria-label="Dismiss">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
+  </div>
+
+  <div class="tp-modal-backdrop" id="name-modal" hidden>
+    <form class="tp-modal" id="name-form" role="dialog" aria-modal="true" aria-labelledby="name-title">
+      <h2 id="name-title">Enter your name</h2>
+      <p>Used to show which tasks are yours. Same name as the Author in the Renamer.</p>
+      <input type="text" id="name-input" class="tp-input" placeholder="e.g. Vinay" autocomplete="name">
+      <div class="tp-modal-actions">
+        <button type="button" class="tp-btn tp-btn-ghost" id="name-cancel">Cancel</button>
+        <button type="submit" class="tp-btn tp-btn-primary" id="name-save" disabled>Save</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="tasks.js?v=54"></script>
+</body>
+</html>

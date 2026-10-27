@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HH Sheet Reader - Local Test</title>
+<style>
+  body { font-family: Segoe UI, Arial, sans-serif; margin: 16px; color: #222; }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .controls input { padding: 6px 8px; border: 1px solid #bbb; border-radius: 4px; }
+  #sheetUrl { width: 520px; }
+  button { padding: 6px 14px; border: 0; border-radius: 4px; background: #1a73e8; color: #fff; cursor: pointer; }
+  #status { margin: 8px 0; font-size: 13px; }
+  #status.error { color: #c5221f; }
+  .wrap { overflow: auto; max-height: 75vh; border: 1px solid #ddd; }
+  table { border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid #e3e3e3; padding: 4px 6px; text-align: left; vertical-align: top; white-space: pre-wrap; max-width: 320px; }
+  th { position: sticky; top: 0; background: #f1f3f4; }
+  tr:nth-child(even) td { background: #fafafa; }
+</style>
+</head>
+<body>
+<h1>HH Sheet Reader (read-only test)</h1>
+
+<div class="controls">
+  <input id="sheetUrl" value="https://docs.google.com/spreadsheets/d/12NU2Ru7Jnxok4M0Ylva1n8CKBxScnOs3k4gPs35a4Ec/edit?gid=0#gid=0">
+  <input id="tabName" placeholder="Tab name (blank = first tab)">
+  <button id="loadBtn">Load</button>
+  <input id="filter" placeholder="Filter rows (EAN, artist...)">
+</div>
+<div id="status">Works only for sheets shared as "Anyone with the link can view". Private / organisation-only sheets need the Apps Script page.</div>
+<div class="wrap"><table id="grid"></table></div>
+
+<script>
+  const MAX_ROWS = 500;
+  let headers = [];
+  let rows = [];
+
+  function setStatus(msg, isError) {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = isError ? 'error' : '';
+  }
+
+  function parseSheetUrl(url) {
+    const id = (url.match(/\/d\/([a-zA-Z0-9-_]+)/) || [])[1];
+    const gid = (url.match(/[#&?]gid=(\d+)/) || [])[1];
+    return { id, gid };
+  }
+
+  function loadSheet() {
+    const { id, gid } = parseSheetUrl(document.getElementById('sheetUrl').value);
+    if (!id) { setStatus('Could not find a spreadsheet ID in that URL.', true); return; }
+    const tab = document.getElementById('tabName').value.trim();
+
+    let src = 'https://docs.google.com/spreadsheets/d/' + id +
+      '/gviz/tq?headers=1&tqx=out:json;responseHandler:onSheetData';
+    if (tab) src += '&sheet=' + encodeURIComponent(tab);
+    else if (gid) src += '&gid=' + gid;
+
+    setStatus('Loading...');
+    const old = document.getElementById('jsonp');
+    if (old) old.remove();
+    const s = document.createElement('script');
+    s.id = 'jsonp';
+    s.src = src + '&_=' + Date.now();
+    s.onerror = () => setStatus('Could not read the sheet. You may not be signed in, or the browser blocks Google cookies on local pages. Use the Apps Script version instead.', true);
+    document.body.appendChild(s);
+  }
+
+  window.onSheetData = function (res) {
+    if (res.status === 'error') {
+      setStatus('Sheet error: ' + res.errors.map(e => e.detailed_message || e.message).join('; '), true);
+      return;
+    }
+    const table = res.table;
+    headers = table.cols.map((c, i) => c.label || c.id || 'Col ' + (i + 1));
+    rows = table.rows.map(r => (r.c || []).map(cell => {
+      if (!cell) return '';
+      return cell.f != null ? cell.f : (cell.v != null ? String(cell.v) : '');
+    }));
+    render();
+  };
+
+  function render() {
+    const q = document.getElementById('filter').value.trim().toLowerCase();
+    const visible = q ? rows.filter(r => r.some(v => v.toLowerCase().includes(q))) : rows;
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+
+    const thead = grid.createTHead().insertRow();
+    headers.forEach(h => { const th = document.createElement('th'); th.textContent = h; thead.appendChild(th); });
+
+    const tbody = grid.createTBody();
+    visible.slice(0, MAX_ROWS).forEach(r => {
+      const tr = tbody.insertRow();
+      headers.forEach((_, i) => { tr.insertCell().textContent = r[i] || ''; });
+    });
+
+    setStatus(rows.length + ' rows, ' + headers.length + ' columns loaded. Showing ' +
+      Math.min(visible.length, MAX_ROWS) + ' of ' + visible.length + ' matching rows.');
+  }
+
+  document.getElementById('loadBtn').addEventListener('click', loadSheet);
+  document.getElementById('filter').addEventListener('input', render);
+</script>
+</body>
+</html>
