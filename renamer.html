@@ -15,7 +15,8 @@
     (function () {
       if (window !== window.top) return;
       if (/[?&]embed=1(?:&|$)/.test(location.search)) return;
-      location.replace('index.html#renamer');
+      // Standalone renamer → production index; Tasks preview stays on preview.html.
+      location.replace('index.html');
     })();
   </script>
 </head>
@@ -26,12 +27,12 @@
       <div class="brand">
         <div class="brand-logo" aria-hidden="true">3D</div>
         <h1 class="brand-title">3D Playground</h1>
-        <span class="badge badge-beta">BETA V1.2</span>
+        <span class="badge badge-beta">BETA V1.1</span>
       </div>
       <nav class="app-nav" aria-label="Sections">
-        <a class="app-nav-tab is-active" href="index.html#renamer" aria-current="page">Renamer</a>
-        <a class="app-nav-tab" href="index.html#available">Available Tasks</a>
-        <a class="app-nav-tab" href="index.html#my">My Tasks</a>
+        <a class="app-nav-tab is-active" href="index.html" aria-current="page">Renamer</a>
+        <a class="app-nav-tab" href="preview.html#available">Available Tasks</a>
+        <a class="app-nav-tab" href="preview.html#my">My Tasks</a>
       </nav>
       <div class="header-meta">
         <span id="data-updated-wrap">Data last updated: <strong id="data-updated">—</strong></span>
