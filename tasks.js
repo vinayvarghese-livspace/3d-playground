@@ -2,6 +2,9 @@
   'use strict';
 
   const AUTHOR_KEY = 'imageRenamer.author';
+  const UPSCALE_KEY = 'imageRenamer.upscaleOn';
+  const UPSCALE_URL = 'http://127.0.0.1:5175';
+  const SERVICE_CHECK_MS = 10000;
   // Pick / Assign controls are only for these authors (matched on first name or full name).
   const ASSIGN_AUTHORS = ['vinay', 'aman', 'ananyo'];
   // Old local picks key — cleared on load; assignments now live only in the assign / Render Tracker sheet.
@@ -105,6 +108,11 @@
     workspace: null,
     workspaceShot: 0,
     author: localStorage.getItem(AUTHOR_KEY) || '',
+    upscaleOn: localStorage.getItem(UPSCALE_KEY) !== 'false',
+    service: 'checking',
+    startFailed: false,
+    startingUntil: 0,
+    upscaleFolder: '',
     search: '',
     category: '',
     template: '',
@@ -3108,6 +3116,7 @@
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (!els.nameModal.hidden) closeNameModal();
+    else if (els.setupModal && !els.setupModal.hidden) closeSetupModal();
     else if (!els.menu.hidden) closeMenu();
     else if (!els.settingsMenu.hidden) closeSettings();
     else if (state.workspace) {
@@ -3120,6 +3129,159 @@
     els.settingsMenu.hidden = true;
     els.settingsBtn.setAttribute('aria-expanded', 'false');
   }
+
+  /* ---------- AI upscale setup guide (Settings › AI upscale setup) ---------- */
+
+  els.setupModal = $('setup-modal');
+  els.menuSetup = $('menu-setup');
+  els.setupPill = $('setup-pill');
+  els.setupPillText = $('setup-pill-text');
+  els.setupStatusText = $('setup-status-text');
+  els.setupStart = $('setup-start');
+  let setupPoll = null;
+
+  function upscaleOn() {
+    return localStorage.getItem(UPSCALE_KEY) !== 'false';
+  }
+
+  async function localNetworkPermission() {
+    if (!navigator.permissions) return 'unknown';
+    let result = 'unknown';
+    for (const name of ['loopback-network', 'local-network-access', 'local-network']) {
+      try {
+        const { state: perm } = await navigator.permissions.query({ name });
+        if (perm === 'denied') return 'denied';
+        if (perm === 'prompt') result = 'prompt';
+      } catch (_) { /* not supported */ }
+    }
+    return result;
+  }
+
+  async function checkUpscalerService() {
+    if (!upscaleOn() && (!els.setupModal || els.setupModal.hidden)) return;
+    let next;
+    try {
+      const res = await fetch(UPSCALE_URL + '/health', { cache: 'no-store', signal: AbortSignal.timeout(3000) });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const health = await res.json();
+      next = health.chrome ? 'online' : 'nochrome';
+      if (health.folder) state.upscaleFolder = health.folder;
+    } catch (_) {
+      next = (await localNetworkPermission()) === 'denied' ? 'blocked' : 'offline';
+    }
+    if (state.service === 'starting' && (next === 'offline' || next === 'nochrome')) {
+      if (Date.now() < state.startingUntil) return;
+      state.startFailed = true;
+    }
+    if (next === 'online') state.startFailed = false;
+    if (next === state.service) {
+      renderSetupStatus();
+      return;
+    }
+    state.service = next;
+    renderSetupStatus();
+  }
+
+  function renderSetupStatus() {
+    if (!els.setupPill) return;
+    const look = {
+      checking: ['', 'Upscaler: checking…'],
+      starting: ['amber', 'Upscaler: starting…'],
+      online: ['green', 'Upscaler connected'],
+      nochrome: ['amber', 'Upscaler: Firefly Chrome not open'],
+      offline: ['red', 'Upscaler offline'],
+      blocked: ['red', 'Upscaler blocked by Chrome']
+    }[state.service] || ['', 'Upscaler: checking…'];
+    const needsSetup = upscaleOn() && (state.service === 'offline' || state.service === 'blocked');
+    if (els.settingsBtn) els.settingsBtn.classList.toggle('has-alert', needsSetup);
+    if (els.menuSetup) els.menuSetup.classList.toggle('has-alert', needsSetup);
+    if (state.upscaleFolder) {
+      const pathText = $('setup-path-text');
+      const pathCode = $('setup-path');
+      if (pathText) {
+        pathText.textContent = 'The installed files are in this folder. To open it, paste this into the File Explorer address bar and press Enter:';
+      }
+      if (pathCode) pathCode.textContent = state.upscaleFolder;
+    }
+    if (els.setupStart) {
+      els.setupStart.hidden = state.service !== 'offline' && state.service !== 'nochrome';
+    }
+    els.setupPill.className = 'pill svc ' + look[0];
+    if (els.setupPillText) els.setupPillText.textContent = look[1].replace(/^Upscaler: /, '');
+    if (els.setupStatusText) {
+      els.setupStatusText.textContent = {
+        checking: 'Checking whether the upscaler is running on this PC…',
+        starting: 'Starting the upscaler… this can take up to a minute. If Chrome asks to access devices on your local network, click Allow.',
+        online: 'All set. AI upscale is ready to use on this PC.',
+        nochrome: 'The upscaler is running, but the Firefly Chrome window is closed. Click Start.',
+        offline: state.startFailed
+          ? 'The upscaler did not respond. Click the "3D Playground upscaler" window on the taskbar to read its message, then click Start again. See also Something not working below.'
+          : 'Not running on this PC. New PC? Follow the steps below. Already set up? Click Start.',
+        blocked: 'Chrome is blocking the connection. See "Upscaler blocked by Chrome" under Something not working.'
+      }[state.service] || '';
+    }
+  }
+
+  function openSetupModal() {
+    if (!els.setupModal) return;
+    els.setupModal.hidden = false;
+    renderSetupStatus();
+    checkUpscalerService();
+    clearInterval(setupPoll);
+    setupPoll = setInterval(checkUpscalerService, 3000);
+  }
+
+  function closeSetupModal() {
+    if (!els.setupModal) return;
+    els.setupModal.hidden = true;
+    clearInterval(setupPoll);
+  }
+
+  function waitForUpscaler(ms) {
+    state.service = 'starting';
+    state.startFailed = false;
+    state.startingUntil = Date.now() + ms;
+    renderSetupStatus();
+    let tries = 0;
+    const poll = setInterval(async () => {
+      tries++;
+      await checkUpscalerService();
+      if (state.service !== 'starting' || tries >= ms / 2000 + 1) clearInterval(poll);
+    }, 2000);
+  }
+
+  if (els.menuSetup) {
+    els.menuSetup.addEventListener('click', () => { closeSettings(); openSetupModal(); });
+  }
+  if (els.setupModal) {
+    const closeBtn = $('btn-setup-close');
+    const doneBtn = $('btn-setup-done');
+    if (closeBtn) closeBtn.addEventListener('click', closeSetupModal);
+    if (doneBtn) doneBtn.addEventListener('click', closeSetupModal);
+    els.setupModal.addEventListener('click', (e) => {
+      if (e.target === els.setupModal) closeSetupModal();
+    });
+    els.setupModal.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-copy]');
+      if (!btn) return;
+      try {
+        await navigator.clipboard.writeText($(btn.dataset.copy).textContent);
+        btn.textContent = 'Copied';
+      } catch (_) {
+        btn.textContent = 'Select & copy';
+      }
+      setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+    });
+  }
+  if (els.setupStart) {
+    els.setupStart.addEventListener('click', () => waitForUpscaler(60000));
+  }
+  if (new URLSearchParams(location.search).has('setup')) {
+    openSetupModal();
+    waitForUpscaler(90000);
+  }
+  setInterval(checkUpscalerService, SERVICE_CHECK_MS);
+  checkUpscalerService();
 
   window.addEventListener('scroll', closeMenu, { passive: true });
   window.addEventListener('resize', () => {
@@ -3578,6 +3740,7 @@
     els.settingsBtn.setAttribute('aria-expanded', String(open));
   });
   $('menu-author').addEventListener('click', () => { closeSettings(); openNameModal(); });
+  // menu-setup wired in the AI upscale setup block above
   $('menu-refresh').addEventListener('click', () => { closeSettings(); load(); });
   $('btn-refresh').addEventListener('click', () => load());
   $('name-cancel').addEventListener('click', () => {
