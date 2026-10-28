@@ -62,7 +62,8 @@
     ean: ['ean number', 'ean code', 'ean'],
     artist: ['artist'],
     // PDP Images dropdown on the Tracker / assign sheet (Not started, In progress, Blocked, Completed).
-    pdpImages: ['pdp images', 'pdp image', 'images status', 'pdp status'],
+    // Active tab = first three; Completed tab = Completed only. Do not alias Photoshoot Status here.
+    pdpImages: ['pdp images', 'pdp image', 'pdp images status', 'images status', 'pdp status'],
     photoshootStatus: ['photoshoot status'],
     startDate: ['start date'],
     endDate: ['end date'],
@@ -100,7 +101,7 @@
     loadedAt: null,
     view: 'renamer',
     myBucket: 'active',
-    // UI mock only: null | { mode: 'choose'|'primary'|'replace', ean }
+    // UI mock only: null | { mode: 'choose'|'primary'|'replace', ean, focus, matchEan }
     workspace: null,
     workspaceShot: 0,
     author: localStorage.getItem(AUTHOR_KEY) || '',
@@ -273,8 +274,11 @@
   }
 
   function templateOrder(t) {
-    const m = String(t).match(/^T(\d+)$/i);
-    return m ? Number(m[1]) : 9999;
+    const m = String(t || '').match(/^T(\d+)([a-z])?(?:\s+(set(?:\s+of\s+(\d+))?))?$/i);
+    if (!m) return 9999;
+    const letter = m[2] ? m[2].toLowerCase().charCodeAt(0) - 96 : 0;
+    const setOf = m[3] ? (m[4] ? Number(m[4]) : 50) : 0;
+    return Number(m[1]) * 1000 + letter * 20 + setOf;
   }
 
   /* ---------- Sheet feed ---------- */
@@ -479,10 +483,17 @@
     return out.map((name) => ({ name }));
   }
 
-  // "T 4", "t4" and "T4 " become "T4". Anything without a T-number (e.g. a pasted link title) counts as no template.
+  // Template mapping values: "T4", "T 4", "T2a", "T61a", "T7 set", "T7 Set of 2".
+  // Letter suffixes and "set" / "set of N" are kept. Bare titles with no T-number count as empty.
   function tidyTemplate(s) {
-    const m = String(s || '').toUpperCase().match(/\bT\s*-?\s*(\d+)\b/);
-    return m ? 'T' + Number(m[1]) : '';
+    const raw = String(s || '').trim();
+    if (!raw) return '';
+    const m = raw.toUpperCase().match(/\bT\s*-?\s*(\d+)\s*([A-Z])?(?:\s+(SET(?:\s+OF\s+\d+)?))?/);
+    if (!m) return '';
+    let out = 'T' + Number(m[1]);
+    if (m[2]) out += m[2].toLowerCase();
+    if (m[3]) out += ' ' + m[3].toLowerCase().replace(/\s+/g, ' ');
+    return out;
   }
 
   function tidySet(s) {
@@ -596,7 +607,7 @@
     const warn = (key, text) => issues.push({ key, level: 'warn', text });
     if (!/^\d{13}$/.test(t.ean)) warn('ean', 'EAN "' + t.ean + '" is not 13 digits.');
     if (eanCount.get(t.ean) > 1) warn('dup', 'EAN appears ' + eanCount.get(t.ean) + ' times in the Shoot Tracker.');
-    if (!t.template) warn('template', t.templateRaw ? 'Template mapping "' + t.templateRaw + '" is not a template number.' : 'Template mapping is missing.');
+    if (!t.template) warn('template', t.templateRaw ? 'Template mapping "' + t.templateRaw + '" is not a recognised template (e.g. T4, T2a, T7 set).' : 'Template mapping is missing.');
     if (!t.shots.length) warn('shots', 'Mandatory shot list is empty.');
     if (/re-?sh(o|oo)t/i.test(t.remarks)) warn('reshoot', 'Photoshoot remarks: "' + t.remarks + '".');
     // Many rows leave Upload status and the GDRIVE cell blank and record the upload only in the Log tab,
@@ -638,9 +649,11 @@
 
     // Copy Tracker PDP Images / output Drive link / Marketing QC onto matching Shoot products for My Tasks.
     products.forEach((p) => {
-      const row = (renderByEan.get(p.ean) || [])[0];
-      if (!row) return;
+      const rows = renderByEan.get(p.ean) || [];
+      if (!rows.length) return;
+      const row = (state.author && rows.filter((r) => sameArtist(r.artist, state.author)).pop()) || rows[rows.length - 1];
       if (row.pdpImages) p.pdpImages = row.pdpImages;
+      if (row.photoshootStatus) p.photoshootStatus = row.photoshootStatus;
       if (row.outputLink && isUrl(row.outputLink)) {
         p.outputLink = row.outputLink;
         p.outputFolderId = folderIdFrom(row.outputLink);
@@ -689,7 +702,7 @@
           ? 'GDRIVE cell shows "' + String(p.driveText).slice(0, 60) + '" but no folder link could be read'
           : 'no GDRIVE link yet')
         : !p.template
-          ? (p.templateRaw ? 'template mapping "' + p.templateRaw + '" has no T-number' : 'no template mapping yet')
+          ? (p.templateRaw ? 'template mapping "' + p.templateRaw + '" is not a recognised template' : 'no template mapping yet')
         : artist ? 'already assigned to ' + artist + ' in the Render Tracker'
         : '';
     });
@@ -755,16 +768,27 @@
   /* ---------- Assignments (sheet is the source of truth; no localStorage picks) ---------- */
 
   function assignedArtist(ean) {
-    const list = state.model && state.model.assignedByEan.get(ean);
-    return list && list[0] ? String(list[0].artist || '').trim() : '';
+    const row = assignmentRow(ean);
+    return row ? String(row.artist || '').trim() : '';
+  }
+
+  // Exact match always wins. First token also matches ("Naveen" ≈ "Naveen Kumar").
+  function sameArtist(a, b) {
+    const x = String(a || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const y = String(b || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (!x || !y) return false;
+    if (x === y) return true;
+    const xf = x.split(/\s+/)[0];
+    const yf = y.split(/\s+/)[0];
+    if (!xf || !yf || xf !== yf) return false;
+    return xf.length >= 2;
   }
 
   function isAssignedToMe(ean) {
     if (!state.author) return false;
     const list = state.model && state.model.assignedByEan.get(ean);
     if (!list) return false;
-    const n = state.author.toLowerCase();
-    return list.some((r) => String(r.artist || '').trim().toLowerCase() === n);
+    return list.some((r) => sameArtist(r.artist, state.author));
   }
 
   // Mark EANs as assigned in the live model (after a successful sheet write or a poll).
@@ -773,10 +797,10 @@
     eans.forEach((ean) => {
       if (!state.model.assignedByEan.has(ean)) state.model.assignedByEan.set(ean, []);
       const list = state.model.assignedByEan.get(ean);
-      if (!list.some((r) => String(r.artist || '').trim().toLowerCase() === artist.toLowerCase())) {
+      if (!list.some((r) => sameArtist(r.artist, artist))) {
         list.push({ ean, artist, pdpImages: 'Blocked' });
       } else {
-        const row = list.find((r) => String(r.artist || '').trim().toLowerCase() === artist.toLowerCase());
+        const row = list.find((r) => sameArtist(r.artist, artist));
         if (row && !row.pdpImages) row.pdpImages = 'Blocked';
       }
       state.model.tasks = state.model.tasks.filter((t) => t.ean !== ean);
@@ -788,7 +812,7 @@
     });
   }
 
-  // Merge a fresh assign-sheet read into the model. Returns true when the open list changed.
+  // Merge a fresh assign-sheet read into the model. Returns true when open list or PDP status changed.
   function mergeAssignsFromSheet(sheet) {
     if (!state.model || !sheet || !sheet.values) return false;
     const rows = tableFrom(sheet.values, RENDER_COLUMNS);
@@ -797,16 +821,35 @@
       const ean = String(r.ean || '').replace(/\s+/g, '');
       const artist = String(r.artist || '').trim();
       if (!ean || !artist) return;
+      r.ean = ean;
+      if (!state.model.assignedByEan.has(ean)) state.model.assignedByEan.set(ean, []);
       const list = state.model.assignedByEan.get(ean);
-      if (list && list.some((x) => String(x.artist || '').trim().toLowerCase() === artist.toLowerCase())) return;
+      const existing = list.find((x) => sameArtist(x.artist, artist));
+      const p = state.model.products.find((x) => x.ean === ean);
+      if (existing) {
+        // Refresh PDP Images / output / QC so In progress → Completed shows up without a full reload.
+        ['pdpImages', 'photoshootStatus', 'outputLink', 'marketingQc', 'startDate', 'endDate', 'artist'].forEach((k) => {
+          if (r[k] != null && String(r[k]).trim() !== '' && existing[k] !== r[k]) {
+            existing[k] = r[k];
+            changed = true;
+          }
+        });
+        if (p && r.pdpImages) p.pdpImages = r.pdpImages;
+        if (p && r.photoshootStatus) p.photoshootStatus = r.photoshootStatus;
+        if (p && r.outputLink && isUrl(r.outputLink)) {
+          p.outputLink = r.outputLink;
+          p.outputFolderId = folderIdFrom(r.outputLink);
+        }
+        if (p && r.marketingQc) p.marketingQc = String(r.marketingQc).trim();
+        return;
+      }
       const wasOpen = state.model.tasks.some((t) => t.ean === ean);
-      if (!list) state.model.assignedByEan.set(ean, []);
-      state.model.assignedByEan.get(ean).push(r);
+      list.push(r);
       if (wasOpen) {
         state.model.tasks = state.model.tasks.filter((t) => t.ean !== ean);
-        const p = state.model.products.find((x) => x.ean === ean);
         if (p) p.hiddenReason = 'already assigned to ' + artist + ' in the Render Tracker';
       }
+      if (p && r.pdpImages) p.pdpImages = r.pdpImages;
       changed = true;
     });
     return changed;
@@ -814,11 +857,11 @@
 
   function assign(eans, artist) {
     if (!eans.length) return;
-    // Resolve the artist at write time so a name entered in the modal is used (not a stale empty closure).
+    // Always requires an artist chosen from the Assign to menu (never silent self-assign).
     withAuthor(() => {
-      const who = String(artist || state.author || '').trim();
+      const who = String(artist || '').trim();
       if (!who) {
-        showToast('Assign failed — enter your author name first.', false);
+        showToast('Assign failed — choose an artist from the list.', false, { error: true });
         return;
       }
       writeAssignsToSheet(eans, who);
@@ -827,9 +870,9 @@
 
   // Appends to the sheet, then updates this page immediately. Other browsers pick it up via assign polling.
   async function writeAssignsToSheet(eans, artist) {
-    const who = String(artist || state.author || '').trim();
+    const who = String(artist || '').trim();
     if (!who) {
-      showToast('Assign failed — artist name is required.', false);
+      showToast('Assign failed — artist name is required.', false, { error: true });
       return;
     }
     showToast('Saving ' + eans.length + ' task' + (eans.length === 1 ? '' : 's') + ' to the Render Tracker…', false);
@@ -852,26 +895,26 @@
         if (data.startDate) startDate = data.startDate;
       }
     } catch (err) {
-      showToast('Assign failed — nothing was saved. ' + esc(err.message), false);
+      showToast('Assign failed — nothing was saved. ' + esc(err.message), false, { error: true });
       return;
     }
 
     if (!written && skipped) {
       showToast('Assign failed — ' + skipped + ' EAN' + (skipped === 1 ? ' is' : 's are') +
-        ' already in the Render Tracker (left unchanged).', false);
+        ' already in the Render Tracker (left unchanged).', false, { error: true });
       // Sheet already has them — sync local model so the task leaves Available.
       applyAssignments(eans, who);
       render();
       return;
     }
     if (!written) {
-      showToast('Assign failed — the sheet did not accept any rows.', false);
+      showToast('Assign failed — the sheet did not accept any rows.', false, { error: true });
       return;
     }
 
     const accepted = writtenEans.length ? writtenEans : eans;
     applyAssignments(accepted, who);
-    const mine = state.author && who.toLowerCase() === state.author.toLowerCase();
+    const mine = state.author && sameArtist(who, state.author);
     const what = accepted.length === 1
       ? 'EAN <span class="tp-mono">' + esc(accepted[0]) + '</span>'
       : '<span class="tp-mono">' + accepted.length + '</span> tasks';
@@ -923,39 +966,85 @@
     openNameModal();
   }
 
-  function pickForMe(eans) {
-    assign(eans, null);
-  }
-
   /* ---------- Filtering and grouping ---------- */
 
   function availableTasks() {
     return state.model ? state.model.tasks.slice() : [];
   }
 
+  // My Tasks = anything on the Render Tracker for this author (Not started / In progress / Blocked / Completed).
+  // Do not require GDRIVE + template — those gates are only for Available Tasks.
   function myTasks() {
     if (!state.model || !state.author) return [];
-    return state.model.products.filter((p) => p.driveLink && p.template && isAssignedToMe(p.ean));
+    const list = state.model.products.filter((p) => isAssignedToMe(p.ean));
+    const seen = new Set(list.map((p) => p.ean));
+    // Tracker rows with no Shoot join still appear (status / Completed from the sheet).
+    state.model.assignedByEan.forEach((rows, ean) => {
+      if (seen.has(ean)) return;
+      const mine = rows.filter((r) => sameArtist(r.artist, state.author));
+      if (!mine.length) return;
+      const r = mine[mine.length - 1];
+      list.push({
+        ean: ean,
+        title: 'EAN ' + ean,
+        colour: 'c-slate',
+        template: '',
+        templateRaw: '',
+        subCategory: '',
+        subKey: '',
+        productName: '',
+        productKey: '',
+        sheetCategory: '',
+        category: 'Assigned',
+        setLabel: '',
+        setKind: '',
+        shots: [],
+        driveLink: '',
+        folderId: '',
+        pdpImages: r.pdpImages || '',
+        outputLink: r.outputLink || '',
+        outputFolderId: folderIdFrom(r.outputLink || ''),
+        marketingQc: r.marketingQc || '',
+        propsNeeded: false,
+        prop: { kind: 'none', html: '' },
+        search: ean,
+        hiddenReason: '',
+        hasIssue: false,
+        issues: []
+      });
+    });
+    return list;
   }
 
   function assignmentRow(ean) {
     const list = state.model && state.model.assignedByEan.get(ean);
-    return list && list[0] ? list[0] : null;
+    if (!list || !list.length) return null;
+    // Prefer this Author's row (last write wins if the EAN appears more than once).
+    if (state.author) {
+      const mine = list.filter((r) => sameArtist(r.artist, state.author));
+      if (mine.length) return mine[mine.length - 1];
+    }
+    return list[list.length - 1];
   }
 
   // Map Tracker "PDP Images" cell text to the four UI statuses.
+  // Active = Not started / In progress / Blocked. Completed tab = Completed only.
   function normalizePdpStatus(raw) {
-    const v = String(raw || '').trim().toLowerCase();
+    const v = String(raw || '').trim().toLowerCase().replace(/\s+/g, ' ');
     if (!v) return STATUS.not_started;
-    if (/^(completed|complete|done|finished)$/.test(v) || /\bcompleted\b/.test(v)) return STATUS.completed;
-    if (/^blocked$/.test(v) || /\bblocked\b/.test(v)) return STATUS.blocked;
-    if (/in\s*-?\s*progress|progress|wip|working/.test(v)) return STATUS.in_progress;
-    if (/not\s*-?\s*started|not\s*yet|pending|to\s*do|todo|new/.test(v)) return STATUS.not_started;
+    // Order matters: "In progress" must not be treated as Completed.
+    if (/\bblocked\b/.test(v)) return STATUS.blocked;
+    if (/in\s*-?\s*progress|\bwip\b|\bworking\b/.test(v)) return STATUS.in_progress;
+    if (/^(completed|complete|done|finished)$/.test(v) || /\bcompleted\b/.test(v) || /\bcomplete\b/.test(v)) {
+      return STATUS.completed;
+    }
+    if (/not\s*-?\s*started|not\s*yet|\bpending\b|to\s*do|\btodo\b|^new$/.test(v)) return STATUS.not_started;
     return STATUS.not_started;
   }
 
   function statusOf(t) {
     const row = assignmentRow(t.ean);
+    // PDP Images only — never Photoshoot Status / Upload "Done" (those put Active work into Completed).
     const raw = (row && row.pdpImages) || t.pdpImages || '';
     return normalizePdpStatus(raw);
   }
@@ -1076,20 +1165,354 @@
     return esc((m.title || '—').slice(0, 2).toUpperCase());
   }
 
-  function shotListFor(t) {
-    if (t.shots && t.shots.length) {
-      return t.shots.map((s, i) => ({ seq: s.seq || i + 1, name: s.name || ('Shot ' + (i + 1)) }));
+  function shotCodeOf(shot, index) {
+    if (shot && shot.code) return shot.code;
+    const n = String((shot && shot.name) || '').toLowerCase();
+    if (/dimension/.test(n)) return 'M-DIM';
+    if (/lifestyle/.test(n) && /open|lid/.test(n)) return 'LS-OP';
+    if (/lifestyle/.test(n)) return 'L-CTX';
+    if (/close/.test(n)) return 'D-CU';
+    if (/front/.test(n) && /white|main|background/.test(n)) return 'MAIN';
+    if (/front/.test(n)) return 'H-FR';
+    if (/angle|side/.test(n)) return 'H-SDAN';
+    if (/detail/.test(n)) return 'DET';
+    return 'S' + String((index || 0) + 1).padStart(2, '0');
+  }
+
+  function namingProductTypes() {
+    const data = window.NAMING_DATA;
+    return (data && Array.isArray(data.productTypes)) ? data.productTypes : [];
+  }
+
+  function selectedNamingType() {
+    const name = state.workspace && state.workspace.productTypeName;
+    if (!name) return null;
+    return namingProductTypes().find((t) => t.name === name) || null;
+  }
+
+  function namingShotsForWorkspace() {
+    const type = selectedNamingType();
+    if (!type) return null;
+    if (type.variants) {
+      const keys = Object.keys(type.variants);
+      const v = state.workspace.productTypeVariant || keys[0] || '';
+      return type.variants[v] || [];
     }
-    return [
-      { seq: 1, name: 'Hero Shot - Front' },
-      { seq: 2, name: 'Hero Shot - Angle' },
-      { seq: 3, name: 'Lifestyle Shot' },
-      { seq: 4, name: 'Detail Shot' }
-    ];
+    return type.shots || [];
+  }
+
+  function findProductTypeSuggestions(query) {
+    const q = String(query || '').trim().toLowerCase();
+    const types = namingProductTypes();
+    if (!q) {
+      return types.slice().sort((a, b) => a.name.localeCompare(b.name) || a.category.localeCompare(b.category));
+    }
+    return types
+      .map((t) => {
+        const name = t.name.toLowerCase();
+        const idx = name.indexOf(q);
+        if (idx < 0) return null;
+        const wordStart = idx === 0 || name[idx - 1] === ' ';
+        return { t: t, score: idx === 0 ? 0 : wordStart ? 1 : 2 };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.score - b.score || a.t.name.localeCompare(b.t.name))
+      .map((x) => x.t);
+  }
+
+  function shotListFor(t) {
+    const naming = (state.workspace && state.workspace.mode === 'replace') ? namingShotsForWorkspace() : null;
+    if (naming && naming.length) {
+      return naming.map((s, i) => ({
+        seq: Number(s.seq) || i,
+        name: s.name || ('Shot ' + (i + 1)),
+        code: s.code || shotCodeOf(s, i)
+      }));
+    }
+    const raw = (t && t.shots && t.shots.length)
+      ? t.shots
+      : [
+          { name: 'Hero Front - White Background', code: 'MAIN' },
+          { name: 'Lifestyle Shot', code: 'L-CTX' },
+          { name: 'Hero Front', code: 'H-FR' },
+          { name: 'Hero Close Up', code: 'D-CU' },
+          { name: 'Product Dimension', code: 'M-DIM' }
+        ];
+    return raw.map((s, i) => ({
+      seq: s.seq != null ? s.seq : i + 1,
+      name: s.name || ('Shot ' + (i + 1)),
+      code: shotCodeOf(s, i)
+    }));
+  }
+
+  function hasWorkspaceProductType() {
+    return !!(state.workspace && state.workspace.productTypeName && selectedNamingType());
   }
 
   function isLifestyleShot(name) {
     return /lifestyle/i.test(name || '');
+  }
+
+  function isDimensionShot(name) {
+    return /dimension/i.test(name || '');
+  }
+
+  function normDimValue(v) {
+    return String(v == null ? '' : v).trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  // Banner when new vs prior product size / dimensions / capacity (volume) differ.
+  function productDimsDiffer(t, prior) {
+    const p = prior && (prior.product || prior);
+    if (!t || !p) return false;
+    const fields = ['size', 'dimensions', 'capacity'];
+    for (let i = 0; i < fields.length; i++) {
+      const a = normDimValue(t[fields[i]]);
+      const b = normDimValue(p[fields[i]]);
+      if (!a && !b) continue;
+      if (a !== b) return true;
+    }
+    return false;
+  }
+
+  function dimDiffSummary(t, prior) {
+    const p = prior && (prior.product || prior);
+    if (!t || !p) return '';
+    const bits = [];
+    [['size', 'Size'], ['dimensions', 'Dimensions'], ['capacity', 'Volume']].forEach((pair) => {
+      const a = String(t[pair[0]] || '').trim();
+      const b = String(p[pair[0]] || '').trim();
+      if (normDimValue(a) !== normDimValue(b) && (a || b)) {
+        bits.push(pair[1] + ': ' + (a || '—') + ' → ' + (b || '—'));
+      }
+    });
+    return bits.join(' · ');
+  }
+
+  function ensureReplaceState(t) {
+    if (!state.workspace) return;
+    if (!state.workspace.replaceInit) {
+      state.workspace.replaceInit = true;
+      state.workspace.panelOpen = true;
+      state.workspace.panelMax = false;
+      state.workspace.dimSeparate = false;
+      state.workspace.rating = 0;
+      state.workspace.comparePos = 50;
+      state.workspace.generating = null;
+      state.workspace.shotInputs = {};
+      state.workspace.prompts = {};
+      state.workspace.outputs = {};
+      state.workspace.driveImgIndex = null;
+      state.workspace.productTypeName = '';
+      state.workspace.productTypeVariant = '';
+      state.workspace.productTypeQuery = '';
+      state.workspace.productTypeOpen = false;
+      state.workspace.productTypeWarn = false;
+    }
+    if (state.workspace.panelOpen == null) state.workspace.panelOpen = true;
+    if (state.workspace.productTypeName == null) state.workspace.productTypeName = '';
+  }
+
+  function defaultReplacePrompt(t, shot, prior) {
+    const priorName = prior
+      ? (prior.ean + '_' + String(shot.seq).padStart(2, '0') + '_' + shot.code + '.png')
+      : 'prior_output.png';
+    return 'Studio clean plate of ' + (t.title || 'product') +
+      ', match Template ' + (t.template || 'T?') + ' angle from prior ' + priorName +
+      ', photorealistic marketplace packshot, soft diffused light, 3000×3000.';
+  }
+
+  function priorFileName(prior, shot) {
+    if (!prior) return 'prior_output.png';
+    return prior.ean + '_' + String(shot.seq).padStart(2, '0') + '_' + shot.code + '.png';
+  }
+
+  function outputFileName(t, shot) {
+    return t.ean + '_' + String(shot.seq).padStart(2, '0') + '_' + shot.code + '.png';
+  }
+
+  // Output name follows the selected Drive image (e.g. Front → …_01_H-FR.png), with the current task EAN.
+  function synthesizeFileName(t, driveName, shot) {
+    const base = String(driveName || '').replace(/^.*\//, '');
+    if (base) {
+      if (/^\d{13}_/i.test(base)) return t.ean + '_' + base.replace(/^\d{13}_/i, '');
+      return t.ean + '_' + base;
+    }
+    return outputFileName(t, shot);
+  }
+
+  function priorFolderImages(prior) {
+    if (!prior || !prior.folderId) return [];
+    const list = state.images[prior.folderId];
+    return Array.isArray(list) ? list : [];
+  }
+
+  // H-FR first, MAIN last; everything else in natural filename order.
+  function driveSortBucket(name) {
+    const n = String(name || '');
+    if (/(?:^|[_-])H-FR(?:[_.-]|$)/i.test(n) || /_01_H-FR\b/i.test(n)) return 0;
+    if (/(?:^|[_-])MAIN(?:[_.-]|$)/i.test(n)) return 2;
+    return 1;
+  }
+
+  function sortPriorDriveImages(list) {
+    return list.slice().sort((a, b) => {
+      const ka = driveSortBucket(a.name);
+      const kb = driveSortBucket(b.name);
+      if (ka !== kb) return ka - kb;
+      return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }
+
+  function priorDriveImages(prior) {
+    return sortPriorDriveImages(priorFolderImages(prior));
+  }
+
+  function defaultDriveImgIndex(prior) {
+    const imgs = priorDriveImages(prior);
+    if (!imgs.length) return 0;
+    const hfr = imgs.findIndex((img) => driveSortBucket(img.name) === 0);
+    return hfr >= 0 ? hfr : 0;
+  }
+
+  function priorImgAt(prior, index, width) {
+    const list = priorDriveImages(prior);
+    if (!list.length) {
+      return prior ? '<span class="wr-ph">' + esc((prior.title || '—').slice(0, 2).toUpperCase()) + '</span>' : '';
+    }
+    const img = list[Math.min(Math.max(0, index), list.length - 1)];
+    return '<img class="tp-img" src="' + esc(thumbUrl(img, width || 320)) + '" alt="' + esc(img.name || '') + '" loading="lazy" referrerpolicy="no-referrer">';
+  }
+
+  function driveImgLabel(name) {
+    const base = String(name || '').replace(/^.*\//, '').replace(/\.[^.]+$/, '');
+    const main = base.match(/(?:^|[_-])(MAIN)(?:[_.-]|$)/i);
+    if (main) return 'MAIN';
+    const code = base.match(/_(\d{2})_([A-Za-z0-9-]+)$/) || base.match(/_([A-Za-z0-9-]{2,})$/);
+    if (code) return code[code.length - 1];
+    return base || 'Image';
+  }
+
+  function shotIndexForDriveName(shots, name) {
+    const label = driveImgLabel(name).toLowerCase();
+    const list = shots || [];
+    const byCode = list.findIndex((s) => String(s.code || '').toLowerCase() === label);
+    if (byCode >= 0) return byCode;
+    return list.findIndex((s) => {
+      const code = String(s.code || '').toLowerCase();
+      return code && (label.indexOf(code) >= 0 || code.indexOf(label) >= 0);
+    });
+  }
+
+  // Compare prior Drive shot codes vs target Product Type + Variant shot list.
+  function priorTargetCodeMap(prior, targetShots) {
+    const imgs = priorDriveImages(prior);
+    const shots = targetShots || [];
+    const mapped = [];
+    const unmappedPrior = [];
+    const usedTarget = new Set();
+    imgs.forEach((img, idx) => {
+      const code = driveImgLabel(img.name);
+      const shotIdx = shotIndexForDriveName(shots, img.name);
+      if (shotIdx >= 0) {
+        mapped.push({ imgIdx: idx, shotIdx: shotIdx, code: code, name: img.name });
+        usedTarget.add(String(shots[shotIdx].code || '').toUpperCase());
+      } else {
+        unmappedPrior.push({ imgIdx: idx, code: code, name: img.name });
+      }
+    });
+    const missingTarget = shots.filter((s) => !usedTarget.has(String(s.code || '').toUpperCase()));
+    return {
+      mapped: mapped,
+      unmappedPrior: unmappedPrior,
+      missingTarget: missingTarget,
+      hasConflict: !!(unmappedPrior.length || missingTarget.length) && !!shots.length && !!imgs.length
+    };
+  }
+
+  function codeMapWarnHtml(mapInfo) {
+    if (!mapInfo || !mapInfo.hasConflict) return '';
+    const unmapped = mapInfo.unmappedPrior.map((x) => x.code).filter(Boolean);
+    const missing = mapInfo.missingTarget.map((s) => s.code).filter(Boolean);
+    const mappedN = mapInfo.mapped.length;
+    return '<div class="wr-map-warn" role="status">' +
+      '<div class="wr-map-warn-title">Shot-code mismatch between Prior Drive images and Target Product Type</div>' +
+      '<div class="wr-map-warn-body">' +
+        '<span><b>' + mappedN + '</b> can map and generate</span>' +
+        (unmapped.length
+          ? '<span>Unmapped prior: <span class="tp-mono">' + esc(unmapped.join(', ')) + '</span></span>'
+          : '') +
+        (missing.length
+          ? '<span>Missing on prior: <span class="tp-mono">' + esc(missing.join(', ')) + '</span></span>'
+          : '') +
+      '</div>' +
+      '<div class="wr-map-warn-note">Generate all pending will only run mapped shots. Unmapped prior images are skipped.</div>' +
+    '</div>';
+  }
+
+  function driveImgFullName(name, shots) {
+    const label = driveImgLabel(name);
+    const list = shots || [];
+    const byCode = list.find((s) => String(s.code || '').toUpperCase() === String(label).toUpperCase());
+    if (byCode && byCode.name) return byCode.name;
+    const idx = shotIndexForDriveName(list, name);
+    if (idx >= 0 && list[idx] && list[idx].name) return list[idx].name;
+    if (/^main$/i.test(label)) return 'Hero Front - White Background';
+    if (/^m-dim/i.test(label)) return 'Product Dimension';
+    return label;
+  }
+
+  function isMDimCode(code) {
+    return /^M-DIM/i.test(String(code || ''));
+  }
+
+  function productTypePickerHtml() {
+    const selected = (state.workspace && state.workspace.productTypeName) || '';
+    const query = state.workspace && state.workspace.productTypeQuery != null
+      ? state.workspace.productTypeQuery
+      : selected;
+    const type = selectedNamingType();
+    const variants = type && type.variants ? Object.keys(type.variants) : [];
+    const variant = (state.workspace && state.workspace.productTypeVariant) || (variants[0] || '');
+    const open = !!(state.workspace && state.workspace.productTypeOpen);
+    const suggestions = findProductTypeSuggestions(query).slice(0, 40);
+    const warn = !!(state.workspace && state.workspace.productTypeWarn);
+    const listHtml = !suggestions.length
+      ? '<li class="wr-pt-empty" role="option" aria-disabled="true">No matching product type</li>'
+      : suggestions.map((t, i) =>
+          '<li role="option" data-ws-pt-pick="' + esc(t.name) + '"' +
+            (t.name === selected ? ' aria-selected="true" class="is-active"' : '') + '>' +
+            '<span>' + esc(t.name) + '</span>' +
+            '<span class="wr-pt-cat">' + esc(t.category || '') + '</span>' +
+          '</li>').join('');
+    return '<div class="wr-pt-block">' +
+      '<div class="wr-pt-row">' +
+        '<div class="wr-pt-field wr-pt-combo">' +
+          '<label for="wr-pt-search">Product Type <span class="wr-pt-req">*</span></label>' +
+          '<input id="wr-pt-search" type="text" class="wr-pt-input' + (warn ? ' is-warn' : '') + '" data-ws-pt-search' +
+            ' placeholder="Search type..." autocomplete="off" role="combobox" aria-expanded="' + (open ? 'true' : 'false') + '"' +
+            ' aria-controls="wr-pt-list" value="' + esc(query) + '">' +
+          '<ul id="wr-pt-list" class="wr-pt-suggest" role="listbox" data-ws-pt-list' + (open ? '' : ' hidden') + '>' + listHtml + '</ul>' +
+        '</div>' +
+        '<div class="wr-pt-field' + (variants.length ? '' : ' is-disabled') + '">' +
+          '<label for="wr-pt-variant">Variant</label>' +
+          '<select id="wr-pt-variant" class="wr-pt-input" data-ws-pt-variant' + (variants.length ? '' : ' disabled') + '>' +
+            (variants.length
+              ? variants.map((v) =>
+                  '<option value="' + esc(v) + '"' + (v === variant ? ' selected' : '') + '>' + esc(v) + '</option>').join('')
+              : '<option>' + (type ? 'No variants' : 'Select type first') + '</option>') +
+          '</select>' +
+        '</div>' +
+      '</div>' +
+      (warn ? '<p class="wr-pt-warn">Choose a product type from the list.</p>' : '') +
+      (!selected ? '<p class="wr-pt-hint">Required before generation — same list as Renamer.</p>' : '') +
+    '</div>';
+  }
+
+  function eanCopyHtml(ean) {
+    return '<span class="tp-mono">' + eanHtml(ean) +
+      '<span class="tp-copy" data-action="copy-match" data-ean="' + esc(ean) + '" title="Copy EAN" aria-label="Copy EAN">' +
+      ICON.copy + '</span></span>';
   }
 
   function searchQuery() {
@@ -1155,7 +1578,7 @@
           (tplDriveText ? ' (' + tplDriveText + ' still show text in the GDRIVE cell)' : ''));
       }
       const badTpl = drive.filter((p) => !p.template && p.templateRaw).length;
-      if (badTpl) notes.push(cat + ': ' + badTpl + ' template mappings without a T-number');
+      if (badTpl) notes.push(cat + ': ' + badTpl + ' template mappings not recognised (need T4, T2a, T7 set, …)');
       return '<tr><th>' + esc(cat) + '</th><td>' + ps.length + '</td><td>' + drive.length + '</td><td>' +
         tpl.length + '</td><td>' + assigned + '</td><td>' + open.length + '</td><td>' + open.filter(isSet).length + '</td></tr>';
     });
@@ -1205,7 +1628,28 @@
     return (state.artist === '~me' ? state.author : state.artist).trim();
   }
 
+  // My Tasks Active: In progress → Not started → Blocked (groups follow their best status).
+  const ACTIVE_STATUS_RANK = { in_progress: 0, not_started: 1, blocked: 2, completed: 3 };
+
+  function activeStatusRank(t) {
+    const id = statusOf(t).id;
+    return Object.prototype.hasOwnProperty.call(ACTIVE_STATUS_RANK, id) ? ACTIVE_STATUS_RANK[id] : 1;
+  }
+
+  function groupActiveRank(g) {
+    let best = 99;
+    g.tasks.forEach((t) => {
+      const r = activeStatusRank(t);
+      if (r < best) best = r;
+    });
+    return best;
+  }
+
   function compareTasks(a, b) {
+    if (state.view === 'my' && state.myBucket === 'active') {
+      const byStatus = activeStatusRank(a) - activeStatusRank(b);
+      if (byStatus) return byStatus;
+    }
     const sort = state.view === 'my' ? 'oldest' : state.sort;
     if (sort === 'shots') return b.shots.length - a.shots.length || dateCmp(a, b, 1);
     return dateCmp(a, b, sort === 'newest' ? -1 : 1);
@@ -1219,7 +1663,7 @@
   }
 
   // subTemplate: Sub-category + Template, productTemplate: Product name + Template, template: Template only.
-  // My Tasks has no group/sort controls, so it always uses Sub-category + Template, oldest first.
+  // My Tasks always groups by Sub-category + Template. Active orders groups by status priority.
   function groupTasks(tasks) {
     const by = state.view === 'my' ? 'subTemplate' : state.groupBy;
     const groups = new Map();
@@ -1243,6 +1687,10 @@
     const list = [...groups.values()];
     list.forEach((g) => g.tasks.sort(compareTasks));
     list.sort((a, b) => {
+      if (state.view === 'my' && state.myBucket === 'active') {
+        const byStatus = groupActiveRank(a) - groupActiveRank(b);
+        if (byStatus) return byStatus;
+      }
       if (!a.template !== !b.template) return a.template ? -1 : 1;
       return compareTasks(a.tasks[0], b.tasks[0]) || templateOrder(a.template) - templateOrder(b.template);
     });
@@ -1273,7 +1721,7 @@
       frame.hidden = true;
     }
     const title = view === 'renamer' ? 'Renamer' : view === 'my' ? 'My Tasks' : 'Available Tasks';
-    document.title = title + ' · 3D Playground (BETA V1.2)';
+    document.title = title + ' · 3D Playground (PREVIEW V1.3)';
     const titleEl = $('view-title');
     if (titleEl) titleEl.textContent = title;
     const tabs = { renamer: $('tab-renamer'), available: $('tab-available'), my: $('tab-my') };
@@ -1399,10 +1847,7 @@
         '</span>'
       : '<span class="tp-suggest tp-suggest-none" title="Nobody has done this template or sub-category yet, so it is open to everyone">Open to anyone</span>');
     const pickAllHtml = (!isMy && canAssignTasks())
-      ? '<div class="tp-split">' +
-          '<button type="button" class="tp-split-main" data-action="pick-all">Assign to</button>' +
-          '<button type="button" class="tp-split-caret" data-action="assign-all-menu" aria-label="Assign to..." aria-haspopup="menu">' + ICON.caret + '</button>' +
-        '</div>'
+      ? '<button type="button" class="tp-assign-btn" data-action="assign-all-menu" aria-haspopup="menu">Assign to</button>'
       : '';
     return '<section class="tp-group ' + colour + (collapsed ? ' is-collapsed' : '') + '" data-key="' + esc(g.key) + '">' +
       '<header class="tp-group-head">' +
@@ -1441,10 +1886,7 @@
           : '<span class="tp-status is-completed">Completed</span>')
         : '<button type="button" class="tp-btn-outline-sm" data-action="start">Start</button>')
       : (canAssignTasks()
-        ? '<div class="tp-split">' +
-            '<button type="button" class="tp-split-main" data-action="pick">Assign</button>' +
-            '<button type="button" class="tp-split-caret" data-action="assign-menu" aria-label="Assign to..." aria-haspopup="menu">' + ICON.caret + '</button>' +
-          '</div>'
+        ? '<button type="button" class="tp-assign-btn" data-action="assign-menu" aria-haspopup="menu">Assign to</button>'
         : '');
     const statusHtml = st
       ? '<span class="tp-status is-' + st.id + '">' + esc(st.label) + '</span>'
@@ -1529,9 +1971,10 @@
     imagesRunning = true;
     try {
       const selected = state.selectedEan ? taskByEan(state.selectedEan) : null;
-      const order = (selected ? [selected] : []).concat(visibleTasks());
-      const matchIds = (state.workspace && state.workspace.mode === 'choose' && selected)
-        ? priorMatches(selected).map((m) => m.folderId)
+      const wsTask = state.workspace && taskByEan(state.workspace.ean);
+      const order = (selected ? [selected] : []).concat(wsTask && (!selected || selected.ean !== wsTask.ean) ? [wsTask] : []).concat(visibleTasks());
+      const matchIds = (state.workspace && wsTask && (state.workspace.mode === 'choose' || state.workspace.mode === 'replace'))
+        ? priorMatches(wsTask).map((m) => m.folderId)
         : [];
       const ids = [...new Set(order.map((t) => previewFolderId(t)).concat(matchIds)
         .filter((id) => id && state.images[id] === undefined))];
@@ -1563,21 +2006,49 @@
     });
     if (els.workspace && !els.workspace.hidden) {
       els.workspace.querySelectorAll('[data-ws-match]').forEach((btn) => {
-        const ean = btn.dataset.wsMatch;
-        const t = taskByEan(ean);
-        const folderId = t ? outputFolderIdOf(t) : '';
-        if (!folderId || !changed.has(folderId)) return;
         const slot = btn.querySelector('.tw-match-thumb');
         if (!slot) return;
+        const ean = btn.dataset.wsMatch;
+        const t = taskByEan(ean);
+        const folderId = slot.dataset.folder || (t ? outputFolderIdOf(t) : '');
+        if (!folderId || !changed.has(folderId)) return;
         const list = state.images[folderId];
         if (!Array.isArray(list) || !list.length) return;
         slot.innerHTML = '<img class="tp-img" src="' + esc(thumbUrl(list[0], 160)) + '" alt="" loading="lazy" referrerpolicy="no-referrer">';
+      });
+      els.workspace.querySelectorAll('[data-folder]').forEach((slot) => {
+        const folderId = slot.dataset.folder;
+        if (!folderId || !changed.has(folderId)) return;
+        const sorted = sortPriorDriveImages(Array.isArray(state.images[folderId]) ? state.images[folderId] : []);
+        if (!sorted.length) return;
+        const imgIdx = slot.dataset.driveImg !== undefined ? Number(slot.dataset.driveImg) : 0;
+        const imgObj = sorted[Math.min(Math.max(0, imgIdx), sorted.length - 1)];
+        const wide = slot.classList.contains('wr-frame') || slot.classList.contains('wr-compare-overlay-inner');
+        const img = '<img class="tp-img" src="' + esc(thumbUrl(imgObj, wide ? 640 : 360)) + '" alt="' + esc(imgObj.name || '') + '" loading="lazy" referrerpolicy="no-referrer">';
+        if (slot.classList.contains('wr-shot-thumb')) {
+          const name = slot.querySelector('.wr-shot-name');
+          const busy = slot.querySelector('.wr-shot-busy');
+          const done = slot.querySelector('.wr-shot-done');
+          slot.innerHTML = img + (name ? name.outerHTML : '') + (busy ? busy.outerHTML : '') + (done ? done.outerHTML : '');
+        } else if (slot.classList.contains('wr-frame') || slot.classList.contains('wr-compare-overlay-inner')) {
+          slot.innerHTML = img;
+        }
       });
       const wsTask = state.workspace && taskByEan(state.workspace.ean);
       if (wsTask && changed.has(previewFolderId(wsTask))) {
         const topThumb = els.workspace.querySelector('.tw-top-thumb');
         if (topThumb) {
           topThumb.innerHTML = thumbHtml(wsTask).replace('class="tp-thumb"', 'class="tp-thumb tw-top-thumb-inner"');
+        }
+      }
+      if (state.workspace && state.workspace.mode === 'replace' && wsTask) {
+        const prior = resolveWorkspaceMatch(wsTask).selected;
+        if (prior && prior.folderId && changed.has(prior.folderId) && priorDriveImages(prior).length) {
+          const rail = els.workspace.querySelector('.wr-rail-list');
+          if (rail && !rail.querySelector('[data-ws-drive-img]')) {
+            renderWorkspace();
+            return;
+          }
         }
       }
     }
@@ -1751,8 +2222,28 @@
 
   /* ---------- My Tasks workspace (UI mock only — no save / upload) ---------- */
 
+  function resolveWorkspaceMatch(t) {
+    const matches = t ? priorMatches(t) : [];
+    if (!matches.length) {
+      if (state.workspace) state.workspace.matchEan = '';
+      return { matches: [], selected: null };
+    }
+    const want = String((state.workspace && state.workspace.matchEan) || '');
+    let selected = matches.find((m) => String(m.ean) === want) || null;
+    if (!selected) selected = matches.find((m) => m.best) || matches[0];
+    if (state.workspace) state.workspace.matchEan = selected ? String(selected.ean) : '';
+    return { matches: matches, selected: selected };
+  }
+
   function openWorkspace(mode, ean) {
-    state.workspace = { mode: mode || 'choose', ean: ean };
+    const t = taskByEan(ean);
+    state.workspace = {
+      mode: mode || 'choose',
+      ean: ean,
+      focus: recommendReplace(t) ? 'replace' : 'primary',
+      matchEan: ''
+    };
+    resolveWorkspaceMatch(t);
     state.workspaceShot = 0;
     state.selectedEan = ean;
     document.body.classList.add('view-workspace');
@@ -1766,7 +2257,7 @@
   function closeWorkspace() {
     state.workspace = null;
     state.workspaceShot = 0;
-    document.body.classList.remove('view-workspace');
+    document.body.classList.remove('view-workspace', 'ws-choose', 'ws-replace');
     if (els.workspace) {
       els.workspace.hidden = true;
       els.workspace.innerHTML = '';
@@ -1782,9 +2273,33 @@
       return;
     }
     const mode = state.workspace.mode;
+    document.body.classList.toggle('ws-choose', mode === 'choose');
+    document.body.classList.toggle('ws-replace', mode === 'replace');
     els.workspace.innerHTML = mode === 'primary' ? workspacePrimaryHtml(t)
       : mode === 'replace' ? workspaceReplaceHtml(t)
       : workspaceChooseHtml(t);
+    if (mode === 'replace') {
+      const compare = els.workspace.querySelector('[data-ws-compare]');
+      if (compare) {
+        const pos = Number(state.workspace.comparePos) || 50;
+        syncCompareSlider(compare, pos);
+        requestAnimationFrame(() => syncCompareSlider(compare, pos));
+      }
+      requestAnimationFrame(() => {
+        syncRailToMainHeight();
+        requestAnimationFrame(syncRailToMainHeight);
+      });
+    }
+  }
+
+  function syncRailToMainHeight() {
+    if (!els.workspace || !state.workspace || state.workspace.mode !== 'replace') return;
+    const rail = els.workspace.querySelector('.wr-rail');
+    const main = els.workspace.querySelector('.wr-main');
+    if (!rail || !main) return;
+    rail.style.height = 'auto';
+    const h = Math.round(main.getBoundingClientRect().height);
+    if (h > 0) rail.style.height = h + 'px';
   }
 
   function workspaceTopHtml(t, kicker, backAction) {
@@ -1819,68 +2334,167 @@
   }
 
   function workspaceChooseHtml(t) {
-    const matches = priorMatches(t);
     const preferReplace = recommendReplace(t);
+    const ws = state.workspace || {};
+    const focus = ws.focus === 'primary' || ws.focus === 'replace'
+      ? ws.focus
+      : (preferReplace ? 'replace' : 'primary');
+    const resolved = resolveWorkspaceMatch(t);
+    const matches = resolved.matches;
+    const selected = resolved.selected;
+    const st = statusOf(t);
+    const shotCount = shotListFor(t).length;
+    const pdp = t.pdpLink
+      ? '<a class="tw-chip tw-chip-link" href="' + esc(t.pdpLink) + '" target="_blank" rel="noopener">PDP guideline' + ICON.external + '</a>'
+      : '';
+    // Replacement: active when a prior match is selected (Best match is pre-selected).
+    // Primary: always active — match list is irrelevant.
+    const canReplace = !!selected;
+
     const matchHtml = matches.length
-      ? '<div class="tw-match-list">' + matches.map((m) =>
-          '<button type="button" class="tw-match" data-ws-match="' + esc(m.ean) + '">' +
-            '<div class="tw-match-thumb" data-folder="' + esc(m.folderId || '') + '">' + matchThumbHtml(m) + '</div>' +
-            '<div class="tw-match-body">' +
-              '<div class="tw-match-title">' + esc(m.title) + '</div>' +
-              '<div class="tw-match-meta">EAN <span class="tp-mono">' + eanHtml(m.ean) +
-                '<span class="tp-copy" data-action="copy-match" data-ean="' + esc(m.ean) + '" title="Copy EAN" aria-label="Copy EAN">' + ICON.copy + '</span></span>' +
-                (m.artist ? ' · by ' + esc(m.artist) : '') + '</div>' +
-              '<span class="tw-match-level' + (m.best ? ' is-best' : '') + '">' +
-                (m.best ? 'Best match · ' : '') + esc(m.label) + '</span>' +
-            '</div>' +
-            '<div class="tw-match-links">' +
-              (m.drive
-                ? '<a href="' + esc(m.drive) + '" target="_blank" rel="noopener" data-action="output">Output folder</a>'
-                : '<span class="tw-empty-matches">No output link</span>') +
-            '</div>' +
-          '</button>').join('') + '</div>'
+      ? '<div class="tw-match-list">' + matches.map((m) => {
+          const isSel = selected && selected.ean === m.ean;
+          return '<div class="tw-match-row' + (isSel ? ' is-selected' : '') + '" data-ws-match="' + esc(m.ean) + '">' +
+            '<label class="tw-match-select">' +
+              '<input type="radio" name="tw-selected-match" value="' + esc(m.ean) + '"' + (isSel ? ' checked' : '') + '>' +
+              '<div class="tw-match-thumb" data-folder="' + esc(m.folderId || '') + '">' + matchThumbHtml(m) + '</div>' +
+              '<div class="tw-match-body">' +
+                '<div class="tw-match-title-row">' +
+                  '<span class="tw-match-title">' + esc(m.title) + '</span>' +
+                  '<span class="tw-match-level' + (m.best ? ' is-best' : '') + '">' +
+                    (m.best ? 'Best match · ' : '') + esc(m.label) + '</span>' +
+                '</div>' +
+                '<div class="tw-match-meta">EAN <span class="tp-mono">' + eanHtml(m.ean) +
+                  '<span class="tp-copy" data-action="copy-match" data-ean="' + esc(m.ean) + '" title="Copy EAN" aria-label="Copy EAN">' + ICON.copy + '</span></span>' +
+                  (m.artist ? ' <span class="tw-dot">·</span> by ' + esc(m.artist) : '') +
+                '</div>' +
+              '</div>' +
+            '</label>' +
+            (m.drive
+              ? '<a class="tw-match-folder" href="' + esc(m.drive) + '" target="_blank" rel="noopener" data-action="output">Output folder' + ICON.external + '</a>'
+              : '<span class="tw-empty-matches">No output link</span>') +
+          '</div>';
+        }).join('') + '</div>'
       : '<p class="tw-empty-matches">No Completed work on the Render Tracker matches this Sub-category + Template yet. Primary workflow is recommended.</p>';
 
-    return '<div class="tw-shell">' +
-      workspaceTopHtml(t, 'Choose workflow', 'close') +
-      '<div class="tw-note-banner">UI mock — nothing is saved. Pick how you want to start this task.</div>' +
-      '<div class="tw-card">' +
-        '<div class="tw-card-head">' +
-          '<div><div class="tw-card-title">How do you want to work this task?</div>' +
-          '<div class="tw-card-note">Based on earlier Sub-category + Template / Product + Template / Template work.</div></div>' +
+    const replaceSummary = selected
+      ? 'Selected: <strong class="tp-mono">EAN ' + esc(selected.ean) + '</strong> (' + esc(selected.title) + ')' +
+        (selected.best ? ' <span class="tw-dot">·</span> Best match' : '') +
+        ' <span class="tw-dot">·</span> ' + esc(selected.label) +
+        (selected.artist ? ' <span class="tw-dot">·</span> by ' + esc(selected.artist) : '')
+      : (matches.length
+        ? 'Select a prior match to continue with Product Replacement.'
+        : 'No prior match available for Product Replacement.');
+    const summary = focus === 'primary'
+      ? 'Primary workflow selected — start fresh with a clean plate and new prompts.'
+      : replaceSummary;
+    const continueAction = focus === 'primary' ? 'start-primary' : 'start-replace';
+    const continueLabel = focus === 'primary' ? 'Continue with Primary workflow' : 'Continue with Product Replacement';
+    // Primary: always active. Replacement: active only when a match row is selected.
+    const continueDisabled = focus === 'replace' && !canReplace;
+
+    return '<div class="tw-shell tw-shell-choose">' +
+      '<nav class="tw-crumb" aria-label="Breadcrumb">' +
+        '<button type="button" class="tw-back-pill" data-ws="close">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>' +
+          'Back to My Tasks</button>' +
+        '<span class="tw-crumb-sep" aria-hidden="true">|</span>' +
+        '<ol class="tw-crumb-list">' +
+          '<li>My Tasks</li><li aria-hidden="true">›</li>' +
+          '<li>Active</li><li aria-hidden="true">›</li>' +
+          '<li aria-current="page">Choose workflow</li>' +
+        '</ol>' +
+      '</nav>' +
+
+      '<section class="tw-product-card">' +
+        '<div class="tw-top-thumb" aria-hidden="true">' +
+          thumbHtml(t).replace('class="tp-thumb"', 'class="tp-thumb tw-top-thumb-inner"') +
+        '</div>' +
+        '<div class="tw-top-copy">' +
+          '<div class="tw-kicker">Choose workflow</div>' +
+          '<h1 class="tw-heading">' + esc(t.title || 'Untitled product') + '</h1>' +
+          '<p class="tw-sub">EAN <span class="tp-mono">' + esc(t.ean) + '</span>' +
+            (t.subCategory ? ' · ' + esc(t.subCategory) : '') +
+            (t.template ? ' · Template ' + esc(t.template) : '') + '</p>' +
+          '<div class="tw-meta-row">' +
+            '<span class="tp-status is-' + st.id + '">' + esc(st.label) + '</span>' +
+            (t.template ? '<span class="tw-chip">Template <span class="tp-mono">' + esc(t.template) + '</span></span>' : '') +
+            (t.setLabel ? '<span class="tw-chip">' + esc(t.setLabel) + '</span>' : '') +
+            '<span class="tw-chip">' + shotCount + ' shots</span>' +
+            pdp +
+          '</div>' +
+        '</div>' +
+      '</section>' +
+
+      '<section class="tw-card">' +
+        '<div class="tw-card-head tw-card-head-stack">' +
+          '<div class="tw-card-title tw-card-title-caps">How do you want to work this task?</div>' +
+          '<div class="tw-card-note">Based on earlier Sub-category + Template / Product + Template / Template work.</div>' +
         '</div>' +
         '<div class="tw-card-body">' +
           '<div class="tw-flow-grid">' +
-            '<button type="button" class="tw-flow-opt' + (preferReplace ? ' is-recommended' : '') + '" data-ws="start-replace">' +
+            '<button type="button" class="tw-flow-opt' +
+              (focus === 'replace' ? ' is-focus' : '') +
+              (preferReplace ? ' is-recommended' : '') +
+              '" data-ws-focus="replace">' +
               (preferReplace ? '<span class="tw-rec-badge">Recommended</span>' : '') +
-              '<div class="tw-flow-name">Product Replacement</div>' +
+              '<div class="tw-flow-name"><span class="tw-flow-dot" aria-hidden="true"></span>Product Replacement</div>' +
               '<p class="tw-flow-desc">Use when someone already completed a similar Sub-category + Template (or a close Product / Template match). Map each required shot to the new product images one-to-one.</p>' +
-              '<ol class="tw-flow-steps">' +
+              '<div class="tw-flow-steps-box"><ol class="tw-flow-steps">' +
                 '<li>Review the best prior outputs</li>' +
                 '<li>Map each shot to new product inputs</li>' +
                 '<li>Generate / refine per shot</li>' +
-              '</ol>' +
+              '</ol></div>' +
+              '<div class="tw-flow-foot' + (matches.length ? ' is-ok' : '') + '">' +
+                (matches.length
+                  ? '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Prior completions found below for this template'
+                  : 'No prior completions for this template yet') +
+              '</div>' +
             '</button>' +
-            '<button type="button" class="tw-flow-opt' + (!preferReplace ? ' is-recommended' : '') + '" data-ws="start-primary">' +
+            '<button type="button" class="tw-flow-opt' +
+              (focus === 'primary' ? ' is-focus' : '') +
+              (!preferReplace ? ' is-recommended' : '') +
+              '" data-ws-focus="primary">' +
               (!preferReplace ? '<span class="tw-rec-badge">Recommended</span>' : '') +
               '<div class="tw-flow-name">Primary workflow</div>' +
               '<p class="tw-flow-desc">Use for a new Sub-category + Template type. Needs a Template clean plate first, then prompts and input images for every required shot.</p>' +
-              '<ol class="tw-flow-steps">' +
+              '<div class="tw-flow-steps-box is-muted"><ol class="tw-flow-steps">' +
                 '<li>Find or create the clean plate</li>' +
-                '<li>Work each shot with a saved prompt</li>' +
+                '<li>Work each shot with a new prompt</li>' +
                 '<li>Attach input image names used</li>' +
-              '</ol>' +
+              '</ol></div>' +
+              '<div class="tw-flow-foot">Start fresh from zero base assets</div>' +
             '</button>' +
           '</div>' +
         '</div>' +
-      '</div>' +
-      '<div class="tw-card">' +
+      '</section>' +
+
+      '<section class="tw-card">' +
         '<div class="tw-card-head">' +
-          '<div><div class="tw-card-title">Possible previous matches</div>' +
-          '<div class="tw-card-note">Best match first. Open Drive links to reuse prior outputs.</div></div>' +
+          '<div>' +
+            '<div class="tw-card-title tw-card-title-caps">Possible previous matches</div>' +
+            '<div class="tw-card-note">Best match first. Select a prior match to reuse outputs, or open Drive links to view folder assets.</div>' +
+          '</div>' +
+          '<span class="tw-match-count">' + matches.length + ' match' + (matches.length === 1 ? '' : 'es') + ' found</span>' +
         '</div>' +
         '<div class="tw-card-body">' + matchHtml + '</div>' +
-      '</div>' +
+      '</section>' +
+
+      '<footer class="tw-confirm-bar">' +
+        '<div class="tw-confirm-summary">' +
+          '<span class="tw-confirm-check" aria-hidden="true">' +
+            '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>' +
+          '</span>' +
+          '<span class="tw-confirm-text">' + summary + '</span>' +
+        '</div>' +
+        '<div class="tw-confirm-actions">' +
+          '<button type="button" class="tp-btn tp-btn-primary tw-confirm-primary" data-ws="' + continueAction + '"' +
+            (continueDisabled ? ' disabled' : '') + '>' +
+            esc(continueLabel) +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>' +
+          '</button>' +
+        '</div>' +
+      '</footer>' +
     '</div>';
   }
 
@@ -1981,71 +2595,321 @@
   }
 
   function workspaceReplaceHtml(t) {
+    ensureReplaceState(t);
     const shots = shotListFor(t);
-    const matches = priorMatches(t);
-    const best = matches.find((m) => m.best) || matches[0];
-    const rows = shots.map((s, i) => {
-      const multi = isLifestyleShot(s.name);
-      return '<div class="tw-map-row">' +
-        '<div class="tw-map-side">' +
-          '<span class="tw-map-label">Prior output</span>' +
-          '<div class="tw-map-shot-name">' + esc(s.name) + '</div>' +
-          '<div class="tw-ref-strip">' +
-            '<div class="tw-ref"><div class="tw-ref-img">Prior</div><div class="tw-ref-cap">' + esc(s.name) + '</div></div>' +
-            (best ? '<div class="tw-ref"><div class="tw-ref-img">Drive</div><div class="tw-ref-cap">' + esc(best.ean) + '</div></div>' : '') +
-          '</div>' +
-        '</div>' +
-        '<div class="tw-map-arrow" aria-hidden="true">→</div>' +
-        '<div class="tw-map-side">' +
-          '<span class="tw-map-label">New product input</span>' +
-          '<div class="tw-map-shot-name">' + esc(s.name) + '</div>' +
-          dropzoneHtml({
-            id: 'replace-' + i,
-            multi: multi,
-            title: multi ? 'Drop new product images' : 'Drop new product shot',
-            hint: multi ? 'Rarely more than one · e.g. front + prop' : 'One-to-one with the prior shot',
-            samples: multi ? ['new_front.png', 'new_prop.png'] : ['new_front.png']
-          }) +
-        '</div>' +
-      '</div>';
-    }).join('');
+    const i = Math.min(state.workspaceShot, Math.max(0, shots.length - 1));
+    const shot = shots[i] || shots[0];
+    const prior = resolveWorkspaceMatch(t).selected;
+    const st = statusOf(t);
+    const inputs = (state.workspace.shotInputs && state.workspace.shotInputs[i]) || [];
+    const promptText = (state.workspace.prompts && state.workspace.prompts[i]) || defaultReplacePrompt(t, shot, prior);
+    const hasOutput = !!(state.workspace.outputs && state.workspace.outputs[i]);
+    const dimsDiffer = productDimsDiffer(t, prior);
+    const panelOpen = state.workspace.panelOpen !== false;
+    const panelMax = !!state.workspace.panelMax;
+    const pdp = t.pdpLink
+      ? '<a class="tw-chip tw-chip-link" href="' + esc(t.pdpLink) + '" target="_blank" rel="noopener">PDP guideline' + ICON.external + '</a>'
+      : '';
+    const outHref = (prior && prior.drive) || outputLinkOf(t) || '';
+    const driveChip = outHref
+      ? '<a class="tw-chip tw-chip-link" href="' + esc(outHref) + '" target="_blank" rel="noopener" data-action="output">Output folder' + ICON.external + '</a>'
+      : '';
+    const generating = state.workspace.generating;
+    const rating = Number(state.workspace.rating) || 0;
+    const comparePos = Math.min(100, Math.max(0, Number(state.workspace.comparePos) || 50));
+    const driveImgs = priorDriveImages(prior);
+    if (state.workspace.driveImgIndex == null && driveImgs.length) {
+      state.workspace.driveImgIndex = defaultDriveImgIndex(prior);
+    }
+    const driveImgIndex = driveImgs.length
+      ? Math.min(Math.max(0, Number(state.workspace.driveImgIndex) || 0), driveImgs.length - 1)
+      : 0;
+    const selectedDriveName = (driveImgs[driveImgIndex] && driveImgs[driveImgIndex].name) || '';
+    const synthName = synthesizeFileName(t, selectedDriveName, shot);
+    const headCode = selectedDriveName ? driveImgLabel(selectedDriveName) : shot.code;
+    const headName = selectedDriveName ? driveImgFullName(selectedDriveName, shots) : shot.name;
+    const showDimBanner = isMDimCode(headCode) && dimsDiffer;
+    const dimSeparate = !!state.workspace.dimSeparate && showDimBanner;
+    const dimNote = dimDiffSummary(t, prior);
+    const canGenerate = hasWorkspaceProductType();
+    const codeMap = canGenerate ? priorTargetCodeMap(prior, shots) : { mapped: [], unmappedPrior: [], missingTarget: [], hasConflict: false };
+    const unmappedIdx = new Set((codeMap.unmappedPrior || []).map((x) => x.imgIdx));
+    const mappedPending = (codeMap.mapped || []).filter((m) => !(state.workspace.outputs && state.workspace.outputs[m.shotIdx]));
+    const selectedMapped = !driveImgs.length || !canGenerate || !unmappedIdx.has(driveImgIndex);
 
-    return '<div class="tw-shell">' +
-      workspaceTopHtml(t, 'Product Replacement', 'choose') +
-      '<div class="tw-note-banner">UI mock — mapping is not saved. Use prior Drive outputs as reference.</div>' +
-      (best
-        ? '<div class="tw-card" style="margin-bottom:16px">' +
-            '<div class="tw-card-head"><div class="tw-card-title">Best prior match</div></div>' +
-            '<div class="tw-card-body">' +
-              '<button type="button" class="tw-match" data-ws-match="' + esc(best.ean) + '">' +
-                '<div class="tw-match-thumb" data-folder="' + esc(best.folderId || '') + '">' + matchThumbHtml(best) + '</div>' +
-                '<div class="tw-match-body">' +
-                  '<div class="tw-match-title">' + esc(best.title) + '</div>' +
-                  '<div class="tw-match-meta">EAN <span class="tp-mono">' + eanHtml(best.ean) +
-                    '<span class="tp-copy" data-action="copy-match" data-ean="' + esc(best.ean) + '" title="Copy EAN" aria-label="Copy EAN">' + ICON.copy + '</span></span>' +
-                    (best.artist ? ' · by ' + esc(best.artist) : '') + '</div>' +
-                  '<span class="tw-match-level is-best">Best match · ' + esc(best.label) + '</span>' +
-                '</div>' +
-                '<div class="tw-match-links">' +
-                  (best.drive
-                    ? '<a href="' + esc(best.drive) + '" target="_blank" rel="noopener" data-action="output">Output folder</a>'
-                    : '<span class="tw-empty-matches">No output link</span>') +
-                '</div>' +
-              '</button>' +
+    const rail = driveImgs.length
+      ? driveImgs.map((img, idx) => {
+          const active = idx === driveImgIndex;
+          const label = driveImgLabel(img.name);
+          const shotIdx = shotIndexForDriveName(shots, img.name);
+          const mapped = shotIdx >= 0 && canGenerate;
+          const full = mapped ? driveImgFullName(img.name, shots) : (canGenerate ? 'No match in product type' : driveImgFullName(img.name, shots));
+          const done = mapped && !!(state.workspace.outputs && state.workspace.outputs[shotIdx]);
+          const busy = mapped && generating === shotIdx;
+          const conflict = canGenerate && unmappedIdx.has(idx);
+          return '<button type="button" class="wr-shot' + (active ? ' is-active' : '') + (busy ? ' is-busy' : '') + (done ? ' is-done' : '') + (conflict ? ' is-conflict' : '') + '" data-ws-drive-img="' + idx + '">' +
+            '<div class="wr-shot-thumb" data-folder="' + esc((prior && prior.folderId) || '') + '" data-drive-img="' + idx + '">' +
+              priorImgAt(prior, idx, 360) +
+              (busy ? '<span class="wr-shot-busy">In progress</span>' : '') +
+              (done && !busy ? '<span class="wr-shot-done">Done</span>' : '') +
+              (conflict ? '<span class="wr-shot-conflict">No match</span>' : '') +
             '</div>' +
-          '</div>'
-        : '') +
-      '<div class="tw-card">' +
-        '<div class="tw-card-head">' +
-          '<div><div class="tw-card-title">One-to-one shot mapping</div>' +
-          '<div class="tw-card-note">Map each required shot from the prior work to the new product images.</div></div>' +
-        '</div>' +
-        '<div class="tw-card-body">' + rows +
-          '<div class="tw-foot-actions">' +
-            '<button type="button" class="tp-btn tp-btn-ghost" data-ws="noop">Mark blocked</button>' +
-            '<button type="button" class="tp-btn tp-btn-primary" data-ws="noop">Save mapping (UI only)</button>' +
+            '<div class="wr-shot-meta">' +
+              '<span class="wr-shot-code-lbl">' + esc(label) + '</span>' +
+              (full ? '<span class="wr-shot-full">' + esc(full) + '</span>' : '') +
+            '</div>' +
+          '</button>';
+        }).join('')
+      : shots.map((s, idx) =>
+          '<button type="button" class="wr-shot' + (idx === i ? ' is-active' : '') + '" data-ws-shot="' + idx + '">' +
+            '<div class="wr-shot-thumb"><span class="wr-ph">—</span></div>' +
+            '<div class="wr-shot-meta">' +
+              '<span class="wr-shot-code-lbl">' + esc(s.code) + '</span>' +
+              '<span class="wr-shot-full">' + esc(s.name) + '</span>' +
+            '</div>' +
+          '</button>'
+        ).join('');
+
+    const cappedInputs = inputs.slice(0, 4);
+    const inputTiles = cappedInputs.length
+      ? cappedInputs.map((name, n) =>
+          '<div class="wr-in-tile">' +
+            '<button type="button" class="wr-in-remove" data-ws-remove-input="' + n + '" title="Remove">×</button>' +
+            '<div class="wr-in-glyph" aria-hidden="true"></div>' +
+            '<div class="wr-in-name">' + esc(name) + '</div>' +
+          '</div>').join('')
+      : '<div class="wr-in-empty" data-ws="add-input" role="button" tabindex="0">' +
+          '<span class="wr-in-empty-title">Drop new product image(s)</span>' +
+          '<span class="wr-in-empty-hint">JPG / PNG · up to 4 · Drive or offline</span>' +
+        '</div>';
+
+    return '<div class="tw-shell tw-shell-replace">' +
+      '<nav class="tw-crumb" aria-label="Breadcrumb">' +
+        '<button type="button" class="tw-back-pill" data-ws="close">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>' +
+          'Back to My Tasks</button>' +
+        '<span class="tw-crumb-sep" aria-hidden="true">/</span>' +
+        '<ol class="tw-crumb-list">' +
+          '<li>My Tasks</li><li aria-hidden="true">›</li>' +
+          '<li>Active</li><li aria-hidden="true">›</li>' +
+          '<li aria-current="page">Product Replacement</li>' +
+        '</ol>' +
+      '</nav>' +
+
+      '<section class="wr-product">' +
+        '<div class="wr-product-main">' +
+          '<div class="tw-top-thumb" aria-hidden="true">' +
+            thumbHtml(t).replace('class="tp-thumb"', 'class="tp-thumb tw-top-thumb-inner"') +
           '</div>' +
+          '<div class="tw-top-copy">' +
+            '<div class="tw-kicker">Product Replacement</div>' +
+            '<h1 class="tw-heading">' + esc(t.title || 'Untitled product') + '</h1>' +
+            '<p class="tw-sub">EAN ' + eanCopyHtml(t.ean) +
+              (t.subCategory ? ' · ' + esc(t.subCategory) : '') +
+              (t.template ? ' · Template ' + esc(t.template) : '') + '</p>' +
+            '<div class="tw-meta-row">' +
+              '<span class="tp-status is-' + st.id + '">' + esc(st.label) + '</span>' +
+              (t.template ? '<span class="tw-chip">Template <span class="tp-mono">' + esc(t.template) + '</span></span>' : '') +
+              (t.setLabel ? '<span class="tw-chip">' + esc(t.setLabel) + '</span>' : '') +
+              '<span class="tw-chip">' + (canGenerate ? shots.length + ' shots' : 'Select product type') + '</span>' +
+              pdp + driveChip +
+            '</div>' +
+          '</div>' +
+          productTypePickerHtml() +
         '</div>' +
+        (prior
+          ? '<div class="wr-prior-bar">' +
+              '<div class="wr-prior-meta">' +
+                '<span>Prior EAN ' + eanCopyHtml(prior.ean) + '</span>' +
+                '<span class="tw-dot">·</span>' +
+                '<span class="tw-match-level is-best">' + (prior.best ? 'Best match · ' : '') + esc(prior.label) + '</span>' +
+                (prior.artist ? '<span class="tw-dot">·</span><span>by ' + esc(prior.artist) + '</span>' : '') +
+              '</div>' +
+              '<div class="wr-prior-actions">' +
+                '<button type="button" class="wr-link-btn" data-ws="choose">Change</button>' +
+              '</div>' +
+            '</div>'
+          : '') +
+        codeMapWarnHtml(codeMap) +
+      '</section>' +
+
+      '<div class="wr-grid' + (panelOpen && !panelMax ? '' : ' is-panel-closed') + '">' +
+        '<aside class="wr-rail">' +
+          '<div class="wr-rail-head">' +
+            '<div class="wr-rail-title">Drive images (' + (driveImgs.length || shots.length) + ')</div>' +
+            (canGenerate
+              ? '<div class="wr-rail-sub">' + codeMap.mapped.length + ' mapped' +
+                  (codeMap.unmappedPrior.length ? ' · ' + codeMap.unmappedPrior.length + ' no match' : '') + '</div>'
+              : '') +
+          '</div>' +
+          '<nav class="wr-rail-list">' + rail + '</nav>' +
+          '<div class="wr-rail-foot">' +
+            '<button type="button" class="wr-btn-outline" data-ws="gen-all"' +
+              (!canGenerate || !mappedPending.length ? ' disabled' : '') +
+              (canGenerate
+                ? (mappedPending.length
+                    ? ' title="Generate ' + mappedPending.length + ' mapped pending shot' + (mappedPending.length > 1 ? 's' : '') + '"'
+                    : ' title="No mapped pending shots"')
+                : ' title="Select a Product Type first"') + '>' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>' +
+              'Generate all pending</button>' +
+          '</div>' +
+        '</aside>' +
+
+        '<div class="wr-main-wrap">' +
+        '<section class="wr-main">' +
+          '<header class="wr-main-head">' +
+            '<h2 class="wr-main-title">' + esc(headName) + '</h2>' +
+            '<span class="wr-code">' + esc(headCode) + '</span>' +
+            (generating === i ? '<span class="wr-pill-progress">In progress</span>' : '') +
+          '</header>' +
+
+          (showDimBanner
+            ? '<div class="wr-dim-banner">' +
+                '<label class="wr-dim-toggle">' +
+                  '<input type="checkbox" data-ws-dim-toggle' + (state.workspace.dimSeparate ? ' checked' : '') + '>' +
+                  '<span>Dimensions differ — create as a separate image (skip 1:1 map)</span>' +
+                '</label>' +
+                '<span class="wr-dim-note">' + esc(dimNote || 'Optional exception') + '</span>' +
+              '</div>'
+            : '') +
+
+          '<div class="wr-pair">' +
+            '<div class="wr-card' + (dimSeparate ? ' is-muted' : '') + '">' +
+              '<div class="wr-card-head">' +
+                '<div class="wr-card-label">A · Prior output ' +
+                  (dimSeparate
+                    ? '<span class="wr-badge-muted">Skipped</span>'
+                    : '<span class="wr-badge-ok">1:1 Mapped</span>') +
+                '</div>' +
+                '<span class="wr-badge-ghost">Auto-loaded</span>' +
+              '</div>' +
+              '<div class="wr-frame wr-frame-prior" data-folder="' + esc((prior && prior.folderId) || '') + '" data-drive-img="' + driveImgIndex + '">' +
+                (prior ? priorImgAt(prior, driveImgIndex, 640) : '<span class="wr-frame-empty">No prior</span>') +
+              '</div>' +
+              '<div class="wr-card-meta">' +
+                '<span class="tp-mono" title="' + esc((driveImgs[driveImgIndex] && driveImgs[driveImgIndex].name) || priorFileName(prior, shot)) + '">' +
+                  esc((driveImgs[driveImgIndex] && driveImgs[driveImgIndex].name) || priorFileName(prior, shot)) + '</span>' +
+                '<span>Square</span>' +
+              '</div>' +
+            '</div>' +
+
+            '<div class="wr-card">' +
+              '<div class="wr-card-head">' +
+                '<div class="wr-card-label">B · New product input ' +
+                  (cappedInputs.length ? '<span class="wr-badge-teal">' + cappedInputs.length + ' / 4</span>' : '') +
+                '</div>' +
+                (cappedInputs.length < 4
+                  ? '<button type="button" class="wr-text-btn" data-ws="add-input">+ Browse</button>'
+                  : '<span class="wr-badge-ghost">Max 4</span>') +
+              '</div>' +
+              '<div class="wr-in-grid wr-in-count-' + Math.max(1, cappedInputs.length) + (cappedInputs.length ? '' : ' is-empty') + '"' +
+                (cappedInputs.length ? '' : ' data-drop="replace-' + i + '"') + '>' +
+                inputTiles +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="wr-pair wr-pair-bottom">' +
+            '<div class="wr-card wr-card-prompt">' +
+              '<div class="wr-card-head">' +
+                '<div class="wr-card-label">C · Prompt</div>' +
+                '<span class="wr-badge-ghost">Pre-filled</span>' +
+              '</div>' +
+              '<textarea class="wr-prompt" data-ws-prompt="' + i + '" rows="8">' + esc(promptText) + '</textarea>' +
+              '<div class="wr-prompt-foot">' +
+                '<span class="wr-prompt-note">Auto-syncs to prompt DB upon Approval.</span>' +
+                '<div class="wr-prompt-actions">' +
+                  '<button type="button" class="wr-text-btn" data-ws="noop">Reset</button>' +
+                  '<button type="button" class="wr-text-btn" data-ws="noop">Copy</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+
+            '<div class="wr-card wr-card-out">' +
+              '<div class="wr-card-head">' +
+                '<div class="wr-card-label">D · Output · Answerly</div>' +
+                '<span class="wr-badge-ok">' + (hasOutput ? 'Done' : 'Ready') + '</span>' +
+              '</div>' +
+              '<div class="wr-out-controls">' +
+                '<label class="wr-size-label">Size <select class="wr-size-select">' +
+                  '<option value="1K">1K</option>' +
+                  '<option value="2K" selected>2K</option>' +
+                  '<option value="4K">4K</option>' +
+                '</select></label>' +
+                '<label class="wr-model-label">Model <select disabled><option>Answerly-Diffusion-v3.1</option></select></label>' +
+              '</div>' +
+              '<div class="wr-out-frame' + (hasOutput ? ' has-result' : '') + '">' +
+                (hasOutput
+                  ? '<div class="wr-out-result">Output ready</div><div class="tp-mono">' + esc(synthName) + '</div>'
+                  : canGenerate
+                    ? '<div class="wr-out-ready">Ready to synthesize</div><div class="tp-mono">' + esc(synthName) + '</div>'
+                    : '<div class="wr-out-ready">Select Product Type to start</div><div class="tp-mono">' + esc(synthName) + '</div>') +
+              '</div>' +
+              '<button type="button" class="tp-btn tp-btn-primary wr-gen-btn" data-ws="gen-shot"' +
+                (!canGenerate || !selectedMapped || generating === i ? ' disabled' : '') +
+                (!canGenerate
+                  ? ' title="Select a Product Type first"'
+                  : (!selectedMapped ? ' title="This prior image has no matching target shot code"' : '')) + '>' +
+                (generating === i ? 'Generating…' : 'Generate this shot') + '</button>' +
+            '</div>' +
+          '</div>' +
+        '</section>' +
+        (!panelOpen
+          ? '<button type="button" class="wr-panel-tab" data-ws-panel="open" title="Open Detail &amp; Compare">Detail &amp; Compare</button>'
+          : '') +
+        '</div>' +
+
+        (panelOpen
+          ? '<aside class="wr-panel' + (panelMax ? ' is-max' : '') + '">' +
+              '<div class="wr-panel-head">' +
+                '<div class="wr-panel-title">Detail &amp; Compare</div>' +
+                '<div class="wr-panel-tools">' +
+                  '<button type="button" class="wr-icon-btn" data-ws-panel="max" title="Maximize">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>' +
+                  '</button>' +
+                  '<button type="button" class="wr-icon-btn" data-ws-panel="close" title="Close">✕</button>' +
+                '</div>' +
+              '</div>' +
+              '<div class="wr-compare" data-ws-compare>' +
+                '<div class="wr-compare-base">' +
+                  (hasOutput
+                    ? '<div class="wr-compare-ph is-out">Generated</div>'
+                    : '<div class="wr-compare-ph">Generate to compare</div>') +
+                '</div>' +
+                '<div class="wr-compare-overlay" style="width:' + comparePos + '%">' +
+                  '<div class="wr-compare-overlay-inner" data-folder="' + esc((prior && prior.folderId) || '') + '" data-drive-img="' + driveImgIndex + '">' +
+                    priorImgAt(prior, driveImgIndex, 640) +
+                  '</div>' +
+                '</div>' +
+                '<input class="wr-compare-range" type="range" min="0" max="100" value="' + comparePos + '" aria-label="Compare slider">' +
+                '<div class="wr-compare-handle" style="left:' + comparePos + '%" aria-hidden="true"></div>' +
+              '</div>' +
+              '<div class="wr-specs">' +
+                '<div class="wr-spec"><span>Resolution</span><span class="tp-mono">Square</span></div>' +
+                '<div class="wr-spec"><span>Target EAN</span>' + eanCopyHtml(t.ean) + '</div>' +
+                '<div class="wr-spec"><span>Prior EAN</span>' +
+                  (prior ? eanCopyHtml(prior.ean) : '<span class="tp-mono">—</span>') + '</div>' +
+                '<div class="wr-spec"><span>Model</span><span>Answerly-Diffusion-v3.1</span></div>' +
+              '</div>' +
+              '<div class="wr-panel-actions">' +
+                '<div class="wr-rating">' +
+                  '<span class="wr-rating-label">Quality Rating</span>' +
+                  '<div class="wr-stars" role="radiogroup" aria-label="Quality rating">' +
+                    [1, 2, 3, 4, 5].map((n) =>
+                      '<button type="button" class="wr-star' + (rating >= n ? ' is-on' : '') + '" data-ws-rating="' + n + '"' +
+                        (hasOutput ? '' : ' disabled') +
+                        ' aria-label="' + n + ' star' + (n > 1 ? 's' : '') + '">★</button>'
+                    ).join('') +
+                  '</div>' +
+                '</div>' +
+                '<button type="button" class="tp-btn tp-btn-primary" data-ws="noop"' +
+                  (hasOutput ? '' : ' disabled title="Generate an image first"') + '>Rate &amp; Approve</button>' +
+                '<button type="button" class="wr-btn-outline" data-ws="noop"' +
+                  (hasOutput ? '' : ' disabled title="Generate an image first"') + '>Re-roll with prompt tweaks</button>' +
+              '</div>' +
+            '</aside>'
+          : '') +
       '</div>' +
     '</div>';
   }
@@ -2053,10 +2917,24 @@
   /* ---------- Assign menu ---------- */
 
   function openMenu(anchor, eans, suggestion) {
-    const artists = state.model.artists.slice();
-    if (suggestion && !artists.includes(suggestion.name)) artists.unshift(suggestion.name);
-    const ordered = suggestion ? [suggestion.name].concat(artists.filter((a) => a !== suggestion.name)) : artists;
-    els.menu.innerHTML = '<div class="tp-menu-label">Assign to...</div>' + ordered.map((name) => {
+    const ordered = [];
+    const seen = new Set();
+    function addName(n) {
+      const t = String(n || '').trim();
+      if (!t) return;
+      const k = t.toLowerCase();
+      if (seen.has(k)) return;
+      seen.add(k);
+      ordered.push(t);
+    }
+    if (suggestion) addName(suggestion.name);
+    addName(state.author);
+    (state.model.artists || []).forEach(addName);
+    if (!ordered.length) {
+      showToast('Assign failed — no artists found on the Render Tracker yet. Enter your author name in Settings.', false, { error: true });
+      return;
+    }
+    els.menu.innerHTML = '<div class="tp-menu-label">Assign to</div>' + ordered.map((name) => {
       const sug = suggestion && name === suggestion.name;
       return '<button type="button" class="tp-menu-item' + (sug ? ' is-suggested' : '') + '" role="menuitem" data-artist="' + esc(name) + '">' +
         '<span>' + esc(name) + '</span>' + (sug ? '<span class="tp-menu-tag">Suggested</span>' : '') + '</button>';
@@ -2079,19 +2957,22 @@
   /* ---------- Toast ---------- */
 
   let toastTimer = null;
-  function showToast(html, undoable) {
+  function showToast(html, undoable, opts) {
+    opts = opts || {};
+    els.toast.classList.toggle('is-error', !!opts.error);
     els.toastText.innerHTML = html;
-    els.toastUndo.hidden = !undoable;
+    els.toastUndo.hidden = !undoable || !!opts.error;
     els.toast.hidden = false;
     els.toast.style.animation = 'none';
     void els.toast.offsetWidth;
     els.toast.style.animation = '';
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(hideToast, 6000);
+    toastTimer = setTimeout(hideToast, opts.error ? 9000 : 6000);
   }
 
   function hideToast() {
     els.toast.hidden = true;
+    els.toast.classList.remove('is-error');
   }
 
   /* ---------- Name modal ---------- */
@@ -2141,12 +3022,6 @@
       actionEl.setAttribute('aria-expanded', String(!section.classList.contains('is-collapsed')));
       return;
     }
-    if (action === 'pick-all') {
-      if (!canAssignTasks()) return;
-      const info = groupSuggestion(groupOf(actionEl));
-      if (info) pickForMe(info.group.tasks.map((t) => t.ean));
-      return;
-    }
     if (action === 'assign-all-menu') {
       if (!canAssignTasks()) return;
       const info = groupSuggestion(groupOf(actionEl));
@@ -2168,11 +3043,6 @@
     if (action === 'output') return;
     if (action === 'start') {
       openWorkspace('choose', ean);
-      return;
-    }
-    if (action === 'pick') {
-      if (!canAssignTasks()) return;
-      pickForMe([ean]);
       return;
     }
     if (action === 'assign-menu') {
@@ -2252,7 +3122,10 @@
   }
 
   window.addEventListener('scroll', closeMenu, { passive: true });
-  window.addEventListener('resize', closeMenu);
+  window.addEventListener('resize', () => {
+    closeMenu();
+    syncRailToMainHeight();
+  });
 
   $('drawer-close').addEventListener('click', () => {
     state.drawerClosed = true;
@@ -2306,7 +3179,49 @@
     });
   });
 
+  function previewPriorMatch(ean, row) {
+    const existing = taskByEan(ean);
+    const drive = ((row && row.querySelector('.tw-match-folder')) || {}).href || '';
+    const stub = existing || {
+      ean: ean,
+      title: ((row && row.querySelector('.tw-match-title')) || {}).textContent || ean,
+      colour: 'c-teal',
+      template: '',
+      shots: [],
+      driveLink: '',
+      outputLink: drive,
+      outputFolderId: folderIdFrom(drive),
+      prop: null,
+      propsNeeded: false,
+      issues: [],
+      setLabel: '',
+      pdpImages: 'Completed'
+    };
+    state.photoIndex = -1;
+    state.selectedEan = ean;
+    state.drawerClosed = false;
+    renderDrawer(stub);
+    loadImages();
+  }
+
   if (els.workspace) {
+    els.workspace.addEventListener('mousedown', (e) => {
+      const ptPick = e.target.closest('[data-ws-pt-pick]');
+      if (!ptPick || !state.workspace || state.workspace.mode !== 'replace') return;
+      e.preventDefault();
+      const name = String(ptPick.dataset.wsPtPick || '');
+      const type = namingProductTypes().find((t) => t.name === name);
+      if (!type) return;
+      state.workspace.productTypeName = type.name;
+      state.workspace.productTypeQuery = type.name;
+      state.workspace.productTypeVariant = type.variants ? Object.keys(type.variants)[0] : '';
+      state.workspace.productTypeOpen = false;
+      state.workspace.productTypeWarn = false;
+      state.workspaceShot = 0;
+      state.workspace.driveImgIndex = null;
+      renderWorkspace();
+    });
+
     els.workspace.addEventListener('click', (e) => {
       const copyMatch = e.target.closest('[data-action="copy-match"]');
       if (copyMatch) {
@@ -2320,41 +3235,98 @@
         e.stopPropagation();
         return;
       }
-      const matchBtn = e.target.closest('[data-ws-match]');
-      if (matchBtn) {
-        const ean = matchBtn.dataset.wsMatch;
-        const existing = taskByEan(ean);
-        const drive = ((matchBtn.querySelector('.tw-match-links a') || {}).href) || '';
-        const stub = existing || {
-          ean: ean,
-          title: (matchBtn.querySelector('.tw-match-title') || {}).textContent || ean,
-          colour: 'c-teal',
-          template: '',
-          shots: [],
-          driveLink: '',
-          outputLink: drive,
-          outputFolderId: folderIdFrom(drive),
-          prop: null,
-          propsNeeded: false,
-          issues: [],
-          setLabel: '',
-          pdpImages: 'Completed'
-        };
-        state.photoIndex = -1;
-        state.selectedEan = ean;
-        state.drawerClosed = false;
-        renderDrawer(stub);
-        loadImages();
+      const ratingBtn = e.target.closest('[data-ws-rating]');
+      if (ratingBtn && state.workspace) {
+        const shotIdx = state.workspaceShot || 0;
+        if (!(state.workspace.outputs && state.workspace.outputs[shotIdx])) {
+          showToast('Generate an image before rating.', false);
+          return;
+        }
+        state.workspace.rating = Number(ratingBtn.dataset.wsRating) || 0;
+        renderWorkspace();
+        return;
+      }
+      const panelBtn = e.target.closest('[data-ws-panel]');
+      if (panelBtn && state.workspace) {
+        const act = panelBtn.dataset.wsPanel;
+        if (act === 'max') {
+          state.workspace.panelMax = !state.workspace.panelMax;
+          state.workspace.panelOpen = true;
+        } else if (act === 'close') {
+          if (state.workspace.panelMax) state.workspace.panelMax = false;
+          else {
+            state.workspace.panelOpen = false;
+            state.workspace.panelMax = false;
+          }
+        } else {
+          state.workspace.panelOpen = true;
+          state.workspace.panelMax = false;
+        }
+        renderWorkspace();
+        return;
+      }
+      const focusBtn = e.target.closest('[data-ws-focus]');
+      if (focusBtn && state.workspace) {
+        state.workspace.focus = focusBtn.dataset.wsFocus === 'primary' ? 'primary' : 'replace';
+        renderWorkspace();
+        return;
+      }
+      const matchRow = e.target.closest('[data-ws-match]');
+      if (matchRow && state.workspace && state.workspace.mode === 'choose') {
+        const ean = String(matchRow.dataset.wsMatch || '');
+        state.workspace.matchEan = ean;
+        previewPriorMatch(ean, matchRow);
+        renderWorkspace();
+        return;
+      }
+      if (matchRow) {
+        previewPriorMatch(matchRow.dataset.wsMatch, matchRow);
+        return;
+      }
+      const removeIn = e.target.closest('[data-ws-remove-input]');
+      if (removeIn && state.workspace && state.workspace.mode === 'replace') {
+        e.preventDefault();
+        e.stopPropagation();
+        const idx = state.workspaceShot || 0;
+        const n = Number(removeIn.dataset.wsRemoveInput);
+        const list = (state.workspace.shotInputs && state.workspace.shotInputs[idx]) || [];
+        if (!state.workspace.shotInputs) state.workspace.shotInputs = {};
+        state.workspace.shotInputs[idx] = list.filter((_, j) => j !== n);
+        renderWorkspace();
+        return;
+      }
+      const driveImgBtn = e.target.closest('[data-ws-drive-img]');
+      if (driveImgBtn && state.workspace && state.workspace.mode === 'replace') {
+        const promptEl = els.workspace.querySelector('[data-ws-prompt]');
+        if (promptEl) {
+          if (!state.workspace.prompts) state.workspace.prompts = {};
+          state.workspace.prompts[state.workspaceShot || 0] = promptEl.value;
+        }
+        const imgIdx = Number(driveImgBtn.dataset.wsDriveImg) || 0;
+        state.workspace.driveImgIndex = imgIdx;
+        const task = taskByEan(state.workspace.ean);
+        const prior = resolveWorkspaceMatch(task).selected;
+        const imgs = priorDriveImages(prior);
+        const shotIdx = shotIndexForDriveName(shotListFor(task || {}), (imgs[imgIdx] && imgs[imgIdx].name) || '');
+        if (shotIdx >= 0) state.workspaceShot = shotIdx;
+        renderWorkspace();
         return;
       }
       const shotBtn = e.target.closest('[data-ws-shot]');
       if (shotBtn) {
+        if (state.workspace && state.workspace.mode === 'replace') {
+          const promptEl = els.workspace.querySelector('[data-ws-prompt]');
+          if (promptEl) {
+            if (!state.workspace.prompts) state.workspace.prompts = {};
+            state.workspace.prompts[state.workspaceShot || 0] = promptEl.value;
+          }
+        }
         state.workspaceShot = Number(shotBtn.dataset.wsShot) || 0;
         renderWorkspace();
         return;
       }
       const actionEl = e.target.closest('[data-ws]');
-      if (!actionEl) return;
+      if (!actionEl || actionEl.hasAttribute('disabled') || actionEl.disabled) return;
       const action = actionEl.dataset.ws;
       if (action === 'close') { closeWorkspace(); render(); return; }
       if (action === 'choose' && state.workspace) {
@@ -2365,22 +3337,239 @@
       }
       if (action === 'start-primary' && state.workspace) {
         state.workspace.mode = 'primary';
+        state.workspace.focus = 'primary';
         state.workspaceShot = 0;
         renderWorkspace();
         window.scrollTo(0, 0);
         return;
       }
       if (action === 'start-replace' && state.workspace) {
+        const task = taskByEan(state.workspace.ean);
+        const resolved = resolveWorkspaceMatch(task);
+        if (!resolved.selected) {
+          showToast('No prior match available — choose Primary workflow, or wait for a Completed match.', false);
+          return;
+        }
         state.workspace.mode = 'replace';
+        state.workspace.focus = 'replace';
+        state.workspace.matchEan = String(resolved.selected.ean);
+        state.workspace.replaceInit = false;
         state.workspaceShot = 0;
+        renderDrawer(null);
         renderWorkspace();
         window.scrollTo(0, 0);
         return;
       }
+      if (action === 'add-input' && state.workspace) {
+        const idx = state.workspaceShot || 0;
+        if (!state.workspace.shotInputs) state.workspace.shotInputs = {};
+        const list = (state.workspace.shotInputs[idx] || []).slice();
+        if (list.length >= 4) {
+          showToast('Maximum 4 input images per shot.', false);
+          return;
+        }
+        list.push('input_' + String(list.length + 1).padStart(2, '0') + '.png');
+        state.workspace.shotInputs[idx] = list;
+        renderWorkspace();
+        return;
+      }
+      if (action === 'gen-all' && state.workspace) {
+        if (!hasWorkspaceProductType()) {
+          state.workspace.productTypeWarn = true;
+          state.workspace.productTypeOpen = true;
+          showToast('Select a Product Type before generating.', false);
+          renderWorkspace();
+          return;
+        }
+        const task = taskByEan(state.workspace.ean);
+        const prior = resolveWorkspaceMatch(task).selected;
+        const shots = shotListFor(task || {});
+        const mapInfo = priorTargetCodeMap(prior, shots);
+        const pending = mapInfo.mapped.filter((m) => !(state.workspace.outputs && state.workspace.outputs[m.shotIdx]));
+        if (!pending.length) {
+          showToast(mapInfo.hasConflict
+            ? 'No mapped pending shots. Unmapped prior codes were skipped.'
+            : 'No pending mapped shots to generate.', false);
+          return;
+        }
+        if (mapInfo.hasConflict) {
+          showToast('Generating ' + pending.length + ' mapped shot' + (pending.length > 1 ? 's' : '') +
+            ' — skipped ' + mapInfo.unmappedPrior.length + ' unmatched prior image' +
+            (mapInfo.unmappedPrior.length === 1 ? '' : 's') + '.', false);
+        }
+        let n = 0;
+        function runNext() {
+          if (!state.workspace || state.workspace.mode !== 'replace') return;
+          if (n >= pending.length) {
+            state.workspace.generating = null;
+            showToast('UI mock — generated ' + pending.length + ' mapped shot' + (pending.length > 1 ? 's' : '') + '.', false);
+            renderWorkspace();
+            return;
+          }
+          const item = pending[n++];
+          state.workspace.driveImgIndex = item.imgIdx;
+          state.workspaceShot = item.shotIdx;
+          state.workspace.generating = item.shotIdx;
+          state.workspace.panelOpen = true;
+          renderWorkspace();
+          setTimeout(() => {
+            if (!state.workspace || state.workspace.mode !== 'replace') return;
+            if (!state.workspace.outputs) state.workspace.outputs = {};
+            state.workspace.outputs[item.shotIdx] = true;
+            runNext();
+          }, 450);
+        }
+        runNext();
+        return;
+      }
+      if (action === 'gen-shot' && state.workspace) {
+        if (!hasWorkspaceProductType()) {
+          state.workspace.productTypeWarn = true;
+          state.workspace.productTypeOpen = true;
+          showToast('Select a Product Type before generating.', false);
+          renderWorkspace();
+          return;
+        }
+        const task = taskByEan(state.workspace.ean);
+        const prior = resolveWorkspaceMatch(task).selected;
+        const shots = shotListFor(task || {});
+        const driveImgs = priorDriveImages(prior);
+        const driveIdx = driveImgs.length
+          ? Math.min(Math.max(0, Number(state.workspace.driveImgIndex) || 0), driveImgs.length - 1)
+          : -1;
+        if (driveIdx >= 0) {
+          const shotIdx = shotIndexForDriveName(shots, (driveImgs[driveIdx] && driveImgs[driveIdx].name) || '');
+          if (shotIdx < 0) {
+            showToast('This prior image has no matching shot code for the selected Product Type.', false);
+            return;
+          }
+          state.workspaceShot = shotIdx;
+        }
+        const idx = state.workspaceShot || 0;
+        const promptEl = els.workspace.querySelector('[data-ws-prompt]');
+        if (promptEl) {
+          if (!state.workspace.prompts) state.workspace.prompts = {};
+          state.workspace.prompts[idx] = promptEl.value;
+        }
+        state.workspace.generating = idx;
+        state.workspace.panelOpen = true;
+        renderWorkspace();
+        setTimeout(() => {
+          if (!state.workspace || state.workspace.mode !== 'replace') return;
+          if (!state.workspace.outputs) state.workspace.outputs = {};
+          state.workspace.outputs[idx] = true;
+          state.workspace.generating = null;
+          showToast('UI mock — Answerly output placed on this shot row.', false);
+          renderWorkspace();
+        }, 900);
+        return;
+      }
       if (action === 'noop') {
+        if (e.target.closest('[disabled]')) return;
         showToast('UI mock only — this action is not wired yet.', false);
       }
     });
+
+    els.workspace.addEventListener('change', (e) => {
+      if (!state.workspace || state.workspace.mode !== 'replace') return;
+      if (e.target.matches('[data-ws-dim-toggle]')) {
+        state.workspace.dimSeparate = !!e.target.checked;
+        renderWorkspace();
+        return;
+      }
+      if (e.target.matches('[data-ws-pt-variant]')) {
+        state.workspace.productTypeVariant = e.target.value;
+        state.workspaceShot = 0;
+        state.workspace.driveImgIndex = null;
+        renderWorkspace();
+      }
+    });
+
+    els.workspace.addEventListener('focusin', (e) => {
+      if (!state.workspace || state.workspace.mode !== 'replace') return;
+      if (!e.target.matches('[data-ws-pt-search]')) return;
+      state.workspace.productTypeOpen = true;
+      refreshProductTypeSuggestDom();
+    });
+
+    els.workspace.addEventListener('focusout', (e) => {
+      if (!state.workspace || state.workspace.mode !== 'replace') return;
+      if (!e.target.matches('[data-ws-pt-search]')) return;
+      setTimeout(() => {
+        if (!state.workspace || state.workspace.mode !== 'replace') return;
+        const active = document.activeElement;
+        if (active && els.workspace.contains(active) && active.closest('.wr-pt-combo')) return;
+        const text = String(state.workspace.productTypeQuery || '').trim().toLowerCase();
+        if (!state.workspace.productTypeName && text) {
+          const exact = namingProductTypes().filter((t) => t.name.toLowerCase() === text);
+          if (exact.length === 1) {
+            state.workspace.productTypeName = exact[0].name;
+            state.workspace.productTypeQuery = exact[0].name;
+            state.workspace.productTypeVariant = exact[0].variants ? Object.keys(exact[0].variants)[0] : '';
+            state.workspace.productTypeWarn = false;
+            state.workspaceShot = 0;
+            state.workspace.driveImgIndex = null;
+          } else {
+            state.workspace.productTypeWarn = true;
+          }
+        }
+        state.workspace.productTypeOpen = false;
+        renderWorkspace();
+      }, 140);
+    });
+
+    els.workspace.addEventListener('input', (e) => {
+      if (!state.workspace || state.workspace.mode !== 'replace') return;
+      if (e.target.matches('[data-ws-pt-search]')) {
+        const val = e.target.value;
+        if (state.workspace.productTypeName && val !== state.workspace.productTypeName) {
+          state.workspace.productTypeName = '';
+          state.workspace.productTypeVariant = '';
+        }
+        state.workspace.productTypeQuery = val;
+        state.workspace.productTypeOpen = true;
+        state.workspace.productTypeWarn = false;
+        refreshProductTypeSuggestDom();
+        return;
+      }
+      if (!e.target.matches('.wr-compare-range')) return;
+      const pos = Number(e.target.value) || 0;
+      state.workspace.comparePos = pos;
+      const compare = e.target.closest('[data-ws-compare]');
+      if (!compare) return;
+      syncCompareSlider(compare, pos);
+    });
+  }
+
+  function refreshProductTypeSuggestDom() {
+    if (!els.workspace || !state.workspace) return;
+    const list = els.workspace.querySelector('[data-ws-pt-list]');
+    const input = els.workspace.querySelector('[data-ws-pt-search]');
+    if (!list || !input) return;
+    const query = state.workspace.productTypeQuery || '';
+    const selected = state.workspace.productTypeName || '';
+    const suggestions = findProductTypeSuggestions(query).slice(0, 40);
+    list.hidden = !state.workspace.productTypeOpen;
+    input.setAttribute('aria-expanded', state.workspace.productTypeOpen ? 'true' : 'false');
+    input.classList.toggle('is-warn', !!state.workspace.productTypeWarn);
+    list.innerHTML = !suggestions.length
+      ? '<li class="wr-pt-empty" role="option" aria-disabled="true">No matching product type</li>'
+      : suggestions.map((t) =>
+          '<li role="option" data-ws-pt-pick="' + esc(t.name) + '"' +
+            (t.name === selected ? ' aria-selected="true" class="is-active"' : '') + '>' +
+            '<span>' + esc(t.name) + '</span>' +
+            '<span class="wr-pt-cat">' + esc(t.category || '') + '</span>' +
+          '</li>').join('');
+  }
+
+  function syncCompareSlider(compare, pos) {
+    if (!compare) return;
+    const overlay = compare.querySelector('.wr-compare-overlay');
+    const inner = compare.querySelector('.wr-compare-overlay-inner');
+    const handle = compare.querySelector('.wr-compare-handle');
+    if (overlay) overlay.style.width = pos + '%';
+    if (handle) handle.style.left = pos + '%';
+    if (inner) inner.style.width = compare.clientWidth + 'px';
   }
 
   els.settingsBtn.addEventListener('click', () => {

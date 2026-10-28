@@ -22,9 +22,10 @@
 
 <h1>3D Playground: Overview</h1>
 <p>
-<b>Live link:</b> <a href="https://vinayvarghese-livspace.github.io/3d-playground/">https://vinayvarghese-livspace.github.io/3d-playground/</a><br>
+<b>Live link (production, V1.1 Renamer):</b> <a href="https://vinayvarghese-livspace.github.io/3d-playground/">https://vinayvarghese-livspace.github.io/3d-playground/</a><br>
+<b>Preview link (V1.3 Tasks):</b> <a href="https://vinayvarghese-livspace.github.io/3d-playground/preview.html">https://vinayvarghese-livspace.github.io/3d-playground/preview.html</a><br>
 <b>Source code:</b> <a href="https://github.com/vinayvarghese-livspace/3d-playground">https://github.com/vinayvarghese-livspace/3d-playground</a><br>
-<b>Current version:</b> Beta V1.2 (Tasks + Assign to live Render Tracker)
+<b>Current version:</b> Preview V1.3 (Tasks refinements on preview.html). Production root stays V1.1 Renamer until cutover.
 </p>
 
 <!-- ================= PART 1 ================= -->
@@ -32,7 +33,7 @@
 <h2>Part 1: What it is and why we built it</h2>
 
 <h3>In one line</h3>
-<p>3D Playground turns a folder of product photos or renders into a ready-to-upload set of marketplace images: correctly named, correctly sized, in the correct order, in one click.</p>
+<p>3D Playground turns a folder of product photos or renders into a ready-to-upload set of marketplace images: correctly named, correctly sized, in the correct order, in one click. Preview V1.3 also shows which products are ready to work, who should take them, and what each person already has on their plate.</p>
 
 <h3>The problem before</h3>
 <p>Every product we list on a marketplace needs a set of images, and every set has to follow strict rules:</p>
@@ -52,9 +53,13 @@
   <tr><td>Images that came in smaller than 3000 px</td><td>Someone had to upscale them one by one in Adobe Firefly, then download, rename and resize again</td></tr>
   <tr><td>No record of who prepared a file without checking the manually maintained sheet.</td><td>No traceability when something went wrong from the file.</td></tr>
   <tr><td>Every person did it slightly differently</td><td>Inconsistent workflow across the team</td></tr>
+  <tr><td>Finding the next ready product meant hunting across Shoot Tracker tabs, Drive folders and the Render Tracker</td><td>Double-assigns, missed ready work, and no shared view of what was available</td></tr>
+  <tr><td>Assigning work meant typing into the Render Tracker by hand</td><td>Slow, easy to skip a row, and hard for the team to see what each person owned</td></tr>
 </table>
 
 <h3>What 3D Playground does</h3>
+
+<h4>Renamer (live for everyone since V1.0 / V1.1)</h4>
 <p>The user does three things:</p>
 <ol>
   <li><b>Types the EAN</b> (the tool checks it is exactly 13 digits).</li>
@@ -71,6 +76,14 @@
   <li>Downloads everything as one zip named after the EAN, with a folder inside it named after the EAN.</li>
 </ul>
 
+<h4>Tasks (Preview V1.3)</h4>
+<p>On the preview page, three tabs sit in one shell: <b>Renamer</b>, <b>Available Tasks</b> and <b>My Tasks</b>.</p>
+<ol>
+  <li><b>Available Tasks</b> shows products from the Shoot Tracker that already have a Drive folder and a template mapping, and are not yet assigned on the Render Tracker. The user can search, filter by category / template / Set or PCs / artist history, group the list, and sort it.</li>
+  <li><b>Assign</b> (Vinay, Aman or Ananyo) puts a product onto the live Render Tracker in one click: Artist, PDP Images set to Blocked, and today's Start Date. Anyone else can browse Available Tasks but cannot assign.</li>
+  <li><b>My Tasks</b> shows the products assigned to the signed-in author, split into <b>Active</b> and <b>Completed</b>, with status from the Render Tracker's PDP Images column. Opening a task shows a preview drawer (shots, Drive folder, PDP guideline, props, warnings). <b>Start</b> opens a workflow chooser for Primary vs Product Replacement (UI mock in this preview; see version history).</li>
+</ol>
+
 <h3>How it helps</h3>
 <ul>
   <li><b>4x manual worktime saving per product.</b> Looking things up, renaming, resizing and upscaling are all automatic.</li>
@@ -78,8 +91,10 @@
   <li><b>Problems are caught before upload, not after.</b> Wrong size, wrong shape or wrong file type are shown on the row, with a plain explanation.</li>
   <li><b>Smaller images are no longer a dead end.</b> With AI upscale on, images from 2000 px up are enlarged by Firefly and used directly.</li>
   <li><b>Everyone produces the same output.</b> Same rules, same names, same specs, whoever runs it.</li>
-  <li><b>Accountability.</b> Every file carries its author and creation time.</li>
-  <li><b>Private by default.</b> Without AI upscale, images never leave the computer. Everything happens inside the browser.</li>
+  <li><b>Accountability.</b> Every file carries its author and creation time. Assign also writes the Artist and Start Date onto the live Render Tracker.</li>
+  <li><b>One place to see ready work.</b> Available Tasks pulls Shoot Tracker + Drive + Render Tracker together, so people stop hunting across sheets.</li>
+  <li><b>No double-assigns.</b> A product already on the Render Tracker with an Artist drops out of Available Tasks for everyone.</li>
+  <li><b>Private by default for images.</b> Without AI upscale, images never leave the computer. Task data is read from the team's Google Sheets; Assign only writes the assignment fields back to the Render Tracker.</li>
   <li><b>Nothing to install for basic use.</b> It is just a web link. AI upscale needs a one-time, roughly 10 minute setup per PC, with no admin rights needed.</li>
   <li><b>No extra expense in using.</b> It uses free Firefly upscaler with no cost which comes from Photoshop subscription.</li>
 </ul>
@@ -89,38 +104,49 @@
 <h2>Part 2: Technical explanation</h2>
 
 <h3>Architecture at a glance</h3>
-<p>There are two parts:</p>
+<p>There are three parts:</p>
 <ol>
-  <li><b>The web page</b> (hosted on GitHub Pages). This does all the core work in the browser.</li>
+  <li><b>The web page</b> (hosted on GitHub Pages). Renamer runs entirely in the browser. Preview V1.2 adds the Tasks shell on preview.html.</li>
   <li><b>The local upscaler</b> (V1.1, optional). A small Node.js program on the user's PC that drives Adobe Firefly on the user's behalf.</li>
+  <li><b>The Google Apps Script feed</b> (V1.2). A web app that reads the Shoot Tracker, Naming sheet and Render Tracker, resolves Drive folder previews, and writes Assign rows to the live Render Tracker.</li>
 </ol>
 
 <table>
   <tr><th>Where</th><th>What runs there</th><th>Role</th></tr>
-  <tr><td>GitHub</td><td>Repository and GitHub Pages</td><td>Stores the code and version history; publishes the web page and the setup zip</td></tr>
-  <tr><td>User's PC: Chrome</td><td>The 3D Playground page</td><td>Checks, resizes, names, adds metadata and zips the images, all in the browser</td></tr>
+  <tr><td>GitHub</td><td>Repository and GitHub Pages</td><td>Stores the code and version history; publishes the production Renamer, the preview Tasks page, and the setup zip</td></tr>
+  <tr><td>User's PC: Chrome</td><td>Production index.html (V1.1 Renamer) or Preview preview.html (V1.2 shell)</td><td>Renamer checks, resizes, names, adds metadata and zips images. Preview also shows Available / My Tasks</td></tr>
   <tr><td>User's PC: local service (optional)</td><td>Node.js upscaler on 127.0.0.1:5175</td><td>Receives only the images that need upscaling and queues them</td></tr>
   <tr><td>User's PC: dedicated Chrome window (optional)</td><td>Chrome signed in to the user's Adobe account</td><td>Controlled by the service to upload images to Firefly and download the upscaled results</td></tr>
   <tr><td>Adobe</td><td>Firefly upscale</td><td>Performs the 2x AI upscale</td></tr>
+  <tr><td>Google Apps Script</td><td>HH Multi Sheet Reader web app</td><td>Serves the task feed (JSONP) and writes Assign rows</td></tr>
+  <tr><td>Google Sheets / Drive</td><td>Shoot Tracker - HH, LSH-HH-Naming Convention, LSH-HH-Render Tracker, product Drive folders</td><td>Source of truth for ready work, naming rules, assignments and folder previews</td></tr>
 </table>
 
-<p><b>Flow:</b> GitHub Pages delivers the page to Chrome. The page does the work itself. If an image is too small and AI upscale is on, the page sends it to the local service, which uses the dedicated Chrome window to run it through Firefly and returns the upscaled image to the page.</p>
+<p><b>Flow:</b> GitHub Pages delivers the page to Chrome. The Renamer does image work itself. If an image is too small and AI upscale is on, the page sends it to the local service, which uses the dedicated Chrome window to run it through Firefly and returns the upscaled image to the page. On Preview V1.2, Tasks loads the Apps Script feed (Shoot + Naming + Render Tracker), shows Available / My Tasks, and Assign appends rows to the live Render Tracker.</p>
 
 <h3>Part A: The web page</h3>
-<p><b>Technology:</b> plain HTML, CSS and JavaScript (index.html, styles.css, app.js, data.js). No frameworks, no build step, and no external libraries apart from Google Fonts.</p>
+<p><b>Technology:</b> plain HTML, CSS and JavaScript. No frameworks, no build step, and no external libraries apart from Google Fonts.</p>
+
+<table>
+  <tr><th>File</th><th>Role</th></tr>
+  <tr><td>index.html + app.js + styles.css + data.js</td><td>Production V1.1 Renamer (what everyone uses today)</td></tr>
+  <tr><td>preview.html + tasks.js + tasks.css + renamer.html (iframe)</td><td>Preview V1.3 shell: Renamer tab plus Available / My Tasks</td></tr>
+  <tr><td>dist/3d-playground.zip</td><td>One-time AI upscale installer, linked from the Renamer Settings guide</td></tr>
+</table>
 
 <table>
   <tr><th>Concern</th><th>How it is done</th><th>Why</th></tr>
-  <tr><td>Naming rules</td><td>The Excel naming sheet is converted to data.js by a script (tools/convert-naming-data.ps1) that reads the .xlsx directly, with no Excel needed. The page shows "Data last updated" from the sheet's timestamp.</td><td>The sheet stays the single source of truth; updating the rules means re-running the script and pushing.</td></tr>
+  <tr><td>Naming rules</td><td>The Excel naming sheet is converted to data.js by a script (tools/convert-naming-data.ps1) that reads the .xlsx directly, with no Excel needed. The Renamer shows "Data last updated" from the sheet's timestamp. Preview Tasks can also read naming data from the Apps Script feed.</td><td>The sheet stays the single source of truth; updating the rules means re-running the script and pushing.</td></tr>
   <tr><td>Image checks</td><td>The browser reads each image's width and height and checks the file type, the minimum size and the 1:1 ratio.</td><td>Problems are caught before generation, per row, with a reason.</td></tr>
   <tr><td>Resize and convert</td><td>An HTML canvas draws the image centred on a white 3000 × 3000 square.</td><td>Built into every browser, nothing to install.</td></tr>
   <tr><td>PNG encoding</td><td>Custom 24-bit RGB PNG encoder using the browser's built-in compression, with 72 DPI set.</td><td>The browser's own export always writes 32-bit RGBA with no DPI (shown as 96 DPI), which doesn't match the spec.</td></tr>
   <tr><td>Metadata</td><td>Writes Author, Title, Description, Software and Creation Time as PNG text chunks and as XMP.</td><td>Windows Explorer and most photo tools read XMP, other tools read the text chunks; writing both covers both.</td></tr>
   <tr><td>Zip download</td><td>A small zip writer built into app.js, with no compression because PNGs are already compressed.</td><td>One clean download, no library needed.</td></tr>
-  <tr><td>Memory</td><td>The author name, the AI upscale on/off choice, a batch counter and the last generation summary are saved in the browser's local storage.</td><td>No login or database needed for these per-user preferences.</td></tr>
+  <tr><td>Memory</td><td>The author name, the AI upscale on/off choice, a batch counter and the last generation summary are saved in the browser's local storage. Author is shared with Tasks.</td><td>No login or database needed for these per-user preferences.</td></tr>
+  <tr><td>Preview routes</td><td>Hash routes #renamer, #available, #my on preview.html. Renamer loads in an iframe (renamer.html).</td><td>One URL for testing V1.2 without changing production.</td></tr>
 </table>
 
-<p><b>Backend readiness:</b> naming data is loaded through a single function (loadNamingData) that currently reads data.js. It is marked to be swapped for a Supabase query once the backend table is ready, so the move to a live database only changes that one function.</p>
+<p><b>Backend readiness:</b> Renamer naming data is still loaded through loadNamingData from data.js (ready to swap for a live query later). Tasks already use a live Apps Script feed for Shoot / Render Tracker / Assign.</p>
 
 <h3>Part B: The AI upscaler (V1.1)</h3>
 <p>Adobe Firefly has no simple public upscale API we can use with a normal Adobe subscription. So, instead of an API, the upscaler <b>operates the Firefly website the same way a person would</b>, using the user's own Adobe login.</p>
@@ -159,25 +185,49 @@
 <h4>Live status on the page</h4>
 <p>A status pill shows <b>Upscaler connected</b> (green), <b>starting</b> or <b>Firefly Chrome not open</b> (amber), or <b>offline</b> or <b>blocked by Chrome</b> (red). When something is wrong, the Generate button explains exactly what to do instead of failing silently. The page also detects Chrome's newer "local network access" permission block and tells the user how to allow it.</p>
 
+<h3>Part C: Tasks and Assign (Preview V1.2)</h3>
+<p><b>What "available" means:</b> a Shoot Tracker product is shown in Available Tasks only when it has a real Google Drive folder link <b>and</b> a template mapping, and it is <b>not</b> already on the Render Tracker with an Artist. Photoshoot / Upload Status are not used as gates (Upload can say Done with no folder link).</p>
+
+<h4>Data sources (via Apps Script)</h4>
+<table>
+  <tr><th>Sheet / Drive</th><th>Used for</th></tr>
+  <tr><td>Shoot Tracker - HH (Decor and Garden, Table Top &amp; Bath, Kitchen &amp; Laundry)</td><td>Product rows, shot lists, GDRIVE links, template mapping, props, PDP guideline</td></tr>
+  <tr><td>LSH-HH-Naming Convention</td><td>Shot naming rules (also still embedded in Renamer as data.js)</td></tr>
+  <tr><td>LSH-HH-Render Tracker (Tracker tab)</td><td>Who is assigned, PDP Images status, Start / End Date, output Drive folder, Marketing QC</td></tr>
+  <tr><td>Product Drive folders</td><td>Thumbnail previews for the list and drawer</td></tr>
+</table>
+
+<p><b>Assign write-back (live):</b> clicking Assign appends a new row on the Render Tracker for that EAN (if it is not already there): EAN Number, Artist, PDP Images = Blocked, Start Date = today. Photoshoot Status, End Date, Drive / QC columns are left untouched. Only authors Vinay, Aman and Ananyo see the Assign controls (matched on first name or full name). The page re-reads assignments about every 30 seconds while the tab is visible, so other people's picks show up without a full reload.</p>
+
+<p><b>My Tasks:</b> products assigned to the current author. Active = Not started / In progress / Blocked. Completed = Completed on PDP Images. Completed rows can open the Render Tracker output folder. The drawer surfaces warnings (bad EAN, missing template, empty shot list, re-shoot remarks, odd upload status) and prop text or pasted prop images.</p>
+
+<p><b>Workflow workspace (UI mock in this preview):</b> from My Tasks › Active › <b>Start</b>, the user chooses <b>Primary</b> (start fresh) or <b>Product Replacement</b> (reuse a prior Completed match). Replacement is recommended when another Completed EAN shares the same Sub-category + Template; the chooser lists prior matches with a Best match pre-selected. The Replacement / Primary workbench screens are interactive mocks only — no generate, save or upload yet.</p>
+
+<p><b>How the page talks to Apps Script:</b> the hosted page cannot call a Google Apps Script URL with a normal cross-origin fetch that carries the user's Google sign-in, so Tasks loads the feed with JSONP (a script tag + callback). Actions: tasks (full feed), thumbs (folder image previews), assign (write), assigns (poll).</p>
+
 <h3>Why the simple hosting and distribution approach</h3>
 <p>We deliberately avoided servers, app stores and installers.</p>
 <table>
   <tr><th>Choice</th><th>Why it was chosen</th></tr>
   <tr><td><b>GitHub repository</b></td><td>Free version history. Every change is a commit, so we can see what changed and roll back.</td></tr>
   <tr><td><b>GitHub Pages for the page</b></td><td>Free, HTTPS by default, no server to run or patch. Pushing to main publishes the new version. A single link works for everyone.</td></tr>
+  <tr><td><b>Production vs preview URLs</b></td><td>index.html stays the stable V1.1 Renamer. preview.html is the V1.3 Tasks shell for testing before cutting everyone over.</td></tr>
   <tr><td><b>GitHub Pages for the setup zip too</b></td><td>The same push that updates the page updates the download (dist/3d-playground.zip). There is no separate file share, email attachment or Drive link to keep in sync.</td></tr>
-  <tr><td><b>Processing in the browser</b></td><td>No server costs, no upload wait, and images stay private. Scales to any number of users at no cost.</td></tr>
+  <tr><td><b>Processing images in the browser</b></td><td>No server costs, no upload wait, and images stay private. Scales to any number of users at no cost.</td></tr>
   <tr><td><b>Local upscaler instead of a cloud server</b></td><td>Each user's own Adobe subscription and login are used. No shared credentials, no hosting costs, and Adobe's limits apply per user rather than to one shared account.</td></tr>
+  <tr><td><b>Google Apps Script for Tasks</b></td><td>Reads and writes the sheets the team already uses. No new database to host. Deploy once; the preview page points at the /exec URL.</td></tr>
   <tr><td><b>Plain HTML, CSS and JS</b></td><td>Nothing to build, nothing to upgrade, and anyone on the team can read and edit it.</td></tr>
   <tr><td><b>Version numbers on file links</b></td><td>Each file link carries a version number that is increased whenever the file changes, so browsers always fetch the latest copy after a release.</td></tr>
 </table>
 
 <h3>How the link and the required pieces reach each user</h3>
-<p><b>Everyone (basic use):</b> just the link, <a href="https://vinayvarghese-livspace.github.io/3d-playground/">https://vinayvarghese-livspace.github.io/3d-playground/</a>. Nothing else is needed.</p>
+<p><b>Everyone (basic Renamer use):</b> just the production link, <a href="https://vinayvarghese-livspace.github.io/3d-playground/">https://vinayvarghese-livspace.github.io/3d-playground/</a>. Nothing else is needed.</p>
+
+<p><b>Preview V1.3 testers:</b> open <a href="https://vinayvarghese-livspace.github.io/3d-playground/preview.html">https://vinayvarghese-livspace.github.io/3d-playground/preview.html</a> (or #available / #my). Sign in to Google in the same browser so the Apps Script feed can read the sheets. Enter the same author name used in the Renamer.</p>
 
 <p><b>AI upscale (one time per PC, about 10 minutes, no admin rights):</b></p>
 <ol>
-  <li>In the page, open <b>Settings › AI upscale setup</b> (gear icon). The guide is built into the page and shows live status as the user goes.</li>
+  <li>In the Renamer, open <b>Settings › AI upscale setup</b> (gear icon). The guide is built into the page and shows live status as the user goes.</li>
   <li>Download 3d-playground.zip from the button in the guide (hosted on the same GitHub Pages site).</li>
   <li>Unblock and extract the zip, then double-click <b>Setup.bat</b>, which:
     <ul>
@@ -191,7 +241,7 @@
   <li><b>Every day after that:</b> open the link. If it says "Upscaler offline", click <b>Start</b>.</li>
 </ol>
 
-<p><b>Shipping an update:</b> the developer runs tools/make-package.ps1 (rebuilds the zip with only the files another PC needs, and fixes .bat line endings so Windows runs them correctly), then pushes. The page updates for everyone straight away. For upscaler updates, users repeat the setup with a fresh download; their Adobe sign-in is kept.</p>
+<p><b>Shipping an update:</b> the developer runs tools/make-package.ps1 when the upscaler package changed, then pushes. The production Renamer and/or preview Tasks page update for everyone straight away. Apps Script changes need a new web-app deployment (and a matching FEED_VERSION bump in tasks.js). For upscaler updates on a PC, users repeat the setup with a fresh download; their Adobe sign-in is kept.</p>
 
 <!-- ================= VERSIONS ================= -->
 
@@ -239,17 +289,60 @@
   <li>The AI upscale switch setting is remembered between visits.</li>
 </ul>
 
+<h3>Preview V1.2: Tasks + Assign, 27 to 28 Oct 2026</h3>
+<p>Adds a task board on top of the Renamer, backed by the team's live Google Sheets. Production index.html stays on V1.1 Renamer; testers use preview.html.</p>
+
+<h4>New features</h4>
+<ul>
+  <li><b>Unified preview shell</b> with tabs Renamer | Available Tasks | My Tasks (#renamer / #available / #my). Renamer loads in an iframe so the existing V1.1 tool stays intact.</li>
+  <li><b>Available Tasks</b> built from Shoot Tracker tabs (Decor and Garden, Table Top &amp; Bath, Kitchen &amp; Laundry): only rows with a real GDRIVE folder link + template mapping, excluding EANs already assigned on the Render Tracker.</li>
+  <li><b>Search, filters and grouping:</b> search by EAN or product name; filter by category, template, Set / PCs, artist history; group by Sub-category + Template, Product + Template, or Template; sort oldest / newest / most shots. Suggested artists per group based on past Render Tracker work.</li>
+  <li><b>Assign to live Render Tracker:</b> one click writes EAN, Artist, PDP Images = Blocked, and Start Date. Assign controls limited to Vinay, Aman and Ananyo. Toast + undo affordance; sheet is the source of truth (no local picks).</li>
+  <li><b>My Tasks</b> with Active / Completed buckets, status from PDP Images, output folder link for completed work, and a preview drawer (shots, Drive, PDP guideline, props, data warnings).</li>
+  <li><b>Drive folder thumbnails</b> via the Apps Script thumbs action.</li>
+  <li><b>Live refresh:</b> full Refresh control, plus a quiet poll of assignments about every 30 seconds while the tab is visible.</li>
+  <li><b>Author name shared</b> with the Renamer (local storage).</li>
+</ul>
+
+<h4>Workflow workspace (UI mock in this preview)</h4>
+<ul>
+  <li><b>Start</b> on an Active My Task opens Choose workflow: <b>Primary</b> vs <b>Product Replacement</b>.</li>
+  <li>Replacement is recommended when a Completed prior EAN shares Sub-category + Template; prior matches are listed with Best match pre-selected.</li>
+  <li>Replacement / Primary workbench screens (shot mapping, compare slider, product-type picker, generate UI) are interactive mocks only — no AI generate, save or upload yet.</li>
+</ul>
+
+<h4>Hosting / safety choices for V1.2</h4>
+<ul>
+  <li>Production Renamer URL unchanged so day-to-day work is not interrupted.</li>
+  <li>Apps Script feed uses JSONP so the hosted GitHub Pages origin can read sheet data with the user's Google session.</li>
+  <li>Assign skips EANs already present on the Render Tracker instead of overwriting them.</li>
+</ul>
+
+<h3>Preview V1.3: My Tasks status + Assign UX, 28 Oct 2026</h3>
+<p>Refines the V1.2 Tasks preview. Production <code>index.html</code> (<a href="https://vinayvarghese-livspace.github.io/3d-playground/">https://vinayvarghese-livspace.github.io/3d-playground/</a>) stays the V1.1 Renamer — only <code>preview.html</code> changes.</p>
+<ul>
+  <li><b>Assign to</b> opens the artist menu only (no self-assign on the main button; no caret). Errors show in a red toast.</li>
+  <li><b>My Tasks Active</b> shows Not started, In progress and Blocked; <b>Completed</b> shows Completed only (PDP Images column).</li>
+  <li><b>Active sort priority:</b> groups and rows ordered In progress → Not started → Blocked.</li>
+  <li><b>Templates</b> such as T2a, T61a, T7 set are recognised (letter suffixes and set variants).</li>
+  <li>Artist matching accepts first-name forms; Tracker status refreshes on poll.</li>
+</ul>
+
 <h3>Summary of changes</h3>
 <table>
-  <tr><th></th><th>Beta (V1.0)</th><th>Beta V1.1</th></tr>
-  <tr><td><b>Name</b></td><td>Image Renamer</td><td>3D Playground</td></tr>
-  <tr><td><b>Minimum image size</b></td><td>3000 px</td><td>2000 px with AI upscale (3000 px without)</td></tr>
-  <tr><td><b>Small images</b></td><td>Rejected</td><td>Upscaled 2x by Adobe Firefly</td></tr>
-  <tr><td><b>Output</b></td><td>One download per image</td><td>One EAN.zip with an EAN folder</td></tr>
-  <tr><td><b>Install needed</b></td><td>None</td><td>None for basic use; one-time Setup.bat for AI upscale</td></tr>
-  <tr><td><b>Data leaves the PC</b></td><td>Never</td><td>Only images that need upscaling, to the user's own Firefly account</td></tr>
-  <tr><td><b>Help</b></td><td>None in the page</td><td>Settings menu with a full setup guide and troubleshooting</td></tr>
-  <tr><td><b>Preferences remembered</b></td><td>Author name</td><td>Author name and AI upscale on/off</td></tr>
+  <tr><th></th><th>Beta (V1.0)</th><th>Beta V1.1</th><th>Preview V1.2</th><th>Preview V1.3</th></tr>
+  <tr><td><b>Name</b></td><td>Image Renamer</td><td>3D Playground</td><td>3D Playground (Preview Tasks)</td><td>Same preview shell</td></tr>
+  <tr><td><b>Where people open it</b></td><td>GitHub Pages</td><td>GitHub Pages</td><td>Production = V1.1 Renamer; Preview = preview.html</td><td>Same (production root unchanged)</td></tr>
+  <tr><td><b>Minimum image size</b></td><td>3000 px</td><td>2000 px with AI upscale (3000 px without)</td><td>Same as V1.1</td><td>Same as V1.1</td></tr>
+  <tr><td><b>Small images</b></td><td>Rejected</td><td>Upscaled 2x by Adobe Firefly</td><td>Same as V1.1</td><td>Same as V1.1</td></tr>
+  <tr><td><b>Output</b></td><td>One download per image</td><td>One EAN.zip with an EAN folder</td><td>Same as V1.1</td><td>Same as V1.1</td></tr>
+  <tr><td><b>Task board</b></td><td>None</td><td>None</td><td>Available Tasks + My Tasks</td><td>Status buckets + Active priority sort</td></tr>
+  <tr><td><b>Assignments</b></td><td>Manual sheet edits</td><td>Manual sheet edits</td><td>One-click Assign to live Render Tracker</td><td>Assign-to menu only; red error toasts</td></tr>
+  <tr><td><b>Install needed</b></td><td>None</td><td>None for basic use; one-time Setup.bat for AI upscale</td><td>Same + Google sign-in for Tasks feed</td><td>Same</td></tr>
+  <tr><td><b>Data leaves the PC</b></td><td>Never</td><td>Only images that need upscaling, to the user's own Firefly account</td><td>Same for images; task metadata read/written via Apps Script to team sheets</td><td>Same</td></tr>
+  <tr><td><b>Help</b></td><td>None in the page</td><td>Settings menu with a full setup guide and troubleshooting</td><td>Same + task drawer warnings and empty-state guidance</td><td>Same</td></tr>
+  <tr><td><b>Preferences remembered</b></td><td>Author name</td><td>Author name and AI upscale on/off</td><td>Same; author shared across Renamer and Tasks</td><td>Same</td></tr>
 </table>
+
 </body>
 </html>
