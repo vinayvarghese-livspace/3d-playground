@@ -25,7 +25,9 @@ const CACHE_CHUNK = 30000;
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const XLSX_MEMO = {};
 // tasks.js warns when the deployed web app is older than this; raise both together.
-const FEED_VERSION = 27;
+const FEED_VERSION = 28;
+// Written by tools/shoot-sync (key/value tab). Used for "Data last sync" in the playground.
+const SYNC_META_TAB = 'Sync Meta';
 
 /* ---------- Web app ---------- */
 
@@ -79,6 +81,10 @@ function getTaskFeed() {
   try { render = readTab_('render', RENDER_TAB); } catch (err) {
     render = { values: [], links: {}, error: String((err && err.message) || err) };
   }
+  let xlsxSync = null;
+  try { xlsxSync = readShootSyncMeta_(); } catch (err) {
+    xlsxSync = { error: String((err && err.message) || err) };
+  }
   return {
     version: FEED_VERSION,
     availableShootTabs,
@@ -86,8 +92,26 @@ function getTaskFeed() {
     render,
     assigns,
     naming,
+    xlsxSync,
     readAt: new Date().toISOString()
   };
+}
+
+// Sync Meta tab from shoot-sync: key | value rows (xlsxSyncedAt, xlsxFileName, …).
+function readShootSyncMeta_() {
+  const src = source_('shoot');
+  const props = sheetTabs_(src).find(p => normTab_(p.title) === normTab_(SYNC_META_TAB));
+  if (!props) return null;
+  const range = "'" + props.title.replace(/'/g, "''") + "'!A1:B30";
+  const values = (Sheets.Spreadsheets.Values.get(src.id, range, { valueRenderOption: 'FORMATTED_VALUE' }).values) || [];
+  const out = {};
+  values.forEach((row, i) => {
+    const key = String((row && row[0]) || '').trim();
+    if (!key) return;
+    if (i === 0 && /^key$/i.test(key)) return;
+    out[key] = String((row && row[1]) == null ? '' : row[1]).trim();
+  });
+  return Object.keys(out).length ? out : null;
 }
 
 // Run from the editor: Photoshoot Status histogram + how many rows already have GDRIVE + template.

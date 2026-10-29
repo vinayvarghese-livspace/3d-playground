@@ -1,0 +1,4 @@
+node_modules/
+.credentials/
+*.log
+.DS_Store

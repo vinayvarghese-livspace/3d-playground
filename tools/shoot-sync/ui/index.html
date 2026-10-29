@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shoot Tracker Sync</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #fff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --ok: #0f766e;
+      --warn: #b45309;
+      --bad: #b91c1c;
+      --btn: #0f766e;
+      --btn-text: #fff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg); color: var(--text); line-height: 1.45;
+    }
+    main {
+      max-width: 720px; margin: 32px auto; padding: 0 16px 48px;
+    }
+    h1 { font-size: 22px; margin: 0 0 6px; font-weight: 650; }
+    .sub { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+    .card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 12px; padding: 16px 18px; margin-bottom: 14px;
+    }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .meta { font-size: 13px; color: var(--muted); }
+    .meta strong { color: var(--text); font-weight: 600; }
+    .meta div { margin: 4px 0; word-break: break-all; }
+    button {
+      appearance: none; border: 0; border-radius: 8px;
+      background: var(--btn); color: var(--btn-text);
+      font: inherit; font-weight: 600; font-size: 14px;
+      padding: 10px 14px; cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.secondary { background: #374151; }
+    button.ghost { background: #fff; color: var(--text); border: 1px solid var(--line); }
+    button.danger { background: #b91c1c; }
+    #log {
+      white-space: pre-wrap; font-family: ui-monospace, Consolas, monospace;
+      font-size: 12px; background: #0b1220; color: #e5e7eb;
+      border-radius: 10px; padding: 12px; min-height: 220px;
+      max-height: 420px; overflow: auto;
+    }
+    .ok { color: #5eead4; }
+    .err { color: #fca5a5; }
+    .hint { font-size: 13px; color: var(--muted); margin-top: 8px; }
+    select {
+      font: inherit; padding: 8px 10px; border-radius: 8px;
+      border: 1px solid var(--line); min-width: 220px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Shoot Tracker Sync</h1>
+    <p class="sub">Standalone tool — updates the native Google Sheet from your downloaded xlsx. Does not change the 3D Playground app.</p>
+
+    <section class="card" id="status-card">
+      <div class="meta" id="status">Loading…</div>
+    </section>
+
+    <section class="card">
+      <div class="row">
+        <button type="button" id="btn-dry">Preview changes</button>
+        <button type="button" id="btn-sync">Sync now</button>
+        <button type="button" class="ghost" id="btn-refresh">Refresh status</button>
+      </div>
+      <p class="hint">1) Put today’s <strong>source</strong> download in <code>Data/Shoot Tracker - HH/</code> · 2) Preview · 3) Sync. Before each sync we also keep a copy under <code>Data/3D playground_Shoot Tracker - HH/backups/</code>.</p>
+    </section>
+
+    <section class="card">
+      <div class="row">
+        <select id="version-select" aria-label="Version to roll back"></select>
+        <button type="button" class="danger" id="btn-rollback">Roll back</button>
+      </div>
+      <p class="hint">Roll back restores the live Google Sheet from a local backup. Your manual sheet export also lives in <code>Data/3D playground_Shoot Tracker - HH/</code> — keep refreshing that file from Google Sheets when you want a full Excel copy.</p>
+    </section>
+
+    <section class="card">
+      <div class="meta" style="margin-bottom:8px"><strong>Log</strong></div>
+      <div id="log"></div>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

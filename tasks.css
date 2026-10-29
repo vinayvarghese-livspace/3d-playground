@@ -119,6 +119,8 @@ svg { display: block; }
 .header-meta strong { font-weight: 500; color: #374151; }
 .header-meta .sep { color: #D1D5DB; }
 .meta-updated + .icon-btn { margin-left: -10px; }
+.meta-synced { color: #6B7280; }
+.meta-synced strong { font-weight: 500; color: #374151; }
 .settings { position: relative; }
 .icon-btn {
   display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
@@ -464,6 +466,7 @@ body.view-my [data-available-only] { display: none !important; }
 body.view-available [data-my-only] { display: none !important; }
 body.view-renamer [data-tasks-chrome] { display: none !important; }
 body.view-renamer .header-meta .meta-updated,
+body.view-renamer .header-meta .meta-synced,
 body.view-renamer .header-meta #btn-refresh { display: none; }
 
 .renamer-frame {
@@ -752,7 +755,7 @@ a.tp-link:hover { background: var(--hover); }
   .app-nav { margin-left: 8px; }
 }
 @media (max-width: 900px) {
-  .meta-updated, .header-meta .sep, .badge-beta { display: none; }
+  .meta-updated, .meta-synced, .header-meta .sep, .badge-beta { display: none; }
 }
 @media (max-width: 1180px) {
   .tp-drawer {
@@ -1336,22 +1339,46 @@ a.tp-link:hover { background: var(--hover); }
   font-size: 12px; font-weight: 600; color: #64748B; text-align: center; padding: 16px; cursor: pointer;
 }
 .wr-in-empty:hover { border-color: #0B6B5F; background: #F0FDF9; }
+.wr-in-empty-slot { min-height: 0; padding: 10px; }
 .wr-in-empty-title { font-size: 12px; font-weight: 600; color: #475569; }
 .wr-in-empty-hint { font-size: 10px; font-weight: 500; color: #94A3B8; }
 .wr-in-tile {
-  position: relative; border-radius: 10px; border: 1px solid #99F6E4; min-height: 0;
+  position: relative; border-radius: 10px; border: 1px solid #99F6E4; min-height: 0; overflow: hidden;
   background: linear-gradient(180deg, #F0FDFA, #F8FAFC);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 8px;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 0; padding: 0;
 }
 .wr-in-remove {
   position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 6px;
-  border: 1px solid var(--border); background: #fff; color: #94A3B8; cursor: pointer; font-size: 14px; line-height: 1; z-index: 1;
+  border: 1px solid var(--border); background: rgba(255,255,255,0.95); color: #94A3B8; cursor: pointer; font-size: 14px; line-height: 1; z-index: 2;
 }
 .wr-in-remove:hover { color: #BE123C; background: #FFF1F2; }
-.wr-in-glyph {
-  width: 40%; max-width: 56px; aspect-ratio: 1; border-radius: 10px; background: #CCFBF1; border: 1px solid #99F6E4;
+.wr-in-thumb {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
 }
-.wr-in-name { font-size: 10px; font-family: var(--mono); font-weight: 600; color: #0F766E; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.wr-in-glyph {
+  width: 40%; max-width: 56px; aspect-ratio: 1; border-radius: 10px; background: #CCFBF1; border: 1px solid #99F6E4; margin: 16px 0 8px;
+}
+.wr-in-name, .wr-in-dim {
+  position: relative; z-index: 1; width: 100%; padding: 3px 6px; text-align: center;
+  background: linear-gradient(transparent, rgba(15, 23, 42, 0.75)); color: #fff;
+  font-size: 10px; font-family: var(--mono); font-weight: 600;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.wr-in-dim { padding-top: 0; padding-bottom: 6px; font-size: 9px; font-weight: 500; opacity: 0.92; }
+.wr-in-grid.is-drop-target,
+.wr-frame-prior.is-drop-target,
+.wr-rail.is-drop-target,
+.wr-shot.is-drop-target {
+  outline: 2px solid #0B6B5F; outline-offset: 2px;
+}
+.wr-in-grid.is-drop-target,
+.wr-frame-prior.is-drop-target { background: #F0FDF9; }
+.wr-frame-prior.has-override { box-shadow: inset 0 0 0 2px #0B6B5F; }
+.wr-shot-inputs {
+  position: absolute; top: 6px; left: 6px; z-index: 1;
+  padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; font-family: var(--mono);
+  background: #CCFBF1; color: #0B6B5F; border: 1px solid #99F6E4;
+}
 
 .wr-prompt {
   width: 100%; flex: 1; min-height: 180px; padding: 10px; border-radius: 10px; border: 1px solid #CBD5E1;

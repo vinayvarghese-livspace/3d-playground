@@ -1,1 +1,6 @@
 firefly-upscaler-extension/
+tools/shoot-sync/node_modules/
+tools/shoot-sync/.credentials/credentials.json
+tools/shoot-sync/.credentials/token.json
+Data/Shoot Tracker - HH/versions/
+Data/3D playground_Shoot Tracker - HH/backups/

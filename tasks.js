@@ -14,7 +14,7 @@
   // Shoot Tracker - HH, LSH-HH-Render Tracker and LSH-HH-Naming Convention-Test-2.
   const FEED_URL = 'https://script.google.com/a/macros/livspace.com/s/AKfycbxWbesitEd9mhiPkdLzZawNAb_AxwYWulrrBBA8ZqtYx5A9RX0lAGnybIQMle6W_7V8/exec';
   const FEED_TIMEOUT_MS = 90000;
-  const FEED_VERSION = 27;
+  const FEED_VERSION = 28;
   // How often to re-read the assign sheet while this tab is visible (other users' picks).
   // ~2 reads/min per open browser — well under the Sheets ~60 reads/min/user cap.
   const ASSIGN_POLL_MS = 30000;
@@ -136,6 +136,8 @@
     tabAvailable: $('tab-count-available'),
     tabMy: $('tab-count-my'),
     updated: $('updated-text'),
+    synced: $('synced-text'),
+    metaSynced: $('meta-synced'),
     sourcePill: $('source-pill'),
     settingsBtn: $('btn-settings'),
     settingsMenu: $('settings-menu'),
@@ -466,7 +468,7 @@
         if (r.endDate && !existing.endDate) existing.endDate = r.endDate;
       });
     }
-    return { shoot, render, warnings };
+    return { shoot, render, warnings, xlsxSync: feed.xlsxSync || null };
   }
 
   function missingNames(table, columns, required) {
@@ -734,7 +736,8 @@
       history,
       artists: [...artistTotals.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name),
       categories: data.shoot.map((s) => s.category),
-      fileSavedAt: data.shoot.map((s) => s.modified).filter(Boolean).sort().pop() || ''
+      fileSavedAt: data.shoot.map((s) => s.modified).filter(Boolean).sort().pop() || '',
+      xlsxSync: data.xlsxSync || null
     };
   }
 
@@ -1308,6 +1311,7 @@
       state.workspace.comparePos = 50;
       state.workspace.generating = null;
       state.workspace.shotInputs = {};
+      state.workspace.assets = {};
       state.workspace.prompts = {};
       state.workspace.outputs = {};
       state.workspace.driveImgIndex = null;
@@ -1316,9 +1320,158 @@
       state.workspace.productTypeQuery = '';
       state.workspace.productTypeOpen = false;
       state.workspace.productTypeWarn = false;
+      state.workspace.fileTarget = null;
     }
     if (state.workspace.panelOpen == null) state.workspace.panelOpen = true;
     if (state.workspace.productTypeName == null) state.workspace.productTypeName = '';
+    if (!state.workspace.assets) state.workspace.assets = {};
+  }
+
+  /* ---------- Replace workspace image assets (local File / Blob in memory) ---------- */
+
+  function shotAssets(shotIndex) {
+    if (!state.workspace) return { inputs: [], priorOverride: null, output: null, error: null };
+    if (!state.workspace.assets) state.workspace.assets = {};
+    const key = String(shotIndex);
+    if (!state.workspace.assets[key]) {
+      state.workspace.assets[key] = { inputs: [], priorOverride: null, output: null, error: null };
+    }
+    return state.workspace.assets[key];
+  }
+
+  function revokeAssetUrl(asset) {
+    if (asset && asset.url && String(asset.url).indexOf('blob:') === 0) {
+      try { URL.revokeObjectURL(asset.url); } catch (e) { /* ignore */ }
+    }
+  }
+
+  function syncShotInputNames(shotIndex) {
+    if (!state.workspace) return;
+    if (!state.workspace.shotInputs) state.workspace.shotInputs = {};
+    state.workspace.shotInputs[shotIndex] = shotAssets(shotIndex).inputs.map((a) => a.name);
+  }
+
+  function revokeAllWorkspaceAssets() {
+    if (!state.workspace || !state.workspace.assets) return;
+    Object.keys(state.workspace.assets).forEach((key) => {
+      const a = state.workspace.assets[key];
+      (a.inputs || []).forEach(revokeAssetUrl);
+      revokeAssetUrl(a.priorOverride);
+      revokeAssetUrl(a.output);
+    });
+  }
+
+  function isAcceptedImageFile(file) {
+    return !!(file && /image\/(jpeg|png)/i.test(file.type || ''));
+  }
+
+  function readLocalImageFile(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => resolve({
+        id: 'local_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+        name: file.name || 'image.png',
+        source: 'local',
+        file: file,
+        blob: file,
+        url: url,
+        w: img.naturalWidth,
+        h: img.naturalHeight
+      });
+      img.onerror = () => {
+        try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ }
+        reject(new Error('Could not read image'));
+      };
+      img.src = url;
+    });
+  }
+
+  async function addLocalFilesToShot(shotIndex, fileList) {
+    if (!state.workspace) return;
+    const files = Array.prototype.slice.call(fileList || []).filter(isAcceptedImageFile);
+    if (!files.length) {
+      showToast('Use JPG or PNG images only.', false);
+      return;
+    }
+    const assets = shotAssets(shotIndex);
+    const room = 4 - assets.inputs.length;
+    if (room <= 0) {
+      showToast('Maximum 4 input images per shot.', false);
+      return;
+    }
+    const take = files.slice(0, room);
+    if (files.length > room) {
+      showToast('Only ' + room + ' more image' + (room === 1 ? '' : 's') + ' fit (max 4).', false);
+    }
+    try {
+      const loaded = await Promise.all(take.map(readLocalImageFile));
+      assets.inputs = assets.inputs.concat(loaded);
+      syncShotInputNames(shotIndex);
+      renderWorkspace();
+    } catch (err) {
+      showToast(err.message || 'Could not add image(s).', false);
+    }
+  }
+
+  async function setPriorOverrideFromFile(shotIndex, file) {
+    if (!state.workspace || !isAcceptedImageFile(file)) {
+      showToast('Use JPG or PNG images only.', false);
+      return;
+    }
+    const assets = shotAssets(shotIndex);
+    try {
+      const loaded = await readLocalImageFile(file);
+      revokeAssetUrl(assets.priorOverride);
+      assets.priorOverride = loaded;
+      renderWorkspace();
+      showToast('Prior override set for this shot (local file).', false);
+    } catch (err) {
+      showToast(err.message || 'Could not set prior image.', false);
+    }
+  }
+
+  function removeShotInput(shotIndex, inputIndex) {
+    const assets = shotAssets(shotIndex);
+    const gone = assets.inputs[inputIndex];
+    if (!gone) return;
+    revokeAssetUrl(gone);
+    assets.inputs = assets.inputs.filter((_, j) => j !== inputIndex);
+    syncShotInputNames(shotIndex);
+  }
+
+  function clearPriorOverride(shotIndex) {
+    const assets = shotAssets(shotIndex);
+    revokeAssetUrl(assets.priorOverride);
+    assets.priorOverride = null;
+  }
+
+  function openReplaceFilePicker(target) {
+    if (!state.workspace || !els.workspace) return;
+    state.workspace.fileTarget = target || { kind: 'inputs', shotIndex: state.workspaceShot || 0 };
+    let input = els.workspace.querySelector('#wr-file-input');
+    if (!input) {
+      input = document.createElement('input');
+      input.type = 'file';
+      input.id = 'wr-file-input';
+      input.accept = 'image/jpeg,image/png';
+      input.multiple = true;
+      input.hidden = true;
+      els.workspace.appendChild(input);
+      input.addEventListener('change', () => {
+        const files = input.files;
+        const dest = state.workspace && state.workspace.fileTarget;
+        input.value = '';
+        if (!files || !files.length || !dest) return;
+        if (dest.kind === 'prior') {
+          setPriorOverrideFromFile(dest.shotIndex, files[0]);
+        } else {
+          addLocalFilesToShot(dest.shotIndex, files);
+        }
+      });
+    }
+    input.multiple = !(state.workspace.fileTarget && state.workspace.fileTarget.kind === 'prior');
+    input.click();
   }
 
   function defaultReplacePrompt(t, shot, prior) {
@@ -1729,7 +1882,8 @@
       frame.hidden = true;
     }
     const title = view === 'renamer' ? 'Renamer' : view === 'my' ? 'My Tasks' : 'Available Tasks';
-    document.title = title + ' · 3D Playground (PREVIEW V1.3)';
+    const ver = /preview\.html$/i.test(location.pathname) ? 'PREVIEW V1.3' : 'V1.3';
+    document.title = title + ' · 3D Playground (' + ver + ')';
     const titleEl = $('view-title');
     if (titleEl) titleEl.textContent = title;
     const tabs = { renamer: $('tab-renamer'), available: $('tab-available'), my: $('tab-my') };
@@ -2211,6 +2365,23 @@
     els.updated.textContent = mins < 1 ? 'just now' : mins < 60 ? mins + ' min ago' : Math.floor(mins / 60) + ' h ago';
   }
 
+  function formatSheetTime(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleString([], {
+      day: 'numeric', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  }
+
+  // "Data last sync" = when shoot-sync last wrote the native Shoot Tracker from the .xlsx download.
+  function renderXlsxSync(meta) {
+    if (!els.synced) return;
+    const sync = meta && !meta.error ? meta : null;
+    const at = sync && sync.xlsxSyncedAt;
+    els.synced.textContent = at ? formatSheetTime(at) : '—';
+  }
+
   function renderSource(data) {
     const pill = els.sourcePill;
     const times = data.shoot.map((s) => s.modified).filter(Boolean).map((m) => new Date(m));
@@ -2218,10 +2389,15 @@
     pill.hidden = false;
     pill.className = 'tp-source ' + (data.warnings.length ? 'is-local' : 'is-live');
     pill.textContent = 'Live sheets';
+    const syncAt = data.xlsxSync && data.xlsxSync.xlsxSyncedAt
+      ? '\nShoot Tracker last synced from .xlsx: ' + formatSheetTime(data.xlsxSync.xlsxSyncedAt)
+      : '';
     pill.title = 'Reads Shoot Tracker and Render Tracker. Assign appends Artist rows on the live Render Tracker; ' +
       'other users see it within about ' + Math.round(ASSIGN_POLL_MS / 1000) + ' seconds.' +
-      (latest ? '\nShoot Tracker last saved: ' + latest.toLocaleString() : '') +
+      (latest ? '\nShoot Tracker file last saved: ' + latest.toLocaleString() : '') +
+      syncAt +
       (data.warnings.length ? '\n\nNot loaded: ' + data.warnings.join('; ') : '');
+    renderXlsxSync(data.xlsxSync);
   }
 
   function renderUser() {
@@ -2263,6 +2439,7 @@
   }
 
   function closeWorkspace() {
+    revokeAllWorkspaceAssets();
     state.workspace = null;
     state.workspaceShot = 0;
     document.body.classList.remove('view-workspace', 'ws-choose', 'ws-replace');
@@ -2609,7 +2786,9 @@
     const shot = shots[i] || shots[0];
     const prior = resolveWorkspaceMatch(t).selected;
     const st = statusOf(t);
-    const inputs = (state.workspace.shotInputs && state.workspace.shotInputs[i]) || [];
+    const assets = shotAssets(i);
+    const inputAssets = assets.inputs || [];
+    const priorOverride = assets.priorOverride || null;
     const promptText = (state.workspace.prompts && state.workspace.prompts[i]) || defaultReplacePrompt(t, shot, prior);
     const hasOutput = !!(state.workspace.outputs && state.workspace.outputs[i]);
     const dimsDiffer = productDimsDiffer(t, prior);
@@ -2655,12 +2834,14 @@
           const done = mapped && !!(state.workspace.outputs && state.workspace.outputs[shotIdx]);
           const busy = mapped && generating === shotIdx;
           const conflict = canGenerate && unmappedIdx.has(idx);
-          return '<button type="button" class="wr-shot' + (active ? ' is-active' : '') + (busy ? ' is-busy' : '') + (done ? ' is-done' : '') + (conflict ? ' is-conflict' : '') + '" data-ws-drive-img="' + idx + '">' +
+          const inputCount = shotIdx >= 0 ? (shotAssets(shotIdx).inputs || []).length : 0;
+          return '<button type="button" class="wr-shot' + (active ? ' is-active' : '') + (busy ? ' is-busy' : '') + (done ? ' is-done' : '') + (conflict ? ' is-conflict' : '') + '" data-ws-drive-img="' + idx + '" data-ws-drop-shot="' + (shotIdx >= 0 ? shotIdx : '') + '">' +
             '<div class="wr-shot-thumb" data-folder="' + esc((prior && prior.folderId) || '') + '" data-drive-img="' + idx + '">' +
               priorImgAt(prior, idx, 360) +
               (busy ? '<span class="wr-shot-busy">In progress</span>' : '') +
               (done && !busy ? '<span class="wr-shot-done">Done</span>' : '') +
               (conflict ? '<span class="wr-shot-conflict">No match</span>' : '') +
+              (inputCount ? '<span class="wr-shot-inputs">' + inputCount + '/4</span>' : '') +
             '</div>' +
             '<div class="wr-shot-meta">' +
               '<span class="wr-shot-code-lbl">' + esc(label) + '</span>' +
@@ -2668,27 +2849,39 @@
             '</div>' +
           '</button>';
         }).join('')
-      : shots.map((s, idx) =>
-          '<button type="button" class="wr-shot' + (idx === i ? ' is-active' : '') + '" data-ws-shot="' + idx + '">' +
-            '<div class="wr-shot-thumb"><span class="wr-ph">—</span></div>' +
+      : shots.map((s, idx) => {
+          const inputCount = (shotAssets(idx).inputs || []).length;
+          return '<button type="button" class="wr-shot' + (idx === i ? ' is-active' : '') + '" data-ws-shot="' + idx + '" data-ws-drop-shot="' + idx + '">' +
+            '<div class="wr-shot-thumb"><span class="wr-ph">—</span>' +
+              (inputCount ? '<span class="wr-shot-inputs">' + inputCount + '/4</span>' : '') +
+            '</div>' +
             '<div class="wr-shot-meta">' +
               '<span class="wr-shot-code-lbl">' + esc(s.code) + '</span>' +
               '<span class="wr-shot-full">' + esc(s.name) + '</span>' +
             '</div>' +
-          '</button>'
-        ).join('');
+          '</button>';
+        }).join('');
 
-    const cappedInputs = inputs.slice(0, 4);
+    const cappedInputs = inputAssets.slice(0, 4);
     const inputTiles = cappedInputs.length
-      ? cappedInputs.map((name, n) =>
+      ? cappedInputs.map((asset, n) =>
           '<div class="wr-in-tile">' +
             '<button type="button" class="wr-in-remove" data-ws-remove-input="' + n + '" title="Remove">×</button>' +
-            '<div class="wr-in-glyph" aria-hidden="true"></div>' +
-            '<div class="wr-in-name">' + esc(name) + '</div>' +
-          '</div>').join('')
+            (asset.url
+              ? '<img class="wr-in-thumb" src="' + esc(asset.url) + '" alt="' + esc(asset.name) + '">'
+              : '<div class="wr-in-glyph" aria-hidden="true"></div>') +
+            '<div class="wr-in-name" title="' + esc(asset.name) + '">' + esc(asset.name) + '</div>' +
+            '<div class="wr-in-dim">' + (asset.w && asset.h ? asset.w + '×' + asset.h : '') + '</div>' +
+          '</div>').join('') +
+        (cappedInputs.length < 4
+          ? '<div class="wr-in-empty wr-in-empty-slot" data-ws="add-input" role="button" tabindex="0">' +
+              '<span class="wr-in-empty-title">Add more</span>' +
+              '<span class="wr-in-empty-hint">Drop or browse</span>' +
+            '</div>'
+          : '')
       : '<div class="wr-in-empty" data-ws="add-input" role="button" tabindex="0">' +
           '<span class="wr-in-empty-title">Drop new product image(s)</span>' +
-          '<span class="wr-in-empty-hint">JPG / PNG · up to 4 · Drive or offline</span>' +
+          '<span class="wr-in-empty-hint">JPG / PNG · up to 4 · local files</span>' +
         '</div>';
 
     return '<div class="tw-shell tw-shell-replace">' +
@@ -2742,13 +2935,13 @@
       '</section>' +
 
       '<div class="wr-grid' + (panelOpen && !panelMax ? '' : ' is-panel-closed') + '">' +
-        '<aside class="wr-rail">' +
+        '<aside class="wr-rail" data-ws-drop="rail">' +
           '<div class="wr-rail-head">' +
             '<div class="wr-rail-title">Drive images (' + (driveImgs.length || shots.length) + ')</div>' +
             (canGenerate
               ? '<div class="wr-rail-sub">' + codeMap.mapped.length + ' mapped' +
                   (codeMap.unmappedPrior.length ? ' · ' + codeMap.unmappedPrior.length + ' no match' : '') + '</div>'
-              : '') +
+              : '<div class="wr-rail-sub">Drop JPG/PNG onto a shot to attach inputs</div>') +
           '</div>' +
           '<nav class="wr-rail-list">' + rail + '</nav>' +
           '<div class="wr-rail-foot">' +
@@ -2788,17 +2981,28 @@
                 '<div class="wr-card-label">A · Prior output ' +
                   (dimSeparate
                     ? '<span class="wr-badge-muted">Skipped</span>'
-                    : '<span class="wr-badge-ok">1:1 Mapped</span>') +
+                    : (priorOverride
+                        ? '<span class="wr-badge-teal">Local override</span>'
+                        : '<span class="wr-badge-ok">1:1 Mapped</span>')) +
                 '</div>' +
-                '<span class="wr-badge-ghost">Auto-loaded</span>' +
+                (priorOverride
+                  ? '<button type="button" class="wr-text-btn" data-ws="clear-prior">Clear override</button>'
+                  : '<button type="button" class="wr-text-btn" data-ws="browse-prior">Replace…</button>') +
               '</div>' +
-              '<div class="wr-frame wr-frame-prior" data-folder="' + esc((prior && prior.folderId) || '') + '" data-drive-img="' + driveImgIndex + '">' +
-                (prior ? priorImgAt(prior, driveImgIndex, 640) : '<span class="wr-frame-empty">No prior</span>') +
+              '<div class="wr-frame wr-frame-prior' + (priorOverride ? ' has-override' : '') + '" data-ws-drop="prior" data-folder="' +
+                esc((prior && prior.folderId) || '') + '" data-drive-img="' + driveImgIndex + '">' +
+                (priorOverride
+                  ? '<img class="tp-img" src="' + esc(priorOverride.url) + '" alt="' + esc(priorOverride.name) + '">'
+                  : (prior ? priorImgAt(prior, driveImgIndex, 640) : '<span class="wr-frame-empty">No prior</span>')) +
               '</div>' +
               '<div class="wr-card-meta">' +
-                '<span class="tp-mono" title="' + esc((driveImgs[driveImgIndex] && driveImgs[driveImgIndex].name) || priorFileName(prior, shot)) + '">' +
-                  esc((driveImgs[driveImgIndex] && driveImgs[driveImgIndex].name) || priorFileName(prior, shot)) + '</span>' +
-                '<span>Square</span>' +
+                '<span class="tp-mono" title="' + esc(priorOverride
+                  ? priorOverride.name
+                  : ((driveImgs[driveImgIndex] && driveImgs[driveImgIndex].name) || priorFileName(prior, shot))) + '">' +
+                  esc(priorOverride
+                    ? priorOverride.name
+                    : ((driveImgs[driveImgIndex] && driveImgs[driveImgIndex].name) || priorFileName(prior, shot))) + '</span>' +
+                '<span>' + (priorOverride && priorOverride.w ? priorOverride.w + '×' + priorOverride.h : 'Square') + '</span>' +
               '</div>' +
             '</div>' +
 
@@ -2811,8 +3015,8 @@
                   ? '<button type="button" class="wr-text-btn" data-ws="add-input">+ Browse</button>'
                   : '<span class="wr-badge-ghost">Max 4</span>') +
               '</div>' +
-              '<div class="wr-in-grid wr-in-count-' + Math.max(1, cappedInputs.length) + (cappedInputs.length ? '' : ' is-empty') + '"' +
-                (cappedInputs.length ? '' : ' data-drop="replace-' + i + '"') + '>' +
+              '<div class="wr-in-grid wr-in-count-' + Math.max(1, Math.min(4, cappedInputs.length + (cappedInputs.length && cappedInputs.length < 4 ? 1 : 0))) +
+                (cappedInputs.length ? '' : ' is-empty') + '" data-ws-drop="inputs">' +
                 inputTiles +
               '</div>' +
             '</div>' +
@@ -3451,9 +3655,7 @@
         e.stopPropagation();
         const idx = state.workspaceShot || 0;
         const n = Number(removeIn.dataset.wsRemoveInput);
-        const list = (state.workspace.shotInputs && state.workspace.shotInputs[idx]) || [];
-        if (!state.workspace.shotInputs) state.workspace.shotInputs = {};
-        state.workspace.shotInputs[idx] = list.filter((_, j) => j !== n);
+        removeShotInput(idx, n);
         renderWorkspace();
         return;
       }
@@ -3524,14 +3726,19 @@
       }
       if (action === 'add-input' && state.workspace) {
         const idx = state.workspaceShot || 0;
-        if (!state.workspace.shotInputs) state.workspace.shotInputs = {};
-        const list = (state.workspace.shotInputs[idx] || []).slice();
-        if (list.length >= 4) {
+        if (shotAssets(idx).inputs.length >= 4) {
           showToast('Maximum 4 input images per shot.', false);
           return;
         }
-        list.push('input_' + String(list.length + 1).padStart(2, '0') + '.png');
-        state.workspace.shotInputs[idx] = list;
+        openReplaceFilePicker({ kind: 'inputs', shotIndex: idx });
+        return;
+      }
+      if (action === 'browse-prior' && state.workspace) {
+        openReplaceFilePicker({ kind: 'prior', shotIndex: state.workspaceShot || 0 });
+        return;
+      }
+      if (action === 'clear-prior' && state.workspace) {
+        clearPriorOverride(state.workspaceShot || 0);
         renderWorkspace();
         return;
       }
@@ -3701,6 +3908,86 @@
       if (!compare) return;
       syncCompareSlider(compare, pos);
     });
+
+    function replaceDropHasFiles(e) {
+      const types = e.dataTransfer && e.dataTransfer.types;
+      if (!types) return false;
+      return Array.prototype.indexOf.call(types, 'Files') >= 0;
+    }
+
+    function resolveReplaceDropTarget(el) {
+      if (!el || !state.workspace || state.workspace.mode !== 'replace') return null;
+      const prior = el.closest('[data-ws-drop="prior"]');
+      if (prior) return { kind: 'prior', shotIndex: state.workspaceShot || 0, highlight: prior };
+      const shotBtn = el.closest('[data-ws-drop-shot]');
+      if (shotBtn && shotBtn.getAttribute('data-ws-drop-shot') !== '') {
+        return {
+          kind: 'inputs',
+          shotIndex: Number(shotBtn.getAttribute('data-ws-drop-shot')) || 0,
+          highlight: shotBtn,
+          switchShot: true
+        };
+      }
+      const inputs = el.closest('[data-ws-drop="inputs"]');
+      if (inputs) return { kind: 'inputs', shotIndex: state.workspaceShot || 0, highlight: inputs };
+      const rail = el.closest('[data-ws-drop="rail"]');
+      if (rail) return { kind: 'inputs', shotIndex: state.workspaceShot || 0, highlight: rail };
+      return null;
+    }
+
+    els.workspace.addEventListener('dragenter', (e) => {
+      if (!replaceDropHasFiles(e)) return;
+      const dest = resolveReplaceDropTarget(e.target);
+      if (!dest) return;
+      e.preventDefault();
+    });
+
+    els.workspace.addEventListener('dragover', (e) => {
+      if (!replaceDropHasFiles(e)) return;
+      const dest = resolveReplaceDropTarget(e.target);
+      if (!dest) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      els.workspace.querySelectorAll('.is-drop-target').forEach((node) => {
+        if (node !== dest.highlight) node.classList.remove('is-drop-target');
+      });
+      if (dest.highlight) dest.highlight.classList.add('is-drop-target');
+    });
+
+    els.workspace.addEventListener('dragleave', (e) => {
+      const leaving = e.target.closest && e.target.closest('.is-drop-target');
+      if (!leaving) return;
+      const related = e.relatedTarget;
+      if (related && leaving.contains(related)) return;
+      leaving.classList.remove('is-drop-target');
+    });
+
+    els.workspace.addEventListener('drop', (e) => {
+      if (!replaceDropHasFiles(e)) return;
+      const dest = resolveReplaceDropTarget(e.target);
+      els.workspace.querySelectorAll('.is-drop-target').forEach((node) => node.classList.remove('is-drop-target'));
+      if (!dest) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (!files || !files.length) return;
+      if (dest.switchShot) {
+        state.workspaceShot = dest.shotIndex;
+        const task = taskByEan(state.workspace.ean);
+        const prior = resolveWorkspaceMatch(task).selected;
+        const imgs = priorDriveImages(prior);
+        const matchImg = imgs.findIndex((_, idx) => {
+          const sIdx = shotIndexForDriveName(shotListFor(task || {}), (imgs[idx] && imgs[idx].name) || '');
+          return sIdx === dest.shotIndex;
+        });
+        if (matchImg >= 0) state.workspace.driveImgIndex = matchImg;
+      }
+      if (dest.kind === 'prior') {
+        setPriorOverrideFromFile(dest.shotIndex, files[0]);
+      } else {
+        addLocalFilesToShot(dest.shotIndex, files);
+      }
+    });
   }
 
   function refreshProductTypeSuggestDom() {
@@ -3770,6 +4057,7 @@
     if (loading) return;
     loading = true;
     els.updated.textContent = 'Loading…';
+    if (els.synced) els.synced.textContent = '…';
     if (!state.model) {
       els.list.innerHTML = '<div class="tp-state"><span class="tp-spinner"></span>Reading the live sheets… the first load can take up to a minute.</div>';
     }
@@ -3787,9 +4075,11 @@
       console.error(err);
       if (state.model) {
         updateTimestamp();
+        if (state.model.xlsxSync) renderXlsxSync(state.model.xlsxSync);
         showToast('Refresh failed: ' + esc(err.message === 'NO_ACCESS' ? 'could not reach the sheet reader.' : err.message) + ' Showing the last loaded data.', false);
       } else {
         els.updated.textContent = 'Not loaded';
+        if (els.synced) els.synced.textContent = '—';
         showLoadError(err);
       }
     } finally {

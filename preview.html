@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="tasks.css?v=71">
+  <link rel="stylesheet" href="tasks.css?v=74">
 </head>
 <body class="view-renamer">
 
@@ -28,12 +28,13 @@
         </a>
       </nav>
       <div class="header-meta">
-        <span class="meta-updated">Data last updated: <strong id="updated-text">�</strong></span>
+        <span class="meta-updated">Data last updated: <strong id="updated-text">—</strong></span>
         <button type="button" class="icon-btn icon-btn-sm" id="btn-refresh" title="Refresh data" aria-label="Refresh data">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
         </button>
+        <span class="meta-synced" id="meta-synced">Data last sync: <strong id="synced-text">—</strong></span>
         <span class="sep">|</span>
-        <span class="meta-author">Author: <strong id="user-name">�</strong></span>
+        <span class="meta-author">Author: <strong id="user-name">—</strong></span>
         <div class="settings">
           <button type="button" id="btn-settings" class="icon-btn" aria-label="Settings" aria-haspopup="menu" aria-expanded="false" title="Settings">
             <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.53 1.53 0 01-2.29.95c-1.37-.84-2.94.73-2.1 2.1.54.89.06 2.04-.95 2.29-1.56.38-1.56 2.6 0 2.98 1.01.25 1.49 1.4.95 2.29-.84 1.37.73 2.94 2.1 2.1a1.53 1.53 0 012.29.95c.38 1.56 2.6 1.56 2.98 0a1.53 1.53 0 012.29-.95c1.37.84 2.94-.73 2.1-2.1a1.53 1.53 0 01.95-2.29c1.56-.38 1.56-2.6 0-2.98a1.53 1.53 0 01-.95-2.29c.84-1.37-.73-2.94-2.1-2.1a1.53 1.53 0 01-2.29-.95zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
@@ -276,7 +277,7 @@
             <dt>You need to update the setup</dt>
             <dd>Repeat steps 1 to 4 with a fresh download. Your Adobe sign-in is kept.</dd>
             <dt>You don't need AI upscale</dt>
-            <dd>Turn off the <strong>AI upscale</strong> switch in the Renamer tab. The page then only accepts images of 3000 � 3000 px or more and needs no setup.</dd>
+            <dd>Turn off the <strong>AI upscale</strong> switch in the Renamer tab. The page then only accepts images of 3000 � 3000 px or more and needs no setup.</dd>
           </dl>
         </details>
       </div>
@@ -288,6 +289,6 @@
   </div>
 
   <script src="data.js"></script>
-  <script src="tasks.js?v=71"></script>
+  <script src="tasks.js?v=74"></script>
 </body>
 </html>

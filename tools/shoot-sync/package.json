@@ -1,0 +1,24 @@
+{
+  "name": "shoot-sync",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline sync: local Shoot Tracker xlsx → native Google Sheet for 3D Playground",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "ui": "node server.js",
+    "dry-run": "node index.js dry-run",
+    "sync": "node index.js sync",
+    "versions": "node index.js versions",
+    "rollback": "node index.js rollback",
+    "auth": "node index.js auth"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "googleapis": "^144.0.0"
+  }
+}
