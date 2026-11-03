@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Playground (PREVIEW · V1.3)</title>
+  <title>3D Playground (PREVIEW · V1.4)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="tasks.css?v=74">
+  <link rel="stylesheet" href="tasks.css?v=98">
 </head>
 <body class="view-renamer">
 
@@ -16,7 +16,7 @@
       <div class="brand">
         <div class="brand-logo" aria-hidden="true">3D</div>
         <h1 class="brand-title">3D Playground</h1>
-        <span class="badge badge-beta">PREVIEW V1.3</span>
+        <span class="badge badge-beta">PREVIEW V1.4</span>
       </div>
       <nav class="app-nav" aria-label="Sections">
         <a class="app-nav-tab is-active" href="#renamer" id="tab-renamer" aria-current="page">Renamer</a>
@@ -47,6 +47,10 @@
             <button type="button" role="menuitem" id="menu-setup" class="menu-item">
               <svg class="icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.97.76l.84 3.38 3.38.84a1 1 0 010 1.94l-3.38.84-.84 3.38a1 1 0 01-1.94 0l-.84-3.38-3.38-.84a1 1 0 010-1.94l3.38-.84.84-3.38A1 1 0 0112 2z"/></svg>
               <span>AI upscale setup</span>
+            </button>
+            <button type="button" role="menuitem" id="menu-answerly" class="menu-item">
+              <svg class="icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z" clip-rule="evenodd"/></svg>
+              <span>Answerly token</span>
             </button>
             <button type="button" role="menuitem" id="menu-refresh" class="menu-item">
               <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
@@ -176,6 +180,26 @@
     </form>
   </div>
 
+  <div class="tp-modal-backdrop" id="answerly-modal" hidden>
+    <form class="tp-modal tp-modal-wide" id="answerly-form" role="dialog" aria-modal="true" aria-labelledby="answerly-title">
+      <h2 id="answerly-title">Answerly token</h2>
+      <ol class="wr-answerly-steps">
+        <li>Log into <a href="https://answerly.livspace.com/" target="_blank" rel="noopener">Answerly</a> (same Google user is fine)</li>
+        <li>Open <a href="https://answerly.livspace.com/api/auth/session" target="_blank" rel="noopener" id="answerly-session-link">/api/auth/session</a></li>
+        <li>Select all → Copy the JSON (or only <code>accessToken</code>)</li>
+        <li>Paste below — Playground extracts the token and runs jobs in <strong>Marketing Visualization Team</strong> (not Personal)</li>
+      </ol>
+      <p class="wr-answerly-status" id="answerly-status">Checking bridge…</p>
+      <textarea id="answerly-token" class="tp-input wr-answerly-token" rows="6" placeholder='Paste full session JSON, e.g. {"user":...,"accessToken":"eyJ..."} — or the accessToken string alone' spellcheck="false"></textarea>
+      <div class="tp-modal-actions">
+        <button type="button" class="tp-btn tp-btn-ghost" id="answerly-open-session">Open session page</button>
+        <button type="button" class="tp-btn tp-btn-ghost" id="answerly-clear">Clear</button>
+        <button type="button" class="tp-btn tp-btn-ghost" id="answerly-cancel">Cancel</button>
+        <button type="submit" class="tp-btn tp-btn-primary" id="answerly-save">Save token</button>
+      </div>
+    </form>
+  </div>
+
   <!-- AI upscale setup guide (same as production Renamer Settings ? AI upscale setup) -->
   <div id="setup-modal" class="modal-backdrop" hidden>
     <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="setup-title">
@@ -289,6 +313,7 @@
   </div>
 
   <script src="data.js"></script>
-  <script src="tasks.js?v=74"></script>
+  <script src="prompts/universal-replace.js"></script>
+  <script src="tasks.js?v=98"></script>
 </body>
 </html>

@@ -4,6 +4,19 @@
   const AUTHOR_KEY = 'imageRenamer.author';
   const UPSCALE_KEY = 'imageRenamer.upscaleOn';
   const UPSCALE_URL = 'http://127.0.0.1:5175';
+  const ANSWERLY_TOKEN_KEY = 'playground3d.answerly.token';
+  const ANSWERLY_SIZE_KEY = 'playground3d.replace.imageSize';
+  const ANSWERLY_MODEL_KEY = 'playground3d.replace.model';
+  const PRODUCT_TYPE_KEY = 'playground3d.replace.productType';
+  const ANSWERLY_SESSION_URL = 'https://answerly.livspace.com/api/auth/session';
+  const IDB_NAME = 'playground3d';
+  const IDB_STORE = 'replaceDrafts'; // legacy per-shot output rows
+  const IDB_STORE_EAN = 'eanDrafts'; // full per-EAN Replacement drafts (A/B/C/D)
+  const IDB_STORE_FEED = 'feedCache'; // last successful sheets feed (fast deep-link restore)
+  const IDB_VERSION = 3;
+  const FEED_CACHE_KEY = 'tasks';
+  const FEED_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+  const ANSWERLY_MAX_BYTES = 52428800; // Answerly hard limit (~50 MB)
   const SERVICE_CHECK_MS = 10000;
   // Pick / Assign controls are only for these authors (matched on first name or full name).
   const ASSIGN_AUTHORS = ['vinay', 'aman', 'ananyo'];
@@ -13,8 +26,11 @@
   // Web app URL (ends in /exec) of the HH Multi Sheet Reader Apps Script deployment, which reads
   // Shoot Tracker - HH, LSH-HH-Render Tracker and LSH-HH-Naming Convention-Test-2.
   const FEED_URL = 'https://script.google.com/a/macros/livspace.com/s/AKfycbxWbesitEd9mhiPkdLzZawNAb_AxwYWulrrBBA8ZqtYx5A9RX0lAGnybIQMle6W_7V8/exec';
+  // Prompt Database Apps Script (Universal read + All user Rate & Approve). Separate from FEED_URL.
+  const PROMPT_DB_URL = 'https://script.google.com/a/macros/livspace.com/s/AKfycbwjLPIuL9J_XtHmnEm7jdbnJHlUIEjscACqYiSIB3ISTQNXHDhKHAVyuOc9VuPaobHT/exec';
   const FEED_TIMEOUT_MS = 90000;
-  const FEED_VERSION = 28;
+  const FEED_VERSION = 32;
+  const APP_VERSION = 'Preview V1.4';
   // How often to re-read the assign sheet while this tab is visible (other users' picks).
   // ~2 reads/min per open browser — well under the Sheets ~60 reads/min/user cap.
   const ASSIGN_POLL_MS = 30000;
@@ -40,6 +56,13 @@
     subCategory: ['sub-category', 'sub category'],
     productName: ['product name*'],
     style: ['style'],
+    // Prompt compiler product identity (synced from Shoot Tracker xlsx via shoot-sync).
+    detailDescription: [
+      'detail description - construction/quality',
+      'detail description*',
+      'construction/quality'
+    ],
+    color: ['color'],
     // Only headers that mention both Set and PCs (e.g. "SET / PCS"). Bare "set"/"pcs" matched the wrong columns.
     setPcs: ['set / pcs', 'pcs / set', 'set or pcs', 'setpcs', 'pcsset'],
     size: ['product size*', 'size*'],
@@ -83,6 +106,7 @@
     chevron: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z"/></svg>',
     caret: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>',
     copy: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>',
+    download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>',
     camera: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4z"/><path d="M9 2 7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>',
     folder: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>',
     slides: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 8v8l5-4-5-4zm9-5H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/></svg>',
@@ -126,7 +150,13 @@
     menuEans: null,
     images: {},
     photoIndex: -1,
-    pendingAction: null
+    pendingAction: null,
+    answerlyToken: null,
+    driveFiles: null,
+    answerlyModels: null,
+    replaceDraftCache: {}, // in-memory EAN drafts so switching tasks keeps A/B/C/D
+    renderMarkedInProgress: {},
+    railScrollTop: null
   };
 
   const $ = (id) => document.getElementById(id);
@@ -205,17 +235,51 @@
   }
 
   // Hash routes: #renamer | #available | #my
+  // Workspace deep-link: #my?ws=choose|replace|primary&ean=…&match=…&shot=…&drive=…
+  function parseHash() {
+    const raw = String(location.hash || '').replace(/^#\/?/, '');
+    const qi = raw.indexOf('?');
+    const path = (qi >= 0 ? raw.slice(0, qi) : raw).split('/')[0].toLowerCase();
+    const params = new URLSearchParams(qi >= 0 ? raw.slice(qi + 1) : '');
+    const view = (path === 'renamer' || path === 'available' || path === 'my') ? path : '';
+    return {
+      view: view,
+      ws: String(params.get('ws') || '').toLowerCase(),
+      ean: String(params.get('ean') || '').trim(),
+      match: String(params.get('match') || '').trim(),
+      shot: params.get('shot'),
+      drive: params.get('drive')
+    };
+  }
+
   function hashView() {
-    const raw = String(location.hash || '').replace(/^#\/?/, '').split(/[/?&]/)[0].toLowerCase();
-    if (raw === 'renamer' || raw === 'available' || raw === 'my') return raw;
-    return '';
+    return parseHash().view;
   }
 
   function syncHash(view, replace) {
-    const next = '#' + view;
+    syncRoute({ view: view, replace: replace });
+  }
+
+  function syncRoute(opts) {
+    opts = opts || {};
+    const view = opts.view || state.view || 'renamer';
+    let next = '#' + view;
+    if (view === 'my' && state.workspace && state.workspace.ean) {
+      const p = new URLSearchParams();
+      p.set('ws', state.workspace.mode || 'choose');
+      p.set('ean', String(state.workspace.ean));
+      if (state.workspace.matchEan) p.set('match', String(state.workspace.matchEan));
+      if (state.workspace.mode === 'replace') {
+        p.set('shot', String(state.workspaceShot || 0));
+        if (state.workspace.driveImgIndex != null && state.workspace.driveImgIndex !== '') {
+          p.set('drive', String(state.workspace.driveImgIndex));
+        }
+      }
+      next += '?' + p.toString();
+    }
     if (location.hash === next) return;
-    if (replace) history.replaceState(null, '', next);
-    else location.hash = view;
+    if (opts.replace !== false) history.replaceState(null, '', next);
+    else location.hash = next.replace(/^#/, '');
   }
 
   function ensureRenamerFrame() {
@@ -388,8 +452,13 @@
   // The sheets are organisation-only, so the feed is loaded with a <script> tag (JSONP):
   // the request carries the user's Google sign-in, which fetch() across origins would not.
   let jsonpSeq = 0;
-  function jsonp(query, timeoutMs) {
+  function jsonp(query, timeoutMs, baseUrl) {
+    const root = baseUrl || FEED_URL;
     return new Promise((resolve, reject) => {
+      if (!root) {
+        reject(new Error(baseUrl ? 'PROMPT_DB_URL is not set.' : 'NO_FEED_URL'));
+        return;
+      }
       const cb = '__tasksFeed' + Date.now() + '_' + (jsonpSeq++);
       const script = document.createElement('script');
       let finished = false;
@@ -411,14 +480,12 @@
       script.onload = () => setTimeout(() => {
         if (!finished) finish(new Error('NO_ACCESS'));
       }, 250);
-      script.src = FEED_URL + (FEED_URL.indexOf('?') >= 0 ? '&' : '?') + query + '&callback=' + cb + '&t=' + Date.now();
+      script.src = root + (root.indexOf('?') >= 0 ? '&' : '?') + query + '&callback=' + cb + '&t=' + Date.now();
       document.head.appendChild(script);
     });
   }
 
-  async function loadTaskData() {
-    if (!FEED_URL) throw new Error('NO_FEED_URL');
-    const feed = await jsonp('action=tasks', FEED_TIMEOUT_MS);
+  function buildTaskDataFromFeed(feed) {
     const warnings = [];
     if (!(feed.version >= FEED_VERSION)) {
       warnings.push('the web app is an older version (' + (feed.version || 'no version') + ', expected ' + FEED_VERSION + '): paste the latest Code.gs and deploy a new version');
@@ -469,6 +536,17 @@
       });
     }
     return { shoot, render, warnings, xlsxSync: feed.xlsxSync || null };
+  }
+
+  async function loadTaskData(opts) {
+    opts = opts || {};
+    if (!FEED_URL) throw new Error('NO_FEED_URL');
+    let feed = opts.feed || null;
+    if (!feed) feed = await jsonp('action=tasks', FEED_TIMEOUT_MS);
+    const data = buildTaskDataFromFeed(feed);
+    // Cache successful live feeds so deep-link reload can restore the EAN workspace without waiting.
+    if (!opts.feed && !opts.skipCache) saveFeedCache(feed);
+    return data;
   }
 
   function missingNames(table, columns, required) {
@@ -590,6 +668,8 @@
       productKey: productName.toLowerCase(),
       style: r.style,
       title: productName || tidyName(r.style) || 'Untitled product',
+      detailDescription: String(r.detailDescription || '').trim(),
+      color: String(r.color || '').trim(),
       setLabel: set.label,
       setKind: set.kind,
       size: realValue(r.size),
@@ -1237,7 +1317,10 @@
       return naming.map((s, i) => ({
         seq: Number(s.seq) || i,
         name: s.name || ('Shot ' + (i + 1)),
-        code: s.code || shotCodeOf(s, i)
+        code: s.code || shotCodeOf(s, i),
+        family: String(s.family || '').trim(),
+        whatToShoot: String(s.whatToShoot || '').trim(),
+        note: String(s.note || '').trim()
       }));
     }
     const raw = (t && t.shots && t.shots.length)
@@ -1252,7 +1335,10 @@
     return raw.map((s, i) => ({
       seq: s.seq != null ? s.seq : i + 1,
       name: s.name || ('Shot ' + (i + 1)),
-      code: shotCodeOf(s, i)
+      code: shotCodeOf(s, i),
+      family: String(s.family || '').trim(),
+      whatToShoot: String(s.whatToShoot || '').trim(),
+      note: String(s.note || '').trim()
     }));
   }
 
@@ -1264,7 +1350,7 @@
     return /lifestyle/i.test(name || '');
   }
 
-  function isDimensionShot(name) {
+  function isDimensionShotName(name) {
     return /dimension/i.test(name || '');
   }
 
@@ -1291,40 +1377,95 @@
     if (!t || !p) return '';
     const bits = [];
     [['size', 'Size'], ['dimensions', 'Dimensions'], ['capacity', 'Volume']].forEach((pair) => {
-      const a = String(t[pair[0]] || '').trim();
-      const b = String(p[pair[0]] || '').trim();
-      if (normDimValue(a) !== normDimValue(b) && (a || b)) {
-        bits.push(pair[1] + ': ' + (a || '—') + ' → ' + (b || '—'));
+      const targetVal = String(t[pair[0]] || '').trim();
+      const priorVal = String(p[pair[0]] || '').trim();
+      if (normDimValue(targetVal) !== normDimValue(priorVal) && (targetVal || priorVal)) {
+        // Prior EAN → Target EAN
+        bits.push(pair[1] + ': ' + (priorVal || '—') + ' → ' + (targetVal || '—'));
       }
     });
     return bits.join(' · ');
+  }
+
+  function readProductTypePrefs() {
+    try {
+      const raw = localStorage.getItem(PRODUCT_TYPE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return null;
+      return {
+        name: String(parsed.name || '').trim(),
+        variant: String(parsed.variant || '').trim()
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeProductTypePrefs(name, variant) {
+    try {
+      if (!name) {
+        localStorage.removeItem(PRODUCT_TYPE_KEY);
+        return;
+      }
+      localStorage.setItem(PRODUCT_TYPE_KEY, JSON.stringify({
+        name: String(name),
+        variant: String(variant || '')
+      }));
+    } catch (e) { /* ignore */ }
+  }
+
+  function applyStoredProductTypeOnce() {
+    if (!state.workspace || state.workspace.ptPrefsApplied) return;
+    state.workspace.ptPrefsApplied = true;
+    if (state.workspace.productTypeName) {
+      state.workspace.productTypeQuery = state.workspace.productTypeName;
+      return;
+    }
+    const prefs = readProductTypePrefs();
+    if (!prefs || !prefs.name) return;
+    const type = namingProductTypes().find((t) => t.name === prefs.name);
+    if (!type) return;
+    state.workspace.productTypeName = type.name;
+    state.workspace.productTypeQuery = type.name;
+    const variants = type.variants ? Object.keys(type.variants) : [];
+    state.workspace.productTypeVariant =
+      (prefs.variant && variants.indexOf(prefs.variant) >= 0) ? prefs.variant : (variants[0] || '');
   }
 
   function ensureReplaceState(t) {
     if (!state.workspace) return;
     if (!state.workspace.replaceInit) {
       state.workspace.replaceInit = true;
-      state.workspace.panelOpen = true;
-      state.workspace.panelMax = false;
-      state.workspace.dimSeparate = false;
-      state.workspace.rating = 0;
-      state.workspace.comparePos = 50;
-      state.workspace.generating = null;
-      state.workspace.shotInputs = {};
-      state.workspace.assets = {};
-      state.workspace.prompts = {};
-      state.workspace.outputs = {};
-      state.workspace.driveImgIndex = null;
-      state.workspace.productTypeName = '';
-      state.workspace.productTypeVariant = '';
-      state.workspace.productTypeQuery = '';
-      state.workspace.productTypeOpen = false;
-      state.workspace.productTypeWarn = false;
-      state.workspace.fileTarget = null;
+      if (state.workspace.panelOpen == null) state.workspace.panelOpen = true;
+      if (state.workspace.panelMax == null) state.workspace.panelMax = false;
+      if (state.workspace.dimSeparate == null) state.workspace.dimSeparate = false;
+      if (state.workspace.rating == null) state.workspace.rating = 0;
+      if (!state.workspace.ratings) state.workspace.ratings = {};
+      if (!state.workspace.promptBaselines) state.workspace.promptBaselines = {};
+      if (!state.workspace.exportImages) state.workspace.exportImages = {};
+      if (!state.workspace.exportCleared) state.workspace.exportCleared = {};
+      if (state.workspace.comparePos == null) state.workspace.comparePos = 50;
+      if (state.workspace.generating === undefined) state.workspace.generating = null;
+      if (!state.workspace.shotInputs) state.workspace.shotInputs = {};
+      if (!state.workspace.assets) state.workspace.assets = {};
+      if (!state.workspace.prompts) state.workspace.prompts = {};
+      if (!state.workspace.outputs) state.workspace.outputs = {};
+      if (!state.workspace.approved) state.workspace.approved = {};
+      if (!state.workspace.rejected) state.workspace.rejected = {};
+      if (state.workspace.driveImgIndex === undefined) state.workspace.driveImgIndex = null;
+      if (state.workspace.productTypeName == null) state.workspace.productTypeName = '';
+      if (state.workspace.productTypeVariant == null) state.workspace.productTypeVariant = '';
+      if (state.workspace.productTypeQuery == null) state.workspace.productTypeQuery = '';
+      if (state.workspace.productTypeOpen == null) state.workspace.productTypeOpen = false;
+      if (state.workspace.productTypeWarn == null) state.workspace.productTypeWarn = false;
+      if (state.workspace.fileTarget === undefined) state.workspace.fileTarget = null;
+      applyStoredProductTypeOnce();
     }
     if (state.workspace.panelOpen == null) state.workspace.panelOpen = true;
     if (state.workspace.productTypeName == null) state.workspace.productTypeName = '';
     if (!state.workspace.assets) state.workspace.assets = {};
+    if (!state.workspace.prompts) state.workspace.prompts = {};
   }
 
   /* ---------- Replace workspace image assets (local File / Blob in memory) ---------- */
@@ -1362,7 +1503,10 @@
   }
 
   function isAcceptedImageFile(file) {
-    return !!(file && /image\/(jpeg|png)/i.test(file.type || ''));
+    if (!file) return false;
+    if (/image\/(jpeg|png)/i.test(file.type || '')) return true;
+    // Some OS/browsers leave type empty — fall back to extension.
+    return /\.(jpe?g|png)$/i.test(file.name || '');
   }
 
   function readLocalImageFile(file) {
@@ -1404,11 +1548,14 @@
     if (files.length > room) {
       showToast('Only ' + room + ' more image' + (room === 1 ? '' : 's') + ' fit (max 4).', false);
     }
+    take.forEach((f) => warnIfOverAnswerlyLimit(f, f.name || 'Product image'));
     try {
+      persistReplacePromptFromDom();
       const loaded = await Promise.all(take.map(readLocalImageFile));
       assets.inputs = assets.inputs.concat(loaded);
       syncShotInputNames(shotIndex);
       renderWorkspace();
+      persistCurrentReplaceDraft();
     } catch (err) {
       showToast(err.message || 'Could not add image(s).', false);
     }
@@ -1419,15 +1566,20 @@
       showToast('Use JPG or PNG images only.', false);
       return;
     }
+    warnIfOverAnswerlyLimit(file, file.name || 'Prior image');
+    persistReplacePromptFromDom();
     const assets = shotAssets(shotIndex);
     try {
       const loaded = await readLocalImageFile(file);
       revokeAssetUrl(assets.priorOverride);
       assets.priorOverride = loaded;
+      // Force A to show the local override (Drive prior stays available after Clear override).
+      state.workspaceShot = Number(shotIndex) || 0;
+      await persistCurrentReplaceDraft();
       renderWorkspace();
-      showToast('Prior override set for this shot (local file).', false);
+      showToast('Prior override set · ' + esc(loaded.name || 'image') + ' (' + loaded.w + '×' + loaded.h + ')', false);
     } catch (err) {
-      showToast(err.message || 'Could not set prior image.', false);
+      showToast(err.message || 'Could not set prior image.', false, { error: true });
     }
   }
 
@@ -1438,26 +1590,1308 @@
     revokeAssetUrl(gone);
     assets.inputs = assets.inputs.filter((_, j) => j !== inputIndex);
     syncShotInputNames(shotIndex);
+    persistCurrentReplaceDraft();
   }
 
   function clearPriorOverride(shotIndex) {
     const assets = shotAssets(shotIndex);
     revokeAssetUrl(assets.priorOverride);
     assets.priorOverride = null;
+    persistCurrentReplaceDraft();
+  }
+
+  /* ---------- Answerly bridge (local firefly-upscaler :5175) ---------- */
+
+  function friendlyBridgeError(err) {
+    const msg = String((err && err.message) || err || '');
+    if (/failed to fetch|networkerror|load failed|network request failed/i.test(msg)) {
+      return 'Cannot reach the local bridge at ' + UPSCALE_URL +
+        '. Start firefly-upscaler (node server.js), then try again. If Chrome blocked local network access, allow it for this site.';
+    }
+    return msg || 'Request failed';
+  }
+
+  function decodeJwtExpClient(token) {
+    try {
+      const part = String(token || '').split('.')[1];
+      if (!part) return null;
+      const b64 = part.replace(/-/g, '+').replace(/_/g, '/');
+      const pad = b64 + '==='.slice((b64.length + 3) % 4);
+      const json = atob(pad);
+      const payload = JSON.parse(json);
+      return typeof payload.exp === 'number' ? payload.exp : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function formatWorkspaceLabel(tok) {
+    if (!tok) return 'Marketing Visualization';
+    const name = String(tok.workspaceName || '').trim();
+    if (/marketing\s*visualization/i.test(name)) return 'Marketing Visualization';
+    if (name) return name;
+    if (String(tok.workspaceKind || '').toLowerCase() === 'personal') return 'Personal (switch needed)';
+    return 'Marketing Visualization';
+  }
+
+  function formatTokenExpiry(tok) {
+    const ws = formatWorkspaceLabel(tok);
+    if (!tok || !tok.hasToken) return ws + ' · No token';
+    if (tok.expired) {
+      return ws + ' · ' + (tok.expiresAt
+        ? 'expired ' + new Date(tok.expiresAt).toLocaleString()
+        : 'expired');
+    }
+    if (tok.expiresAt) {
+      const mins = typeof tok.secondsLeft === 'number' ? Math.max(0, Math.round(tok.secondsLeft / 60)) : null;
+      return ws + ' · expires ' + new Date(tok.expiresAt).toLocaleString() +
+        (mins != null ? ' · ~' + mins + 'm' : '');
+    }
+    return ws + ' · token saved';
+  }
+
+  function tokenChipClass(tok) {
+    if (!tok || !tok.hasToken) return 'is-bad';
+    if (tok.expired) return 'is-bad';
+    if (typeof tok.secondsLeft === 'number' && tok.secondsLeft < 30 * 60) return 'is-warn';
+    return 'is-ok';
+  }
+
+  // Accepts raw JWT, or full /api/auth/session JSON (extracts accessToken).
+  function extractAnswerlyAccessToken(raw) {
+    let text = String(raw || '').trim();
+    if (!text) return { error: 'Paste the session JSON or accessToken first.' };
+    if (/^https?:\/\/answerly\.livspace\.com\/api\/auth\/session\/?$/i.test(text) ||
+        /answerly\.livspace\.com\/api\/auth\/session/i.test(text) && text.indexOf('{') < 0) {
+      return {
+        error: 'That looks like the session URL, not the token. Open the session page while logged into Answerly, Select All → Copy the JSON, then paste it here.'
+      };
+    }
+    if (text.charAt(0) === '{' || text.charAt(0) === '[') {
+      try {
+        const obj = JSON.parse(text);
+        const token = obj.accessToken || obj.access_token ||
+          (obj.user && (obj.user.accessToken || obj.user.access_token)) ||
+          (obj.session && (obj.session.accessToken || obj.session.access_token)) ||
+          (obj.data && (obj.data.accessToken || obj.data.access_token));
+        if (!token) {
+          return { error: 'JSON parsed, but no accessToken field was found. Copy the full /api/auth/session response.' };
+        }
+        text = String(token).trim();
+      } catch (e) {
+        return { error: 'Could not parse JSON. Paste the full session response or the accessToken string only.' };
+      }
+    }
+    // Strip quotes if user copied "eyJ..."
+    if ((text.charAt(0) === '"' && text.charAt(text.length - 1) === '"') ||
+        (text.charAt(0) === "'" && text.charAt(text.length - 1) === "'")) {
+      text = text.slice(1, -1).trim();
+    }
+    if (!/^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/.test(text)) {
+      return { error: 'Could not find a JWT accessToken. Paste the session JSON or the accessToken value (starts with eyJ).' };
+    }
+    const exp = decodeJwtExpClient(text);
+    if (exp && exp <= Math.floor(Date.now() / 1000)) {
+      return {
+        error: 'This accessToken is already expired (' + new Date(exp * 1000).toLocaleString() +
+          '). Open ' + ANSWERLY_SESSION_URL + ' while logged in, copy a fresh JSON response, and paste again.',
+        token: text,
+        expired: true,
+        exp: exp
+      };
+    }
+    return { token: text, exp: exp };
+  }
+
+  async function answerlyFetch(path, opts) {
+    let res;
+    try {
+      res = await fetch(UPSCALE_URL + path, Object.assign({ cache: 'no-store' }, opts || {}));
+    } catch (err) {
+      throw new Error(friendlyBridgeError(err));
+    }
+    const ct = res.headers.get('content-type') || '';
+    if (ct.indexOf('application/json') >= 0) {
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || json.detail || json.message || res.statusText);
+      return json;
+    }
+    if (!res.ok) throw new Error((await res.text()) || res.statusText);
+    return res;
+  }
+
+  async function answerlyHealth() {
+    return answerlyFetch('/answerly/health');
+  }
+
+  async function refreshAnswerlyTokenState() {
+    try {
+      const health = await answerlyHealth();
+      const tok = health.token || { hasToken: false, expired: true };
+      // Prefer live health workspace fields when token payload is sparse.
+      if (health.workspaceId && !tok.workspaceId) tok.workspaceId = health.workspaceId;
+      if (health.workspaceName && !tok.workspaceName) tok.workspaceName = health.workspaceName;
+      if (health.workspaceKind && !tok.workspaceKind) tok.workspaceKind = health.workspaceKind;
+      state.answerlyToken = tok;
+      return state.answerlyToken;
+    } catch (err) {
+      state.answerlyToken = {
+        hasToken: false,
+        expired: true,
+        bridgeOffline: true,
+        error: friendlyBridgeError(err)
+      };
+      return state.answerlyToken;
+    }
+  }
+
+  async function answerlyEnsureToken() {
+    const health = await answerlyHealth();
+    state.answerlyToken = health.token || null;
+    if (health.token && health.token.hasToken && !health.token.expired) return health;
+    const saved = localStorage.getItem(ANSWERLY_TOKEN_KEY) || '';
+    if (!saved) {
+      const err = new Error('No Answerly token. Use Refresh token in the bar (or Settings → Answerly token).');
+      err.code = 'no_token';
+      throw err;
+    }
+    const extracted = extractAnswerlyAccessToken(saved);
+    if (extracted.error) {
+      const err = new Error(extracted.error);
+      err.code = extracted.expired ? 'token_expired' : 'no_token';
+      throw err;
+    }
+    try {
+      await answerlyFetch('/answerly/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessToken: extracted.token,
+          workspaceId: '9901bfd2-4c06-4746-8d63-aa2867248f1e'
+        })
+      });
+    } catch (err) {
+      const e = new Error(friendlyBridgeError(err));
+      if (/expired/i.test(e.message)) e.code = 'token_expired';
+      else if (/failed to fetch|Cannot reach the local bridge/i.test(e.message)) e.code = 'bridge_offline';
+      else e.code = 'no_token';
+      throw e;
+    }
+    const next = await answerlyHealth();
+    state.answerlyToken = next.token || null;
+    return next;
+  }
+
+  /* ---------- IndexedDB + memory drafts (A/B/C/D kept across EANs and refresh) ---------- */
+
+  function idbReq(req) {
+    return new Promise((resolve, reject) => {
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('IndexedDB error'));
+    });
+  }
+
+  function openReplaceIdb() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) {
+          db.createObjectStore(IDB_STORE, { keyPath: 'key' });
+        }
+        if (!db.objectStoreNames.contains(IDB_STORE_EAN)) {
+          db.createObjectStore(IDB_STORE_EAN, { keyPath: 'ean' });
+        }
+        if (!db.objectStoreNames.contains(IDB_STORE_FEED)) {
+          db.createObjectStore(IDB_STORE_FEED, { keyPath: 'key' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('Could not open IndexedDB'));
+    });
+  }
+
+  async function saveFeedCache(feed) {
+    if (!feed) return;
+    try {
+      const db = await openReplaceIdb();
+      if (!db.objectStoreNames.contains(IDB_STORE_FEED)) {
+        db.close();
+        return;
+      }
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE_FEED, 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error || new Error('feed cache write failed'));
+        tx.objectStore(IDB_STORE_FEED).put({
+          key: FEED_CACHE_KEY,
+          feed: feed,
+          savedAt: Date.now()
+        });
+      });
+      db.close();
+    } catch (err) {
+      console.warn('Could not cache sheet feed', err);
+    }
+  }
+
+  async function loadFeedCache() {
+    try {
+      const db = await openReplaceIdb();
+      if (!db.objectStoreNames.contains(IDB_STORE_FEED)) {
+        db.close();
+        return null;
+      }
+      const row = await idbReq(db.transaction(IDB_STORE_FEED, 'readonly').objectStore(IDB_STORE_FEED).get(FEED_CACHE_KEY));
+      db.close();
+      if (!row || !row.feed) return null;
+      if (Date.now() - (row.savedAt || 0) > FEED_CACHE_MAX_AGE_MS) return null;
+      return row;
+    } catch (err) {
+      console.warn('Could not read cached sheet feed', err);
+      return null;
+    }
+  }
+
+  function replaceDraftKey(ean, shotIndex) {
+    return String(ean || '') + '::' + String(shotIndex);
+  }
+
+  function formatBytes(n) {
+    const v = Number(n) || 0;
+    if (v < 1024) return v + ' B';
+    if (v < 1024 * 1024) return (v / 1024).toFixed(1) + ' KB';
+    return (v / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function assetByteSize(asset) {
+    if (!asset) return 0;
+    const blob = asset.blob || asset.file;
+    return (blob && blob.size) || asset.size || 0;
+  }
+
+  function warnIfOverAnswerlyLimit(fileOrAsset, label) {
+    const size = fileOrAsset && fileOrAsset.size != null
+      ? fileOrAsset.size
+      : assetByteSize(fileOrAsset);
+    if (size > ANSWERLY_MAX_BYTES) {
+      showToast(
+        (label || 'Image') + ' is ' + formatBytes(size) +
+          ' — Answerly may reject files over ' + formatBytes(ANSWERLY_MAX_BYTES) + '.',
+        false,
+        { error: true }
+      );
+      return true;
+    }
+    return false;
+  }
+
+  function serializeAssetForIdb(asset) {
+    if (!asset) return null;
+    const blob = asset.blob || asset.file;
+    if (!blob) return null;
+    return {
+      name: asset.name || 'image.png',
+      mime: asset.mime || blob.type || 'image/png',
+      w: asset.w || 0,
+      h: asset.h || 0,
+      model: asset.model || '',
+      size: asset.size || '',
+      workflow: asset.workflow || '',
+      source: asset.source || '',
+      id: asset.id || '',
+      blob: blob
+    };
+  }
+
+  function reviveAssetFromIdb(row) {
+    if (!row || !row.blob) return null;
+    const url = URL.createObjectURL(row.blob);
+    return {
+      name: row.name || 'image.png',
+      mime: row.mime || row.blob.type || 'image/png',
+      w: row.w || 0,
+      h: row.h || 0,
+      model: row.model || '',
+      size: row.size || '',
+      workflow: row.workflow || '',
+      source: row.source || 'draft',
+      id: row.id || '',
+      blob: row.blob,
+      file: row.blob,
+      url: url,
+      fromDraft: true,
+      approved: false
+    };
+  }
+
+  function buildEanDraftRecord() {
+    if (!state.workspace) return null;
+    persistReplacePromptFromDom();
+    const ean = String(state.workspace.ean || '');
+    if (!ean) return null;
+    const shots = {};
+    const outputs = Object.assign({}, state.workspace.outputs || {});
+    const assetsMap = state.workspace.assets || {};
+    Object.keys(assetsMap).forEach((k) => {
+      const a = assetsMap[k] || {};
+      const out = a.output || a._previousOutput;
+      shots[k] = {
+        inputs: (a.inputs || []).map(serializeAssetForIdb).filter(Boolean),
+        priorOverride: serializeAssetForIdb(a.priorOverride),
+        // Keep last good D while a regen is in flight (_previousOutput).
+        output: serializeAssetForIdb(out),
+        error: a.error || null
+      };
+      if (out) outputs[k] = true;
+    });
+    return {
+      ean: ean,
+      matchEan: state.workspace.matchEan || '',
+      workspaceShot: state.workspaceShot || 0,
+      driveImgIndex: state.workspace.driveImgIndex,
+      productTypeName: state.workspace.productTypeName || '',
+      productTypeVariant: state.workspace.productTypeVariant || '',
+      productTypeQuery: state.workspace.productTypeQuery || '',
+      prompts: Object.assign({}, state.workspace.prompts || {}),
+      outputs: outputs,
+      approved: Object.assign({}, state.workspace.approved || {}),
+      rejected: Object.assign({}, state.workspace.rejected || {}),
+      dimSeparate: !!state.workspace.dimSeparate,
+      rating: Number(state.workspace.rating) || 0,
+      ratings: Object.assign({}, state.workspace.ratings || {}),
+      promptBaselines: Object.assign({}, state.workspace.promptBaselines || {}),
+      shots: shots,
+      savedAt: Date.now()
+    };
+  }
+
+  function stashReplaceDraftInMemory() {
+    if (!state.workspace || state.workspace.mode !== 'replace') return;
+    persistReplacePromptFromDom();
+    const ean = String(state.workspace.ean || '');
+    if (!ean) return;
+    if (!state.replaceDraftCache) state.replaceDraftCache = {};
+    // Transfer live asset object references (do not revoke) so switching EANs is instant.
+    state.replaceDraftCache[ean] = {
+      matchEan: state.workspace.matchEan || '',
+      workspaceShot: state.workspaceShot || 0,
+      driveImgIndex: state.workspace.driveImgIndex,
+      productTypeName: state.workspace.productTypeName || '',
+      productTypeVariant: state.workspace.productTypeVariant || '',
+      productTypeQuery: state.workspace.productTypeQuery || '',
+      prompts: Object.assign({}, state.workspace.prompts || {}),
+      outputs: Object.assign({}, state.workspace.outputs || {}),
+      approved: Object.assign({}, state.workspace.approved || {}),
+      rejected: Object.assign({}, state.workspace.rejected || {}),
+      dimSeparate: !!state.workspace.dimSeparate,
+      rating: Number(state.workspace.rating) || 0,
+      ratings: Object.assign({}, state.workspace.ratings || {}),
+      promptBaselines: Object.assign({}, state.workspace.promptBaselines || {}),
+      assets: state.workspace.assets || {},
+      savedAt: Date.now()
+    };
+    // Detach so closeWorkspace revoke does not wipe the cache.
+    state.workspace.assets = {};
+  }
+
+  function applyMemoryDraftToWorkspace(ean) {
+    const draft = state.replaceDraftCache && state.replaceDraftCache[ean];
+    if (!draft || !state.workspace) return false;
+    state.workspace.assets = draft.assets || {};
+    state.workspace.prompts = Object.assign({}, draft.prompts || {});
+    state.workspace.outputs = Object.assign({}, draft.outputs || {});
+    state.workspace.approved = Object.assign({}, draft.approved || {});
+    state.workspace.rejected = Object.assign({}, draft.rejected || {});
+    state.workspace.driveImgIndex = draft.driveImgIndex;
+    state.workspace.productTypeName = draft.productTypeName || state.workspace.productTypeName || '';
+    state.workspace.productTypeVariant = draft.productTypeVariant || state.workspace.productTypeVariant || '';
+    state.workspace.productTypeQuery = draft.productTypeQuery || state.workspace.productTypeName || '';
+    state.workspace.dimSeparate = !!draft.dimSeparate;
+    state.workspace.ratings = Object.assign({}, draft.ratings || {});
+    state.workspace.promptBaselines = Object.assign({}, draft.promptBaselines || {});
+    state.workspace.rating = 0;
+    if (draft.matchEan) state.workspace.matchEan = draft.matchEan;
+    state.workspaceShot = draft.workspaceShot || 0;
+    state.workspace.draftsLoaded = true;
+    state.workspace.ptPrefsApplied = true;
+    const task = taskByEan(state.workspace.ean);
+    if (task) scrubBorrowedMainInputs(shotListFor(task));
+    return true;
+  }
+
+  async function saveEanDraftToIdb(record) {
+    if (!record || !record.ean) return;
+    try {
+      const db = await openReplaceIdb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE_EAN, 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error || new Error('IDB write failed'));
+        tx.onabort = () => reject(tx.error || new Error('IDB write aborted'));
+        tx.objectStore(IDB_STORE_EAN).put(record);
+      });
+      db.close();
+    } catch (err) {
+      console.warn('Could not persist EAN draft', err);
+    }
+  }
+
+  async function persistCurrentReplaceDraft() {
+    if (!state.workspace || state.workspace.mode !== 'replace') return;
+    const record = buildEanDraftRecord();
+    if (!record) return;
+    // Refresh memory cache snapshot with current blobs still attached.
+    if (!state.replaceDraftCache) state.replaceDraftCache = {};
+    state.replaceDraftCache[record.ean] = {
+      matchEan: record.matchEan,
+      workspaceShot: record.workspaceShot,
+      driveImgIndex: record.driveImgIndex,
+      productTypeName: record.productTypeName,
+      productTypeVariant: record.productTypeVariant,
+      productTypeQuery: record.productTypeQuery,
+      prompts: record.prompts,
+      outputs: record.outputs,
+      approved: record.approved,
+      rejected: record.rejected,
+      dimSeparate: record.dimSeparate,
+      rating: record.rating,
+      ratings: record.ratings,
+      promptBaselines: record.promptBaselines,
+      assets: state.workspace.assets || {},
+      savedAt: record.savedAt
+    };
+    await saveEanDraftToIdb(record);
+  }
+
+  async function saveReplaceOutputDraft(ean, shotIndex, output) {
+    if (!ean || !output || !output.blob) return;
+    try {
+      const db = await openReplaceIdb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction([IDB_STORE, IDB_STORE_EAN], 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error || new Error('IDB write failed'));
+        tx.onabort = () => reject(tx.error || new Error('IDB write aborted'));
+        tx.objectStore(IDB_STORE).put({
+          key: replaceDraftKey(ean, shotIndex),
+          ean: String(ean),
+          shotIndex: Number(shotIndex) || 0,
+          name: output.name || '',
+          model: output.model || '',
+          size: output.size || '',
+          workflow: output.workflow || '',
+          mime: (output.blob && output.blob.type) || 'image/png',
+          blob: output.blob,
+          savedAt: Date.now()
+        });
+      });
+      db.close();
+    } catch (err) {
+      console.warn('Could not persist output draft', err);
+    }
+    // Also refresh the full EAN draft so B/C/D stay in sync across tasks.
+    persistCurrentReplaceDraft();
+  }
+
+  async function loadEanDraftFromIdb(ean) {
+    if (!ean) return null;
+    try {
+      const db = await openReplaceIdb();
+      let row = null;
+      if (db.objectStoreNames.contains(IDB_STORE_EAN)) {
+        row = await idbReq(db.transaction(IDB_STORE_EAN, 'readonly').objectStore(IDB_STORE_EAN).get(String(ean)));
+      }
+      // Migrate legacy per-shot outputs if no ean draft yet.
+      if ((!row || !row.shots) && db.objectStoreNames.contains(IDB_STORE)) {
+        const all = await idbReq(db.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).getAll());
+        const shots = {};
+        const outputs = {};
+        (all || []).forEach((r) => {
+          if (!r || String(r.ean) !== String(ean) || !r.blob) return;
+          shots[r.shotIndex] = {
+            inputs: [],
+            priorOverride: null,
+            output: {
+              name: r.name || '',
+              mime: r.mime || 'image/png',
+              model: r.model || '',
+              size: r.size || '',
+              workflow: r.workflow || '',
+              blob: r.blob
+            },
+            error: null
+          };
+          outputs[r.shotIndex] = true;
+        });
+        if (Object.keys(shots).length) {
+          row = {
+            ean: String(ean),
+            prompts: {},
+            outputs: outputs,
+            shots: shots,
+            savedAt: Date.now()
+          };
+        }
+      }
+      db.close();
+      return row || null;
+    } catch (err) {
+      console.warn('Could not load EAN draft', err);
+      return null;
+    }
+  }
+
+  function applyIdbDraftToWorkspace(row) {
+    if (!row || !state.workspace) return false;
+    if (!state.workspace.assets) state.workspace.assets = {};
+    if (!state.workspace.prompts) state.workspace.prompts = {};
+    if (!state.workspace.outputs) state.workspace.outputs = {};
+    if (row.prompts) state.workspace.prompts = Object.assign({}, row.prompts);
+    if (row.outputs) state.workspace.outputs = Object.assign({}, row.outputs);
+    state.workspace.approved = Object.assign({}, row.approved || {});
+    state.workspace.rejected = Object.assign({}, row.rejected || {});
+    if (row.driveImgIndex != null) state.workspace.driveImgIndex = row.driveImgIndex;
+    if (row.productTypeName) {
+      state.workspace.productTypeName = row.productTypeName;
+      state.workspace.productTypeQuery = row.productTypeQuery || row.productTypeName;
+      state.workspace.productTypeVariant = row.productTypeVariant || '';
+      state.workspace.ptPrefsApplied = true;
+    }
+    if (row.matchEan) state.workspace.matchEan = row.matchEan;
+    if (row.workspaceShot != null) state.workspaceShot = row.workspaceShot || 0;
+    state.workspace.dimSeparate = !!row.dimSeparate;
+    state.workspace.ratings = Object.assign({}, row.ratings || {});
+    state.workspace.promptBaselines = Object.assign({}, row.promptBaselines || {});
+    state.workspace.rating = 0; // unused shared field — ratings are per-shot only
+    Object.keys(row.shots || {}).forEach((k) => {
+      const s = row.shots[k] || {};
+      const assets = shotAssets(k);
+      assets.inputs = (s.inputs || []).map(reviveAssetFromIdb).filter(Boolean);
+      assets.priorOverride = reviveAssetFromIdb(s.priorOverride);
+      assets.output = reviveAssetFromIdb(s.output);
+      assets.error = s.error || null;
+      if (assets.output) state.workspace.outputs[k] = true;
+      syncShotInputNames(k);
+    });
+    const task = taskByEan(state.workspace.ean);
+    if (task) scrubBorrowedMainInputs(shotListFor(task));
+    state.workspace.draftsLoaded = true;
+    return true;
+  }
+
+  // Choose workflow: pull approved/rejected/outputs from memory or IDB so the banner can show.
+  async function hydrateChooseApprovalState() {
+    if (!state.workspace || state.workspace.mode !== 'choose') return;
+    const ean = String(state.workspace.ean || '');
+    if (!ean) return;
+    const mem = state.replaceDraftCache && state.replaceDraftCache[ean];
+    if (mem) {
+      state.workspace.outputs = Object.assign({}, mem.outputs || {});
+      state.workspace.approved = Object.assign({}, mem.approved || {});
+      state.workspace.rejected = Object.assign({}, mem.rejected || {});
+      state.workspace.productTypeName = mem.productTypeName || state.workspace.productTypeName || '';
+      state.workspace.productTypeVariant = mem.productTypeVariant || '';
+      renderWorkspace();
+      return;
+    }
+    const row = await loadEanDraftFromIdb(ean);
+    if (!row || !state.workspace || state.workspace.mode !== 'choose') return;
+    state.workspace.outputs = Object.assign({}, row.outputs || {});
+    state.workspace.approved = Object.assign({}, row.approved || {});
+    state.workspace.rejected = Object.assign({}, row.rejected || {});
+    if (row.productTypeName) state.workspace.productTypeName = row.productTypeName;
+    if (row.productTypeVariant) state.workspace.productTypeVariant = row.productTypeVariant;
+    renderWorkspace();
+  }
+
+  async function restoreReplaceDraftsIntoWorkspace() {
+    if (!state.workspace || state.workspace.mode !== 'replace' || state.workspace.draftsLoaded) return;
+    const ean = String(state.workspace.ean || '');
+    if (applyMemoryDraftToWorkspace(ean)) {
+      if (state.workspace.mode === 'replace') renderWorkspace();
+      return;
+    }
+    // Do not mark draftsLoaded until IDB apply finishes — parallel restores were skipping B restore.
+    const row = await loadEanDraftFromIdb(ean);
+    if (!state.workspace || state.workspace.mode !== 'replace' || String(state.workspace.ean) !== ean) return;
+    if (row) {
+      applyIdbDraftToWorkspace(row);
+      if (!state.replaceDraftCache) state.replaceDraftCache = {};
+      state.replaceDraftCache[ean] = {
+        matchEan: state.workspace.matchEan || '',
+        workspaceShot: state.workspaceShot || 0,
+        driveImgIndex: state.workspace.driveImgIndex,
+        productTypeName: state.workspace.productTypeName || '',
+        productTypeVariant: state.workspace.productTypeVariant || '',
+        productTypeQuery: state.workspace.productTypeQuery || '',
+        prompts: Object.assign({}, state.workspace.prompts || {}),
+        outputs: Object.assign({}, state.workspace.outputs || {}),
+        approved: Object.assign({}, state.workspace.approved || {}),
+        rejected: Object.assign({}, state.workspace.rejected || {}),
+        dimSeparate: !!state.workspace.dimSeparate,
+        rating: 0,
+        ratings: Object.assign({}, state.workspace.ratings || {}),
+        promptBaselines: Object.assign({}, state.workspace.promptBaselines || {}),
+        assets: state.workspace.assets || {},
+        savedAt: row.savedAt || Date.now()
+      };
+    }
+    state.workspace.draftsLoaded = true;
+    if (state.workspace.mode === 'replace') renderWorkspace();
+  }
+
+  async function loadAnswerlyModels() {
+    try {
+      // Bridge merges image_to_image + image_edit + image_generate when tool=all.
+      const data = await answerlyFetch('/answerly/models?tool=all');
+      const models = (data && data.models) || [];
+      if (models.length) {
+        state.answerlyModels = models.slice().sort((a, b) =>
+          String(a.label || a.id).localeCompare(String(b.label || b.id))
+        );
+        if (data.default_model_id && !localStorage.getItem(ANSWERLY_MODEL_KEY)) {
+          localStorage.setItem(ANSWERLY_MODEL_KEY, data.default_model_id);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not load Answerly models', err);
+    }
+  }
+
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const s = String(reader.result || '');
+        const i = s.indexOf(',');
+        resolve(i >= 0 ? s.slice(i + 1) : s);
+      };
+      reader.onerror = () => reject(new Error('Could not read image bytes'));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function selectedDrivePriorMeta(forceIdx) {
+    if (!state.workspace) return null;
+    const task = taskByEan(state.workspace.ean);
+    const prior = resolveWorkspaceMatch(task).selected;
+    const imgs = priorDriveImages(prior);
+    if (!imgs.length) return null;
+    const raw = forceIdx != null ? forceIdx : state.workspace.driveImgIndex;
+    const idx = Math.min(Math.max(0, Number(raw) || 0), imgs.length - 1);
+    const img = imgs[idx];
+    if (!img || !img.id) return null;
+    return { prior: prior, img: img, index: idx };
+  }
+
+  function markShotBusy(shotIndex, stage) {
+    if (!state.workspace) return;
+    if (!state.workspace.busyShots) state.workspace.busyShots = {};
+    state.workspace.busyShots[shotIndex] = stage || 'In progress';
+  }
+
+  function clearShotBusy(shotIndex) {
+    if (!state.workspace || !state.workspace.busyShots) return;
+    delete state.workspace.busyShots[shotIndex];
+  }
+
+  function isShotBusy(shotIndex) {
+    if (!state.workspace) return false;
+    if (state.workspace.generating === shotIndex) return true;
+    return !!(state.workspace.busyShots && state.workspace.busyShots[shotIndex]);
+  }
+
+  function anyShotBusy() {
+    if (!state.workspace) return false;
+    if (state.workspace.generating != null) return true;
+    return !!(state.workspace.busyShots && Object.keys(state.workspace.busyShots).length);
+  }
+
+  function driveFileCache() {
+    if (!state.driveFiles) state.driveFiles = {};
+    return state.driveFiles;
+  }
+
+  function base64ToBlob(base64, mime) {
+    const bin = atob(String(base64 || ''));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: mime || 'image/jpeg' });
+  }
+
+  async function fetchDriveFileAsset(fileId) {
+    const id = String(fileId || '');
+    const cache = driveFileCache();
+    if (cache[id] && cache[id].blob) return cache[id];
+    if (!FEED_URL) throw new Error('Sheet reader is not connected (FEED_URL).');
+    const data = await jsonp('action=file&id=' + encodeURIComponent(id), 120000);
+    if (!data || !data.base64) throw new Error('Drive file response had no image bytes.');
+    const mime = data.mimeType || 'image/jpeg';
+    const blob = base64ToBlob(data.base64, mime);
+    const url = URL.createObjectURL(blob);
+    const asset = {
+      id: data.id || id,
+      name: data.name || 'prior.png',
+      source: 'drive',
+      blob: blob,
+      file: blob,
+      url: url,
+      mime: mime,
+      size: data.size || blob.size,
+      w: 0,
+      h: 0
+    };
+    cache[id] = asset;
+    warnIfOverAnswerlyLimit(asset, asset.name || 'Drive prior');
+    return asset;
+  }
+
+  async function resolvePriorAsset(shotIndex, opts) {
+    opts = opts || {};
+    const assets = shotAssets(shotIndex);
+    if (assets.priorOverride && (assets.priorOverride.blob || assets.priorOverride.file)) {
+      return { asset: assets.priorOverride, source: 'override' };
+    }
+
+    // MAIN is generated from Hero Front (or seq 01): prefer that angle source as INPUT IMAGE 1.
+    const task = state.workspace ? taskByEan(state.workspace.ean) : null;
+    const shots = shotListFor(task || {});
+    const shot = shots[shotIndex];
+    if (shot && isMainShot(shot)) {
+      const angle = mainAngleSourceShot(shots);
+      if (angle) {
+        const angleIdx = shots.findIndex((s) => s === angle ||
+          (String(s.code || '').toUpperCase() === String(angle.code || '').toUpperCase() &&
+            String(s.name || '') === String(angle.name || '')));
+        if (angleIdx >= 0) {
+          const angleOut = shotAssets(angleIdx).output;
+          if (angleOut && (angleOut.blob || angleOut.file)) {
+            return { asset: angleOut, source: 'main-from-hero-output', angleShot: angle };
+          }
+        }
+        // Generate all / auto-MAIN must use Hero Front D as A — never the Drive prior plate.
+        if (opts.requireMainFromHeroOutput) {
+          return null;
+        }
+        const prior = resolveWorkspaceMatch(task || {}).selected;
+        const imgs = priorDriveImages(prior);
+        const want = String(angle.code || '').toUpperCase();
+        let imgIdx = imgs.findIndex((img) => String(driveImgLabel(img.name) || '').toUpperCase() === want);
+        if (imgIdx < 0 && want) {
+          imgIdx = imgs.findIndex((img) => {
+            const label = String(driveImgLabel(img.name) || '').toUpperCase();
+            return label === want || label.indexOf(want) >= 0 || want.indexOf(label) >= 0;
+          });
+        }
+        if (imgIdx < 0) {
+          // Seq 01 fallback by filename _01_
+          const seq = String(angle.seq != null ? angle.seq : '').padStart(2, '0');
+          if (seq) {
+            imgIdx = imgs.findIndex((img) => new RegExp('_' + seq + '_', 'i').test(String(img.name || '')));
+          }
+        }
+        if (imgIdx >= 0 && imgs[imgIdx] && imgs[imgIdx].id) {
+          const asset = await fetchDriveFileAsset(imgs[imgIdx].id);
+          return {
+            asset: asset,
+            source: 'main-from-hero-drive',
+            angleShot: angle,
+            meta: { prior: prior, img: imgs[imgIdx], index: imgIdx }
+          };
+        }
+      }
+    }
+
+    const meta = selectedDrivePriorMeta(opts.driveImgIndex);
+    if (!meta) return null;
+    const asset = await fetchDriveFileAsset(meta.img.id);
+    return { asset: asset, source: 'drive', meta: meta };
+  }
+
+  // Product refs for Answerly: MAIN may borrow Hero Front / 01 B at generate time only
+  // (never copy into MAIN's visible B / wr-shot-inputs).
+  function productInputsForShot(shotIndex, shots) {
+    const assets = shotAssets(shotIndex);
+    const own = (assets.inputs || []).filter((a) => a && (a.blob || a.file));
+    if (own.length) return { inputs: own, borrowed: false };
+    const shot = shots && shots[shotIndex];
+    if (!shot || !isMainShot(shot)) return { inputs: [], borrowed: false };
+    const angleIdx = angleSourceShotIndex(shots || []);
+    if (angleIdx < 0) return { inputs: [], borrowed: false };
+    const fromAngle = (shotAssets(angleIdx).inputs || []).filter((a) => a && (a.blob || a.file));
+    return { inputs: fromAngle.slice(), borrowed: fromAngle.length > 0 };
+  }
+
+  // Product Replacement always uses Image to Image: prior (master) + product input(s).
+  function pickAnswerlyReplacePayload(shotIndex, priorAsset, opts) {
+    opts = opts || {};
+    const assets = shotAssets(shotIndex);
+    const prior = priorAsset && (priorAsset.blob || priorAsset.file) ? priorAsset : null;
+    const task = state.workspace ? taskByEan(state.workspace.ean) : null;
+    const shots = opts.shots || shotListFor(task || {});
+    const resolved = productInputsForShot(shotIndex, shots);
+    const inputs = resolved.inputs;
+    if (!prior) {
+      return {
+        ok: false,
+        code: 'no_prior',
+        error: 'Could not load prior full-res from Drive for this shot.'
+      };
+    }
+    if (!inputs.length) {
+      return {
+        ok: false,
+        code: 'no_product',
+        error: isMainShot(shots[shotIndex])
+          ? 'Add a product image on B for Hero Front / 01 (or MAIN) first.'
+          : 'Drop at least one new product image onto B.'
+      };
+    }
+    return {
+      ok: true,
+      workflow: 'image-to-image-workflow',
+      prior: prior,
+      inputs: inputs,
+      borrowedProductFromAngle: !!resolved.borrowed,
+      reason: (resolved.borrowed
+        ? 'MAIN A from Hero Front D + product B borrowed from Hero Front / 01 (not shown on MAIN)'
+        : 'Prior + ' + inputs.length + ' product input' + (inputs.length > 1 ? 's' : '')) +
+        ' → Image to Image'
+    };
+  }
+
+  // Clear MAIN B that was previously copied from Hero Front so the rail does not show 3/4.
+  function scrubBorrowedMainInputs(shots) {
+    if (!state.workspace) return;
+    const mainIdx = mainShotIndex(shots);
+    const angleIdx = angleSourceShotIndex(shots);
+    if (mainIdx < 0 || angleIdx < 0) return;
+    const mainA = shotAssets(mainIdx);
+    const angleA = shotAssets(angleIdx);
+    const mIn = mainA.inputs || [];
+    const aIn = angleA.inputs || [];
+    if (!mIn.length || !aIn.length) return;
+    function inputFingerprint(inp) {
+      if (!inp) return '';
+      const name = String(inp.name || '').toLowerCase();
+      const size = (inp.blob && inp.blob.size) || (inp.file && inp.file.size) || inp.size || 0;
+      return name + '::' + size;
+    }
+    const same = mIn.length === aIn.length && mIn.every((inp, i) => {
+      const other = aIn[i];
+      if (!inp || !other) return false;
+      if (inp === other) return true;
+      if (inp.id && other.id && inp.id === other.id) return true;
+      if (inp.url && other.url && inp.url === other.url) return true;
+      if (inp.blob && other.blob && inp.blob === other.blob) return true;
+      if (inp.file && other.file && inp.file === other.file) return true;
+      const fa = inputFingerprint(inp);
+      const fb = inputFingerprint(other);
+      return !!(fa && fa === fb && fa !== '::0');
+    });
+    if (!same) return;
+    // Drop cloned copies; Answerly still borrows H-FR B at submit via productInputsForShot.
+    mIn.forEach((inp) => {
+      if (inp && inp.url && String(inp.url).indexOf('blob:') === 0) {
+        try { URL.revokeObjectURL(inp.url); } catch (_) { /* ignore */ }
+      }
+    });
+    mainA.inputs = [];
+    syncShotInputNames(mainIdx);
+  }
+
+  function prefetchSelectedDrivePrior() {
+    const meta = selectedDrivePriorMeta();
+    if (!meta || !state.workspace) return;
+    const id = meta.img.id;
+    if (driveFileCache()[id] && driveFileCache()[id].blob) {
+      state.workspace.priorFetch = { id: id, status: 'ok' };
+      return;
+    }
+    if (state.workspace.priorFetch && state.workspace.priorFetch.id === id &&
+        (state.workspace.priorFetch.status === 'loading' || state.workspace.priorFetch.status === 'ok')) {
+      return;
+    }
+    state.workspace.priorFetch = { id: id, status: 'loading' };
+    fetchDriveFileAsset(id).then(() => {
+      if (!state.workspace) return;
+      if (state.workspace.priorFetch && state.workspace.priorFetch.id === id) {
+        state.workspace.priorFetch = { id: id, status: 'ok' };
+        if (state.workspace.mode === 'replace') renderWorkspace();
+      }
+    }).catch((err) => {
+      if (!state.workspace) return;
+      if (state.workspace.priorFetch && state.workspace.priorFetch.id === id) {
+        state.workspace.priorFetch = {
+          id: id,
+          status: 'error',
+          error: (err && err.message) || 'Failed to load Drive file'
+        };
+        if (state.workspace.mode === 'replace') renderWorkspace();
+      }
+    });
+  }
+
+  function assetToImagePayload(asset) {
+    const file = asset.blob || asset.file;
+    return blobToBase64(file).then((base64) => ({
+      base64: base64,
+      name: asset.name || 'image.png',
+      mime: (file && file.type) || 'image/png'
+    }));
+  }
+
+  function makeCancelledError(message) {
+    const err = new Error(message || 'Cancelled');
+    err.code = 'cancelled';
+    return err;
+  }
+
+  function isCancelError(err) {
+    return !!(err && (err.code === 'cancelled' || /cancelled|canceled/i.test(String(err.message || ''))));
+  }
+
+  function isShotCancelRequested(shotIndex) {
+    if (!state.workspace) return true;
+    if (state.workspace.cancelAll) return true;
+    if (state.workspace.genAllBatch && state.workspace.genAllBatch.cancelRequested) return true;
+    if (state.workspace.cancelShots && state.workspace.cancelShots[shotIndex]) return true;
+    return false;
+  }
+
+  function clearCancelFlags() {
+    if (!state.workspace) return;
+    delete state.workspace.cancelAll;
+    delete state.workspace.cancelShots;
+    if (state.workspace.genAllBatch) delete state.workspace.genAllBatch.cancelRequested;
+  }
+
+  function trackActiveJob(shotIndex, jobId) {
+    if (!state.workspace) return;
+    if (!state.workspace.activeJobIds) state.workspace.activeJobIds = {};
+    if (jobId) state.workspace.activeJobIds[shotIndex] = jobId;
+  }
+
+  function untrackActiveJob(shotIndex) {
+    if (!state.workspace || !state.workspace.activeJobIds) return;
+    delete state.workspace.activeJobIds[shotIndex];
+  }
+
+  async function cancelBridgeJobs(jobIds) {
+    const ids = (jobIds || []).filter(Boolean);
+    await Promise.all(ids.map((id) =>
+      answerlyFetch('/answerly/jobs/' + encodeURIComponent(id) + '/cancel', { method: 'POST' })
+        .catch(() => null)
+    ));
+  }
+
+  /** Cancel one shot, or the whole parallel batch when opts.all. */
+  async function cancelAnswerlyGeneration(opts) {
+    opts = opts || {};
+    if (!state.workspace) return;
+    const batch = state.workspace.genAllBatch;
+    // Explicit Cancel all, or single-shot cancel with no shot index while a batch is active.
+    const cancelAll = !!opts.all || (opts.shotIndex == null && !!batch);
+    if (cancelAll) {
+      state.workspace.cancelAll = true;
+      if (batch) batch.cancelRequested = true;
+      const ids = Object.keys(state.workspace.activeJobIds || {}).map((k) => state.workspace.activeJobIds[k]);
+      await cancelBridgeJobs(ids);
+      try {
+        await answerlyFetch('/answerly/jobs/cancel-all', { method: 'POST' });
+      } catch (e) { /* bridge may be restarting */ }
+      showToast('Cancelling all Answerly jobs…', false);
+      renderWorkspace();
+      return;
+    }
+    const shotIndex = opts.shotIndex != null ? opts.shotIndex : state.workspace.generating;
+    if (shotIndex == null) return;
+    if (!state.workspace.cancelShots) state.workspace.cancelShots = {};
+    state.workspace.cancelShots[shotIndex] = true;
+    const jobId = state.workspace.activeJobIds && state.workspace.activeJobIds[shotIndex];
+    if (jobId) await cancelBridgeJobs([jobId]);
+    markShotBusy(shotIndex, 'Cancelling…');
+    showToast('Cancelling generation…', false);
+    renderWorkspace();
+  }
+
+  async function pollAnswerlyJob(id, onProgress, opts) {
+    opts = opts || {};
+    for (;;) {
+      if (typeof opts.shouldCancel === 'function' && opts.shouldCancel()) {
+        try {
+          await answerlyFetch('/answerly/jobs/' + encodeURIComponent(id) + '/cancel', { method: 'POST' });
+        } catch (e) { /* ignore */ }
+        throw makeCancelledError();
+      }
+      const job = await answerlyFetch('/answerly/jobs/' + encodeURIComponent(id));
+      if (typeof onProgress === 'function') onProgress(job);
+      if (job.status === 'done') return job;
+      if (job.status === 'cancelled' || job.status === 'canceled') throw makeCancelledError();
+      if (job.status === 'failed') throw new Error(job.error || 'Answerly job failed');
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+  }
+
+  async function runAnswerlyForShot(shotIndex, promptText, opts) {
+    opts = opts || {};
+    await answerlyEnsureToken();
+    const resolvedPrior = await resolvePriorAsset(shotIndex, {
+      driveImgIndex: opts.driveImgIndex,
+      requireMainFromHeroOutput: !!opts.requireMainFromHeroOutput
+    });
+    if (opts.requireMainFromHeroOutput && !(resolvedPrior && resolvedPrior.asset &&
+        String(resolvedPrior.source || '').indexOf('main-from-hero-output') === 0)) {
+      const err = new Error('MAIN needs Hero Front / 01 generated D as A — wait for that shot first.');
+      err.code = 'main_needs_hero_output';
+      throw err;
+    }
+    const source = pickAnswerlyReplacePayload(shotIndex, resolvedPrior && resolvedPrior.asset, {
+      shots: shotListFor(taskByEan(state.workspace && state.workspace.ean) || {})
+    });
+    if (!source.ok) {
+      const err = new Error(source.error);
+      err.code = source.code;
+      throw err;
+    }
+    warnIfOverAnswerlyLimit(source.prior, 'Prior (A)');
+    source.inputs.forEach((a, i) => warnIfOverAnswerlyLimit(a, 'Product input B' + (i + 1)));
+    const sizeEl = els.workspace && els.workspace.querySelector('.wr-size-select');
+    const modelEl = els.workspace && els.workspace.querySelector('.wr-model-select');
+    const imageSize = (sizeEl && sizeEl.value) || localStorage.getItem(ANSWERLY_SIZE_KEY) || '2K';
+    const model = (modelEl && modelEl.value) || localStorage.getItem(ANSWERLY_MODEL_KEY) || 'gemini-3.1-flash-image';
+    localStorage.setItem(ANSWERLY_SIZE_KEY, imageSize);
+    localStorage.setItem(ANSWERLY_MODEL_KEY, model);
+
+    // Order: INPUT IMAGE 1 = prior/master, 2+ = product inputs.
+    // Krea / Grok accept at most 1 reference — send prior only; product stays in the prompt text.
+    const maxRefs = modelMaxReferenceImages(model);
+    const assetList = maxRefs <= 1
+      ? [source.prior]
+      : [source.prior].concat(source.inputs);
+    const images = await Promise.all(assetList.map(assetToImagePayload));
+    let prompt = String(promptText || '').trim();
+    if (!prompt) throw new Error('Prompt is empty');
+    const priorLabel = (resolvedPrior && resolvedPrior.source && String(resolvedPrior.source).indexOf('main-from-hero') === 0)
+      ? (source.prior.name || 'hero_angle_source.png') + ' (angle source for MAIN)'
+      : (source.prior.name || 'prior.png');
+    if (maxRefs <= 1) {
+      prompt += '\n\n---\nINPUT IMAGE 1 — PRIOR / MASTER (only reference; this model accepts 1 image): ' +
+        priorLabel +
+        '\nProduct likeness from prompt + B filenames: ' +
+        source.inputs.map((a) => a.name || 'product.png').join(', ');
+      source.reason = (source.reason || 'Image to Image') + ' · 1-ref model (prior only)';
+    } else {
+      prompt += '\n\n---\nINPUT IMAGE 1 — PRIOR / MASTER: ' + priorLabel +
+        '\n' + source.inputs.map((a, i) =>
+          'INPUT IMAGE ' + (i + 2) + ' — PRODUCT REFERENCE: ' + (a.name || ('product_' + (i + 1) + '.png'))
+        ).join('\n');
+    }
+    if (resolvedPrior && resolvedPrior.source && String(resolvedPrior.source).indexOf('main-from-hero') === 0) {
+      source.reason = 'MAIN from ' +
+        ((resolvedPrior.angleShot && (resolvedPrior.angleShot.name || resolvedPrior.angleShot.code)) || 'Hero Front') +
+        ' + product input(s) → Image to Image' +
+        (maxRefs <= 1 ? ' · 1-ref model (prior only)' : '');
+    }
+
+    const body = {
+      workflow: source.workflow,
+      model: model,
+      image_size: imageSize,
+      prompt: prompt,
+      images: images
+    };
+
+    if (isShotCancelRequested(shotIndex)) throw makeCancelledError();
+    markShotBusy(shotIndex, 'Queued…');
+    try {
+      const queued = await answerlyFetch('/answerly/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      trackActiveJob(shotIndex, queued.id);
+      if (isShotCancelRequested(shotIndex)) {
+        await cancelBridgeJobs([queued.id]);
+        throw makeCancelledError();
+      }
+      let lastStage = '';
+      const job = await pollAnswerlyJob(queued.id, (j) => {
+        if (!state.workspace || state.workspace.mode !== 'replace') return;
+        const stage = (j.stage || j.status || 'running') +
+          (typeof j.progress === 'number' ? ' · ' + j.progress + '%' : '');
+        markShotBusy(shotIndex, stage);
+        // Keep legacy single-shot field for the focused rail item.
+        if (!state.workspace.genAllBatch) {
+          state.workspace.generating = shotIndex;
+          state.workspace.genStage = stage;
+        } else {
+          const nBusy = Object.keys(state.workspace.busyShots || {}).length;
+          state.workspace.genStage = nBusy + ' in parallel · ' + stage;
+        }
+        if (stage !== lastStage) {
+          lastStage = stage;
+          renderWorkspace();
+        }
+      }, {
+        shouldCancel: () => isShotCancelRequested(shotIndex)
+      });
+
+      if (isShotCancelRequested(shotIndex)) throw makeCancelledError();
+
+      const resultRes = await fetch(UPSCALE_URL + '/answerly/jobs/' + encodeURIComponent(job.id) + '/result');
+      if (!resultRes.ok) throw new Error('Could not download Answerly result');
+      if (isShotCancelRequested(shotIndex)) throw makeCancelledError();
+      const outBlob = await resultRes.blob();
+      const outUrl = URL.createObjectURL(outBlob);
+      const assets = shotAssets(shotIndex);
+      const task = taskByEan(state.workspace.ean) || { ean: state.workspace.ean };
+      const shots = shotListFor(task);
+      const priorMatch = resolveWorkspaceMatch(task).selected;
+      const driveImgs = priorDriveImages(priorMatch);
+      const preferredDriveIdx = opts.driveImgIndex != null
+        ? opts.driveImgIndex
+        : state.workspace.driveImgIndex;
+      const driveIdx = driveImgs.length
+        ? Math.min(Math.max(0, Number(preferredDriveIdx) || 0), driveImgs.length - 1)
+        : -1;
+      const activeShot = shots[shotIndex] || { seq: shotIndex + 1, code: 'OUT' };
+      let driveName = driveIdx >= 0 ? (driveImgs[driveIdx] && driveImgs[driveIdx].name) : '';
+      // MAIN is generated from Hero Front / seq 01 — keep output filename as MAIN, not the angle source.
+      if (isMainShot(activeShot)) {
+        const mainDrive = driveImgs.find((img) => /^MAIN$/i.test(driveImgLabel(img.name)));
+        driveName = mainDrive ? mainDrive.name : '';
+      }
+      revokeAssetUrl(assets.output);
+      const dims = await measureBlobDims(outBlob);
+      assets.output = {
+        blob: outBlob,
+        url: outUrl,
+        name: synthesizeFileName(task, driveName, activeShot),
+        model: model,
+        size: imageSize,
+        workflow: source.workflow,
+        approved: false,
+        jobId: job.id,
+        priorSource: (resolvedPrior && resolvedPrior.source) || '',
+        w: dims.w || 0,
+        h: dims.h || 0
+      };
+      assets.error = null;
+      if (!state.workspace.outputs) state.workspace.outputs = {};
+      state.workspace.outputs[shotIndex] = true;
+      // Keep export card in sync when D is (re)generated.
+      if (state.workspace.exportImages) {
+        state.workspace.exportImages[String(shotIndex)] = {
+          url: outUrl,
+          name: assets.output.name,
+          blob: outBlob,
+          file: outBlob,
+          w: dims.w || 0,
+          h: dims.h || 0,
+          status: 'ready',
+          fromApproved: false,
+          upscale: null
+        };
+      }
+      // Fresh generate → rating must start blank for this shot (do not carry prior stars).
+      clearShotRating(shotIndex);
+      saveReplaceOutputDraft(state.workspace.ean, shotIndex, assets.output);
+      // First successful generate for this EAN → Render Tracker "In progress".
+      markRenderInProgress(state.workspace.ean);
+      return { job: job, source: source, output: assets.output };
+    } finally {
+      untrackActiveJob(shotIndex);
+      clearShotBusy(shotIndex);
+    }
+  }
+
+  function persistReplacePromptFromDom() {
+    if (!state.workspace || state.workspace.mode !== 'replace' || !els.workspace) return;
+    const promptEl = els.workspace.querySelector('[data-ws-prompt]');
+    if (!promptEl) return;
+    if (!state.workspace.prompts) state.workspace.prompts = {};
+    const key = promptEl.getAttribute('data-ws-prompt');
+    const idx = key != null && key !== '' ? Number(key) : (state.workspaceShot || 0);
+    state.workspace.prompts[idx] = promptEl.value;
+  }
+
+  function openPromptExpandModal(text, shotIndex) {
+    let overlay = document.getElementById('wr-prompt-expand');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'wr-prompt-expand';
+      overlay.className = 'wr-prompt-modal';
+      overlay.hidden = true;
+      overlay.innerHTML =
+        '<div class="wr-prompt-modal-backdrop" data-wr-prompt-close></div>' +
+        '<div class="wr-prompt-modal-panel" role="dialog" aria-modal="true" aria-label="Full prompt">' +
+          '<div class="wr-prompt-modal-head">' +
+            '<div class="wr-prompt-modal-title">Prompt</div>' +
+            '<button type="button" class="wr-icon-btn" data-wr-prompt-close title="Close" aria-label="Close">✕</button>' +
+          '</div>' +
+          '<textarea class="wr-prompt-modal-text" spellcheck="false"></textarea>' +
+          '<div class="wr-prompt-modal-foot">' +
+            '<button type="button" class="wr-text-btn" data-wr-prompt-copy>Copy</button>' +
+            '<button type="button" class="tp-btn tp-btn-primary" data-wr-prompt-apply>Apply &amp; close</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      overlay.addEventListener('click', (e) => {
+        if (e.target.closest('[data-wr-prompt-close]')) {
+          overlay.hidden = true;
+          return;
+        }
+        if (e.target.closest('[data-wr-prompt-copy]')) {
+          const ta = overlay.querySelector('.wr-prompt-modal-text');
+          const val = ta ? ta.value : '';
+          if (!val) return;
+          navigator.clipboard.writeText(val).then(() => showToast('Prompt copied.', false))
+            .catch(() => showToast('Could not copy prompt.', false, { error: true }));
+          return;
+        }
+        if (e.target.closest('[data-wr-prompt-apply]')) {
+          const ta = overlay.querySelector('.wr-prompt-modal-text');
+          const idx = Number(overlay.dataset.shotIndex) || 0;
+          if (state.workspace) {
+            if (!state.workspace.prompts) state.workspace.prompts = {};
+            state.workspace.prompts[idx] = ta ? ta.value : '';
+            const live = els.workspace && els.workspace.querySelector('[data-ws-prompt]');
+            if (live && String(live.getAttribute('data-ws-prompt')) === String(idx)) {
+              live.value = state.workspace.prompts[idx];
+            }
+            persistCurrentReplaceDraft();
+            renderWorkspace();
+          }
+          overlay.hidden = true;
+          showToast('Prompt updated.', false);
+        }
+      });
+    }
+    overlay.dataset.shotIndex = String(shotIndex != null ? shotIndex : 0);
+    const ta = overlay.querySelector('.wr-prompt-modal-text');
+    if (ta) ta.value = String(text || '');
+    overlay.hidden = false;
+    if (ta) {
+      ta.focus();
+      ta.setSelectionRange(0, 0);
+    }
   }
 
   function openReplaceFilePicker(target) {
-    if (!state.workspace || !els.workspace) return;
+    if (!state.workspace) return;
     state.workspace.fileTarget = target || { kind: 'inputs', shotIndex: state.workspaceShot || 0 };
-    let input = els.workspace.querySelector('#wr-file-input');
+    // Keep the file input on document.body so renderWorkspace() innerHTML rebuilds do not destroy it mid-pick.
+    let input = document.getElementById('wr-file-input');
     if (!input) {
       input = document.createElement('input');
       input.type = 'file';
       input.id = 'wr-file-input';
-      input.accept = 'image/jpeg,image/png';
+      input.accept = 'image/jpeg,image/png,.jpg,.jpeg,.png';
       input.multiple = true;
       input.hidden = true;
-      els.workspace.appendChild(input);
+      document.body.appendChild(input);
       input.addEventListener('change', () => {
         const files = input.files;
         const dest = state.workspace && state.workspace.fileTarget;
@@ -1474,13 +2908,1972 @@
     input.click();
   }
 
+  function normPromptKey(s) {
+    return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  function embeddedUniversalRows() {
+    const pack = window.UNIVERSAL_REPLACE_PROMPTS;
+    return (pack && Array.isArray(pack.rows)) ? pack.rows.slice() : [];
+  }
+
+  function parseUniversalGrid(values) {
+    const grid = values || [];
+    if (!grid.length) return [];
+    const headers = (grid[0] || []).map((h) => normPromptKey(h));
+    function col() {
+      for (let a = 0; a < arguments.length; a++) {
+        const want = normPromptKey(arguments[a]);
+        const i = headers.indexOf(want);
+        if (i >= 0) return i;
+      }
+      return -1;
+    }
+    const iWorkflow = col('Primary/Product replacement', 'workflow');
+    const iProductType = col('Product Type');
+    const iCode = col('Image short code', 'Shot Code');
+    const iName = col('Image Name');
+    const iPrompt = col('Final successful prompt', 'prompt');
+    const rows = [];
+    for (let r = 1; r < grid.length; r++) {
+      const row = grid[r] || [];
+      const prompt = String(iPrompt >= 0 ? row[iPrompt] : '').trim();
+      if (!prompt) continue;
+      rows.push({
+        workflow: String(iWorkflow >= 0 ? row[iWorkflow] : '').trim(),
+        productType: String(iProductType >= 0 ? row[iProductType] : '').trim(),
+        imageShortCode: String(iCode >= 0 ? row[iCode] : '').trim(),
+        imageName: String(iName >= 0 ? row[iName] : '').trim(),
+        prompt: prompt
+      });
+    }
+    return rows;
+  }
+
+  async function ensureUniversalPrompts(force) {
+    if (state.universalReady && !force) return state.universalRows || [];
+    state.universalReady = true;
+    state.universalRows = embeddedUniversalRows();
+    state.universalSource = 'embed';
+    if (!PROMPT_DB_URL) return state.universalRows;
+    try {
+      const data = await jsonp('action=universal', 45000, PROMPT_DB_URL);
+      const live = parseUniversalGrid(data && data.values);
+      if (live.length) {
+        state.universalRows = live;
+        state.universalSource = 'live';
+      }
+    } catch (err) {
+      // Keep embed fallback; do not block Replacement UI.
+      state.universalError = (err && err.message) || 'Universal load failed';
+    }
+    // After Universal refresh, keep automated prompts aligned so approve stays Automated.
+    // Always refresh MAIN prompts from the Universal MAIN row (avoid stuck Hero Front soft-match).
+    if (state.workspace && state.workspace.mode === 'replace') {
+      const task = taskByEan(state.workspace.ean);
+      if (task) {
+        const prior = resolveWorkspaceMatch(task).selected;
+        syncAutomatedPromptsToLatestCompile(task, prior);
+        forceRefreshMainPrompts(task, prior);
+      }
+    }
+    return state.universalRows || [];
+  }
+
+  function forceRefreshMainPrompts(t, prior) {
+    if (!state.workspace || !t) return;
+    const shots = shotListFor(t);
+    if (!state.workspace.prompts) state.workspace.prompts = {};
+    let changed = false;
+    shots.forEach((shot, idx) => {
+      if (!isMainShot(shot)) return;
+      const compiled = compileReplacePrompt(t, shot, prior);
+      const curN = normalizePromptCompare(state.workspace.prompts[idx]);
+      const nextN = normalizePromptCompare(compiled.text);
+      if (curN === nextN) return;
+      const baseN = normalizePromptCompare(
+        state.workspace.promptBaselines && state.workspace.promptBaselines[idx]
+      );
+      // Keep only true Custom edits (changed after baseline). Replace wrong Hero Front soft-matches.
+      const isCustomEdit = !!(curN && baseN && curN !== baseN);
+      if (isCustomEdit) return;
+      state.workspace.prompts[idx] = compiled.text;
+      rememberPromptBaseline(idx, compiled.text);
+      changed = true;
+    });
+    if (changed && state.workspace.mode === 'replace') {
+      persistCurrentReplaceDraft();
+      renderWorkspace();
+    }
+  }
+
+  // MAIN is generated from Hero Front. If no Hero Front, use the Naming shot marked seq 01.
+  function mainAngleSourceShot(shots) {
+    const list = shots || [];
+    const hero = list.find((s) => {
+      if (isMainShot(s)) return false;
+      const code = String(s.code || '').toUpperCase();
+      const name = String(s.name || '');
+      if (/^H-FR(?:-SET)?$/i.test(code)) return true;
+      if (/^hero\s*front$/i.test(name.trim())) return true;
+      if (/^hero\s*front\s*-\s*set$/i.test(name.trim())) return true;
+      return false;
+    });
+    if (hero) return hero;
+    const seq01 = list.find((s) => {
+      if (isMainShot(s)) return false;
+      const seq = String(s.seq != null ? s.seq : '').trim();
+      return seq === '01' || seq === '1' || Number(seq) === 1;
+    });
+    return seq01 || null;
+  }
+
+  function isReplaceWorkflow(row) {
+    return /product\s*replacement/i.test(String((row && row.workflow) || 'Product replacement'));
+  }
+
+  function isUniversalMainRow(row) {
+    if (!row) return false;
+    const code = normPromptKey(row.imageShortCode);
+    const name = normPromptKey(row.imageName);
+    if (code === 'main') return true;
+    if (/^main$/.test(name)) return true;
+    if (/marketplace\s*main/.test(name)) return true;
+    if (/white\s*background/.test(name) && /main|marketplace/.test(name)) return true;
+    return false;
+  }
+
+  function resolveUniversalPrompt(shot, productTypeName) {
+    const rows = (state.universalRows && state.universalRows.length)
+      ? state.universalRows
+      : embeddedUniversalRows();
+    const replaceRows = rows.filter(isReplaceWorkflow);
+    const pool = replaceRows.length ? replaceRows : rows;
+    const shotCode = normPromptKey(shot && shot.code);
+    const shotName = normPromptKey(shot && shot.name);
+    const pt = normPromptKey(productTypeName);
+    const mainShot = isMainShot(shot);
+
+    function typeOk(row) {
+      const rpt = normPromptKey(row.productType);
+      return !rpt || !pt || rpt === pt;
+    }
+
+    function labelFor(row, kind) {
+      if (kind === 'master') return 'master';
+      const name = String(row.imageName || '').trim();
+      const code = String(row.imageShortCode || '').trim();
+      if (name && code) return name + ' (' + code + ')';
+      return name || code || 'shot-specific';
+    }
+
+    // MAIN shots: always prefer the Universal MAIN row — never soft-match Hero Front / H-FR.
+    if (mainShot) {
+      for (let i = 0; i < pool.length; i++) {
+        const row = pool[i];
+        if (isUniversalMainRow(row) && typeOk(row)) {
+          return { prompt: row.prompt, label: labelFor(row, 'shot'), row: row };
+        }
+      }
+      // Type filter may have skipped MAIN — try again without product-type filter.
+      for (let i = 0; i < pool.length; i++) {
+        const row = pool[i];
+        if (isUniversalMainRow(row)) {
+          return { prompt: row.prompt, label: labelFor(row, 'shot'), row: row };
+        }
+      }
+      // Fall through to master only (skip Hero Front contains-match below).
+      for (let i = 0; i < pool.length; i++) {
+        const row = pool[i];
+        if (!String(row.imageName || '').trim() && !String(row.imageShortCode || '').trim() && typeOk(row)) {
+          return { prompt: row.prompt, label: labelFor(row, 'master'), row: row };
+        }
+      }
+      if (pool[0] && pool[0].prompt) {
+        return { prompt: pool[0].prompt, label: labelFor(pool[0], 'master'), row: pool[0] };
+      }
+      return { prompt: '', label: 'missing', row: null };
+    }
+
+    // 1) Exact Image short code
+    if (shotCode) {
+      for (let i = 0; i < pool.length; i++) {
+        const row = pool[i];
+        const code = normPromptKey(row.imageShortCode);
+        if (code && code === shotCode && typeOk(row)) {
+          return { prompt: row.prompt, label: labelFor(row, 'shot'), row: row };
+        }
+      }
+    }
+    // 2) Exact Image Name
+    if (shotName) {
+      for (let i = 0; i < pool.length; i++) {
+        const row = pool[i];
+        const name = normPromptKey(row.imageName);
+        if (name && name === shotName && typeOk(row)) {
+          return { prompt: row.prompt, label: labelFor(row, 'shot'), row: row };
+        }
+      }
+    }
+    // 3) Alias / contains (only when Universal Image Name is specifically filled).
+    // Never pick a MAIN universal row for a non-MAIN shot.
+    if (shotName) {
+      for (let i = 0; i < pool.length; i++) {
+        const row = pool[i];
+        if (isUniversalMainRow(row)) continue;
+        const name = normPromptKey(row.imageName);
+        if (!name || !typeOk(row)) continue;
+        if (shotName === name || shotName.indexOf(name) >= 0 || name.indexOf(shotName) >= 0) {
+          return { prompt: row.prompt, label: labelFor(row, 'shot'), row: row };
+        }
+      }
+    }
+    // 4) Master — blank Image Name and Image short code
+    for (let i = 0; i < pool.length; i++) {
+      const row = pool[i];
+      if (!String(row.imageName || '').trim() && !String(row.imageShortCode || '').trim() && typeOk(row)) {
+        return { prompt: row.prompt, label: labelFor(row, 'master'), row: row };
+      }
+    }
+    if (pool[0] && pool[0].prompt) {
+      return { prompt: pool[0].prompt, label: labelFor(pool[0], 'master'), row: pool[0] };
+    }
+    return { prompt: '', label: 'missing', row: null };
+  }
+
+  function isDimensionShot(shot) {
+    if (shot == null) return false;
+    if (typeof shot === 'string') return isDimensionShotName(shot);
+    const name = String(shot.name || '');
+    const code = String(shot.code || '');
+    const family = String(shot.family || '');
+    return /dimension/i.test(name) || /^M-DIM/i.test(code) || /^Size$/i.test(family) ||
+      isDimensionShotName(name);
+  }
+
+  function isMainShot(shot) {
+    const name = String((shot && shot.name) || '');
+    const code = String((shot && shot.code) || '');
+    const note = String((shot && shot.note) || '');
+    return code === 'MAIN' || /white background|marketplace\s*main/i.test(name) || /marketplace main/i.test(note);
+  }
+
+  function cleanWhatToShoot(shot, shots) {
+    if (!shot) return '';
+    if (isDimensionShot(shot)) return '';
+    // MAIN: do not name Hero Front / seq 01 in text — that image is sent as INPUT IMAGE 1.
+    // Framing comes from the Universal MAIN prompt + the attached angle-source image.
+    if (isMainShot(shot)) return '';
+
+    let text = String(shot.whatToShoot || '').replace(/\s+/g, ' ').trim();
+    if (!text) return '';
+
+    text = text
+      .replace(/\bAmazon and Flipkart[^.]*\./gi, '')
+      .replace(/\bThis file does NOT appear[^.]*\./gi, '')
+      .replace(/\bThe same angle as the Hero Front(?:\s*-\s*Set)? below[^.]*\./gi, '')
+      .replace(/\bonly shoot this if the product actually has it\.?/gi, '')
+      .replace(/,?\s*so shoppers see what matches\.?/gi, '')
+      .replace(/\bShow all the pieces together\.?/gi, '')
+      .replace(/\bShow one piece from the set on its own\.?/gi, '')
+      .replace(/,?\s*plain background\.?/gi, '')
+      .replace(/,?\s*on pure white with no styling and no background objects\.?/gi, '')
+      .replace(/\s+/g, ' ')
+      .replace(/^[,.\s]+|[,.\s]+$/g, '')
+      .trim();
+
+    const isLifestyle = /lifestyle/i.test(shot.family || '') || /lifestyle/i.test(shot.name || '');
+    if (isLifestyle) {
+      text = text.replace(/^The product styled in a real room or in use\.?\s*/i, '').trim();
+      if (!text) return '';
+    }
+
+    // Re-join stripped mid-sentence leftovers into readable sentences.
+    text = text.replace(/\s{2,}/g, ' ').replace(/\s+\./g, '.').trim();
+    if (text && !/[.!?]$/.test(text)) text += '.';
+    // Prefer ". " between two clauses that lost their join after plain-background strip
+    text = text.replace(/([a-z])\s+(Show\b)/g, '$1. $2');
+    return text;
+  }
+
+  function cameraHintForShot(shot, cleanedWhat) {
+    if (!shot || isDimensionShot(shot)) return '';
+    const name = String(shot.name || '');
+    const family = String(shot.family || '');
+    const cleaned = String(cleanedWhat || '').toLowerCase();
+    const hints = [];
+
+    if (isMainShot(shot)) {
+      // MAIN cue already in cleaned What to Shoot
+      return '';
+    }
+    if (/lifestyle/i.test(family) || /lifestyle/i.test(name)) {
+      hints.push('keep the prior lifestyle scene; replace only the product; do not change background, props, or lighting');
+    }
+    if (/close\s*up|close-up/i.test(family) || /close\s*up/i.test(name)) {
+      if (!/tight crop/i.test(cleaned)) hints.push('keep the prior close-up crop; do not zoom out to a full hero');
+      else hints.push('keep the prior close-up crop; do not zoom out to a full hero');
+    } else if (/hero\s*front/i.test(name) && !/lid|open|lit|set|individual/i.test(name)) {
+      hints.push('keep the prior hero framing and zoom; do not reframe as a close-up or lifestyle');
+    }
+    if (/lid\s*open|product open|opened/i.test(name) && !/lid open|opened/i.test(cleaned)) {
+      hints.push('match the prior open state and framing');
+    }
+    if (/candle\s*lit|\blit\b/i.test(name) && !/candle lit|glow/i.test(cleaned)) {
+      hints.push('keep the prior lit framing; glow must belong to the new product');
+    }
+    if (/flat\s*lay/i.test(name) && !/directly above|flat/i.test(cleaned)) {
+      hints.push('keep the prior top-down flat-lay framing');
+    }
+    if (!hints.length) return '';
+    return 'Camera: ' + hints[0] + '.';
+  }
+
+  function productInsertSentence(t) {
+    if (!t) return '';
+    const parts = [];
+    const name = String(t.productName || t.title || '').trim();
+    if (name) parts.push(name);
+    const dept = String(t.department || '').trim();
+    if (dept) parts.push(dept + ' department');
+    const cat = String(t.sheetCategory || t.category || '').trim();
+    if (cat) parts.push(cat + ' category');
+    const sub = String(t.subCategory || '').trim();
+    if (sub) parts.push(sub + ' sub-category');
+    if (t.setKind === 'set' && t.setLabel) {
+      parts.push('sold as a ' + String(t.setLabel).replace(/^sold as a\s+/i, ''));
+    }
+    const color = String(t.color || '').trim();
+    if (color) parts.push(color + ' colour/material');
+
+    let sentence = parts.length ? ('Product to insert: ' + parts.join(', ') + '.') : '';
+    const detail = String(t.detailDescription || '').trim();
+    if (detail) sentence += (sentence ? ' ' : '') + 'Detail: ' + detail + (/[.!?]$/.test(detail) ? '' : '.');
+    const size = String(t.size || '').trim();
+    if (size && (!detail || detail.toLowerCase().indexOf(size.toLowerCase()) < 0)) {
+      sentence += (sentence ? ' ' : '') + 'Size: ' + size + (/[.!?]$/.test(size) ? '' : '.');
+    }
+    return sentence.trim();
+  }
+
+  function priorLookSentence(priorTask) {
+    if (!priorTask) return '';
+    const bits = [];
+    const name = String(priorTask.productName || priorTask.title || '').trim();
+    if (name) bits.push(name);
+    const color = String(priorTask.color || '').trim();
+    if (color) bits.push(color);
+    const detail = String(priorTask.detailDescription || '').trim();
+    if (detail) {
+      const short = detail.length > 120 ? detail.slice(0, 117) + '…' : detail;
+      bits.push(short);
+    }
+    if (!bits.length) return '';
+    return 'Prior product look: ' + bits.join(', ') + '.';
+  }
+
+  function ensureFullRemoveRule(universalText) {
+    const text = String(universalText || '').trim();
+    if (!text) return text;
+    if (/fully remove the prior product/i.test(text) || /do not leave remnants/i.test(text)) return text;
+    return text + '\n\nFully remove the prior product silhouette from INPUT IMAGE 1 and insert the new product. Do not leave remnants or blend products.';
+  }
+
+  function compileReplacePrompt(t, shot, priorMatch, opts) {
+    const options = opts || {};
+    const productTypeName = (state.workspace && state.workspace.productTypeName) || options.productTypeName || '';
+    const shots = options.shots || (t ? shotListFor(t) : []);
+    const resolved = resolveUniversalPrompt(shot, productTypeName);
+    const base = ensureFullRemoveRule(resolved.prompt);
+    const productLine = productInsertSentence(t);
+    const cleaned = cleanWhatToShoot(shot, shots);
+    const camera = cameraHintForShot(shot, cleaned);
+    const family = String((shot && shot.family) || '').trim();
+    const shotName = String((shot && shot.name) || '').trim() || 'this shot';
+
+    let target = 'Target ' + shotName;
+    if (family) target += ' — ' + family;
+    target += '.';
+    if (cleaned) target += ' ' + cleaned;
+    if (camera && cleaned.toLowerCase().indexOf(camera.replace(/^Camera:\s*/i, '').slice(0, 24).toLowerCase()) < 0) {
+      target += (/\.$/.test(target.trim()) ? ' ' : '. ') + camera;
+    }
+
+    const priorTask = priorMatch ? (taskByEan(priorMatch.ean) || priorMatch) : null;
+    const priorLook = priorLookSentence(priorTask);
+    const insertName = String((t && (t.productName || t.title)) || 'the new product').trim();
+    const color = t && String(t.color || '').trim();
+
+    const lines = [];
+    if (base) lines.push(base);
+    if (productLine) lines.push('', productLine);
+    if (target) lines.push('', target);
+    lines.push('');
+    lines.push('INPUT IMAGE 1 is the prior / master scene: remove that product completely; use it only for position, angle, and scale.' +
+      (priorLook ? ' ' + priorLook : ''));
+    lines.push('INPUT IMAGE 2+ are references for ' + insertName +
+      (color ? ' in ' + color : '') + ' described above.');
+
+    const text = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    return {
+      text: text,
+      universalLabel: resolved.label || 'master',
+      universalRow: resolved.row || null,
+      cleanedWhatToShoot: cleaned
+    };
+  }
+
   function defaultReplacePrompt(t, shot, prior) {
-    const priorName = prior
-      ? (prior.ean + '_' + String(shot.seq).padStart(2, '0') + '_' + shot.code + '.png')
-      : 'prior_output.png';
-    return 'Studio clean plate of ' + (t.title || 'product') +
-      ', match Template ' + (t.template || 'T?') + ' angle from prior ' + priorName +
-      ', photorealistic marketplace packshot, soft diffused light, 3000×3000.';
+    return compileReplacePrompt(t, shot, prior).text;
+  }
+
+  function normalizePromptCompare(s) {
+    return String(s || '').replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  function rememberPromptBaseline(shotIndex, text) {
+    if (!state.workspace) return;
+    if (!state.workspace.promptBaselines) state.workspace.promptBaselines = {};
+    state.workspace.promptBaselines[shotIndex] = String(text || '');
+  }
+
+  function shotRating(shotIndex) {
+    if (!state.workspace || !state.workspace.ratings) return 0;
+    const v = state.workspace.ratings[String(shotIndex)];
+    return v != null ? (Number(v) || 0) : 0;
+  }
+
+  function setShotRating(shotIndex, stars) {
+    if (!state.workspace) return;
+    if (!state.workspace.ratings) state.workspace.ratings = {};
+    const key = String(shotIndex);
+    const n = Number(stars) || 0;
+    if (n <= 0) delete state.workspace.ratings[key];
+    else state.workspace.ratings[key] = n;
+  }
+
+  function clearShotRating(shotIndex) {
+    if (!state.workspace) return;
+    if (state.workspace.ratings) delete state.workspace.ratings[String(shotIndex)];
+    if (state.workspace.approved) delete state.workspace.approved[shotIndex];
+    if (state.workspace.rejected) delete state.workspace.rejected[shotIndex];
+  }
+
+  function promptOriginForShot(t, shot, prior, promptText, shotIndex) {
+    const norm = normalizePromptCompare(promptText);
+    if (!norm) return 'Automated';
+    const live = compileReplacePrompt(t, shot, prior).text;
+    if (norm === normalizePromptCompare(live)) return 'Automated';
+    const idx = shotIndex != null ? shotIndex : (state.workspaceShot || 0);
+    const stored = state.workspace && state.workspace.promptBaselines
+      ? state.workspace.promptBaselines[idx]
+      : null;
+    if (stored != null && norm === normalizePromptCompare(stored)) return 'Automated';
+    return 'Custom';
+  }
+
+  function syncAutomatedPromptsToLatestCompile(t, prior) {
+    if (!state.workspace || !t) return;
+    const shots = shotListFor(t);
+    if (!state.workspace.prompts) state.workspace.prompts = {};
+    if (!state.workspace.promptBaselines) state.workspace.promptBaselines = {};
+    shots.forEach((shot, idx) => {
+      const compiled = compileReplacePrompt(t, shot, prior).text;
+      const current = state.workspace.prompts[idx];
+      const baseline = state.workspace.promptBaselines[idx];
+      // Only refresh prompts the user has not customized.
+      if (current == null || current === '' ||
+          (baseline != null && normalizePromptCompare(current) === normalizePromptCompare(baseline)) ||
+          normalizePromptCompare(current) === normalizePromptCompare(compiled)) {
+        state.workspace.prompts[idx] = compiled;
+        rememberPromptBaseline(idx, compiled);
+      } else if (baseline == null) {
+        // First time we see this prompt — treat current as baseline if it matches live compile.
+        if (normalizePromptCompare(current) === normalizePromptCompare(compiled)) {
+          rememberPromptBaseline(idx, compiled);
+        }
+      }
+    });
+  }
+
+  const EXPORT_OUT_SIZE = 3000; // Match Renamer target output (3000 × 3000).
+
+  function exportOutputName(t, shot, idx) {
+    const ean = (t && t.ean) || 'EAN';
+    if (isMainShot(shot)) return ean + '_MAIN.png';
+    const seq = shot && shot.seq != null ? String(shot.seq) : String(idx).padStart(2, '0');
+    return ean + '_' + seq + '_' + (shot && shot.code ? shot.code : 'SHOT') + '.png';
+  }
+
+  function measureBlobDims(blobOrUrl) {
+    return new Promise((resolve) => {
+      if (!blobOrUrl) {
+        resolve({ w: 0, h: 0 });
+        return;
+      }
+      const revoke = typeof blobOrUrl !== 'string';
+      const url = revoke ? URL.createObjectURL(blobOrUrl) : blobOrUrl;
+      const img = new Image();
+      img.onload = () => {
+        const dims = { w: img.naturalWidth || 0, h: img.naturalHeight || 0 };
+        if (revoke) {
+          try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ }
+        }
+        resolve(dims);
+      };
+      img.onerror = () => {
+        if (revoke) {
+          try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ }
+        }
+        resolve({ w: 0, h: 0 });
+      };
+      img.src = url;
+    });
+  }
+
+  function exportNeedsUpscale(img) {
+    if (!img || !upscaleOn()) return false;
+    // Unknown size → treat as needing upscale so 1K Answerly outputs are not marked "Not needed".
+    if (!(img.w > 0 && img.h > 0)) return true;
+    return Math.min(img.w, img.h) < EXPORT_OUT_SIZE;
+  }
+
+  function ensureExportImageDims(entry, key) {
+    if (!entry || (entry.w > 0 && entry.h > 0) || entry._measuring) return;
+    const src = entry.blob || entry.file || entry.url;
+    if (!src) return;
+    entry._measuring = true;
+    measureBlobDims(src).then((dims) => {
+      if (!state.workspace || !state.workspace.exportImages) return;
+      const cur = state.workspace.exportImages[key];
+      if (!cur || cur !== entry) return;
+      entry.w = dims.w;
+      entry.h = dims.h;
+      entry._measuring = false;
+      // Also stamp dims onto the live D output when missing.
+      if (dims.w && dims.h) {
+        const out = shotAssets(key).output;
+        if (out && !(out.w > 0 && out.h > 0)) {
+          out.w = dims.w;
+          out.h = dims.h;
+        }
+      }
+      if (state.workspace.mode === 'replace') renderWorkspace();
+    });
+  }
+
+  function ensureExportImageFromApproved(idx) {
+    if (!state.workspace) return null;
+    if (!state.workspace.exportImages) state.workspace.exportImages = {};
+    if (!state.workspace.exportCleared) state.workspace.exportCleared = {};
+    const key = String(idx);
+    // User cleared this row — do not re-seed from approved/D until they drop again.
+    if (state.workspace.exportCleared[key]) return null;
+    if (state.workspace.exportImages[key]) {
+      ensureExportImageDims(state.workspace.exportImages[key], key);
+      return state.workspace.exportImages[key];
+    }
+    const approved = state.workspace.approved && state.workspace.approved[idx];
+    const out = shotAssets(idx).output;
+    const src = (approved && approved.url) || (out && out.url) || '';
+    if (!src) return null;
+    const entry = {
+      url: src,
+      name: (approved && approved.outputName) || (out && out.name) || '',
+      blob: (out && (out.blob || out.file)) || null,
+      file: (out && out.file) || null,
+      w: (out && out.w) || 0,
+      h: (out && out.h) || 0,
+      status: 'ready',
+      fromApproved: !!(approved && approved.url),
+      upscale: null
+    };
+    state.workspace.exportImages[key] = entry;
+    ensureExportImageDims(entry, key);
+    return entry;
+  }
+
+  function seedExportImagesFromApproved(shots) {
+    if (!state.workspace) return;
+    (shots || []).forEach((_, idx) => ensureExportImageFromApproved(idx));
+  }
+
+  const EXPORT_RING_C = 2 * Math.PI * 15.5;
+
+  function exportUpscaleRing(pct, variant) {
+    const offset = EXPORT_RING_C * (1 - Math.max(0, Math.min(100, Number(pct) || 0)) / 100);
+    return '<svg class="ring' + (variant ? ' ' + variant : '') + '" viewBox="0 0 36 36" aria-hidden="true">' +
+      '<circle class="ring-bg" cx="18" cy="18" r="15.5"/>' +
+      '<circle class="ring-fg" cx="18" cy="18" r="15.5" stroke-dasharray="' + EXPORT_RING_C.toFixed(2) +
+        '" stroke-dashoffset="' + offset.toFixed(2) + '"/>' +
+      '</svg>';
+  }
+
+  function exportUpscaleSecs(ms) {
+    return Math.max(0, Math.round((Number(ms) || 0) / 1000)) + ' s';
+  }
+
+  function exportUpscaleCellHtml(img, upOn) {
+    if (!img) return '<span class="dash">—</span>';
+    const up = img.upscale;
+    if (up) {
+      if (up.state === 'done') {
+        return '<span class="up-time done" title="AI upscale 2x time">' +
+          (up.ms != null ? exportUpscaleSecs(up.ms) : 'Done') + '</span>';
+      }
+      if (up.state === 'failed') return '<span class="up-fail">Failed</span>';
+      if (up.state === 'queued') {
+        return '<span class="upscale-cell">' + exportUpscaleRing(0, 'is-queued') +
+          '<span class="up-time">Queued</span></span>';
+      }
+      if (up.state === 'converting') {
+        return '<span class="upscale-cell">' + exportUpscaleRing(up.progress || 90, '') +
+          '<span class="up-time">PNG…</span></span>';
+      }
+      const waiting = up.stage === 'rate-limited' || up.stage === 'waiting';
+      const sub = up.stage === 'rate-limited' ? 'Firefly busy'
+        : (typeof up.progress === 'number' ? Math.round(up.progress) + '%' : '…');
+      return '<span class="upscale-cell" title="' + esc(up.stage || '') + '">' +
+        exportUpscaleRing(up.progress || 0, waiting ? 'is-waiting' : '') +
+        '<span class="up-time">' + exportUpscaleSecs(up.elapsed) +
+          '<span class="up-sub">' + esc(sub) + '</span></span></span>';
+    }
+    if (!upOn) return '<span class="up-muted">Off</span>';
+    if (!(img.w > 0 && img.h > 0)) return '<span class="up-muted">Measuring…</span>';
+    if (exportNeedsUpscale(img)) {
+      return '<span class="status status-upscale" title="Will be upscaled 2x with Adobe Firefly">AI 2x</span>';
+    }
+    return '<span class="up-muted">Not needed</span>';
+  }
+
+  function setExportProgress(file, step, pct) {
+    if (!state.workspace) return;
+    state.workspace.exportProgress = { file: file || '', step: step || '', pct: pct || 0 };
+    if (!els.workspace) return;
+    let box = els.workspace.querySelector('.wr-export-progress');
+    if (!box) {
+      const card = els.workspace.querySelector('.wr-approved-card');
+      if (!card) return;
+      box = document.createElement('div');
+      box.className = 'wr-export-progress';
+      box.setAttribute('aria-live', 'polite');
+      box.innerHTML =
+        '<div class="wr-export-progress-file"></div>' +
+        '<div class="wr-export-progress-step"></div>' +
+        '<div class="wr-export-progress-track"><div class="wr-export-progress-bar"></div></div>';
+      card.appendChild(box);
+    }
+    const fileEl = box.querySelector('.wr-export-progress-file');
+    const stepEl = box.querySelector('.wr-export-progress-step');
+    const barEl = box.querySelector('.wr-export-progress-bar');
+    if (fileEl) fileEl.textContent = file || '';
+    if (stepEl) stepEl.textContent = step || '';
+    if (barEl) barEl.style.width = Math.max(0, Math.min(100, Number(pct) || 0)) + '%';
+  }
+
+  function updateExportUpscaleCell(idx) {
+    if (!els.workspace || !state.workspace) return;
+    const td = els.workspace.querySelector('td[data-up-cell="' + idx + '"]');
+    if (!td) return;
+    const img = state.workspace.exportImages &&
+      (state.workspace.exportImages[String(idx)] || state.workspace.exportImages[idx]);
+    td.innerHTML = exportUpscaleCellHtml(img, upscaleOn());
+  }
+
+  function restoreExportImageFromGenerated(idx) {
+    if (!state.workspace) return;
+    const key = String(idx);
+    if (state.workspace.exportCleared) delete state.workspace.exportCleared[key];
+    if (state.workspace.exportImages) {
+      delete state.workspace.exportImages[key];
+      delete state.workspace.exportImages[idx];
+    }
+    const entry = ensureExportImageFromApproved(idx);
+    if (!entry) {
+      showToast('No generated image available for this shot.', false, { error: true });
+      return;
+    }
+    renderWorkspace();
+    showToast('Restored generated image into export row.', false);
+  }
+
+  async function resetEanReplaceDraft() {
+    if (!state.workspace || state.workspace.mode !== 'replace') return;
+    const task = taskByEan(state.workspace.ean) || { ean: state.workspace.ean };
+    const prior = resolveWorkspaceMatch(task).selected;
+    const shots = shotListFor(task);
+    const msg = 'Reset this EAN?\n\nThis clears all product inputs (B), outputs (D), and per-image ratings for every shot, and restores prompts to Universal defaults.\n\nApprovals for this EAN are cleared too. A (prior) overrides stay.';
+    if (!window.confirm(msg)) return;
+    Object.keys(state.workspace.assets || {}).forEach((k) => {
+      const a = shotAssets(k);
+      (a.inputs || []).forEach(revokeAssetUrl);
+      a.inputs = [];
+      revokeAssetUrl(a.output);
+      a.output = null;
+      a._previousOutput = null;
+      a.error = null;
+      // Keep priorOverride (A) — user asked for B, D, rating, prompt only.
+    });
+    state.workspace.outputs = {};
+    state.workspace.approved = {};
+    state.workspace.rejected = {};
+    state.workspace.ratings = {};
+    state.workspace.rating = 0;
+    state.workspace.exportImages = {};
+    state.workspace.prompts = {};
+    state.workspace.promptBaselines = {};
+    state.workspace.shotInputs = {};
+    shots.forEach((shot, idx) => {
+      const compiled = compileReplacePrompt(task, shot, prior).text;
+      state.workspace.prompts[idx] = compiled;
+      rememberPromptBaseline(idx, compiled);
+    });
+    await persistCurrentReplaceDraft();
+    renderWorkspace();
+    showToast('EAN reset — B, D, ratings cleared; prompts restored to Universal defaults.', false);
+  }
+
+  async function addExportImageToShot(shotIndex, file) {
+    if (!state.workspace || !isAcceptedImageFile(file)) {
+      showToast('Use JPG or PNG images only.', false);
+      return;
+    }
+    try {
+      const loaded = await readLocalImageFile(file);
+      if (!state.workspace.exportImages) state.workspace.exportImages = {};
+      if (!state.workspace.exportCleared) state.workspace.exportCleared = {};
+      delete state.workspace.exportCleared[String(shotIndex)];
+      state.workspace.exportImages[String(shotIndex)] = {
+        url: loaded.url,
+        name: loaded.name,
+        blob: loaded.blob || loaded.file,
+        file: loaded.file || loaded.blob,
+        w: loaded.w || 0,
+        h: loaded.h || 0,
+        status: 'ready',
+        fromApproved: false,
+        upscale: null
+      };
+      renderWorkspace();
+    } catch (err) {
+      showToast((err && err.message) || 'Could not add image.', false, { error: true });
+    }
+  }
+
+  async function fillNextExportSlots(fileList) {
+    if (!state.workspace) return;
+    const task = taskByEan(state.workspace.ean);
+    const shots = shotListFor(task || {});
+    const files = Array.prototype.slice.call(fileList || []).filter(isAcceptedImageFile);
+    if (!files.length) {
+      showToast('Use JPG or PNG images only.', false);
+      return;
+    }
+    const empties = orderedRailShots(shots).map(({ idx }) => idx).filter((idx) => {
+      const img = state.workspace.exportImages && state.workspace.exportImages[idx];
+      return !(img && img.url);
+    });
+    if (!empties.length) {
+      showToast('All export shots are already filled.', false);
+      return;
+    }
+    const take = files.slice(0, empties.length);
+    for (let n = 0; n < take.length; n++) {
+      await addExportImageToShot(empties[n], take[n]);
+    }
+  }
+
+  function downloadBlobFile(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ } }, 4000);
+  }
+
+  async function buildSimpleZip(files) {
+    const enc = new TextEncoder();
+    const now = new Date();
+    const time = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+    const date = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+    const parts = [];
+    const central = [];
+    let offset = 0;
+    function crc32(bytes) {
+      let c = ~0;
+      for (let i = 0; i < bytes.length; i++) {
+        c ^= bytes[i];
+        for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+      }
+      return ~c >>> 0;
+    }
+    for (let fi = 0; fi < files.length; fi++) {
+      const f = files[fi];
+      const data = new Uint8Array(await f.blob.arrayBuffer());
+      const name = enc.encode(f.name);
+      const crc = crc32(data);
+      const local = new Uint8Array(30 + name.length);
+      const lv = new DataView(local.buffer);
+      lv.setUint32(0, 0x04034b50, true);
+      lv.setUint16(4, 20, true);
+      lv.setUint16(6, 0x0800, true);
+      lv.setUint16(10, time, true);
+      lv.setUint16(12, date, true);
+      lv.setUint32(14, crc, true);
+      lv.setUint32(18, data.length, true);
+      lv.setUint32(22, data.length, true);
+      lv.setUint16(26, name.length, true);
+      local.set(name, 30);
+      const cd = new Uint8Array(46 + name.length);
+      const cv = new DataView(cd.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint16(12, time, true);
+      cv.setUint16(14, date, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, data.length, true);
+      cv.setUint32(24, data.length, true);
+      cv.setUint16(28, name.length, true);
+      cv.setUint32(42, offset, true);
+      cd.set(name, 46);
+      parts.push(local, data);
+      central.push(cd);
+      offset += local.length + data.length;
+    }
+    const cdSize = central.reduce((s, c) => s + c.length, 0);
+    const end = new Uint8Array(22);
+    const ev = new DataView(end.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(8, files.length, true);
+    ev.setUint16(10, files.length, true);
+    ev.setUint32(12, cdSize, true);
+    ev.setUint32(16, offset, true);
+    return new Blob(parts.concat(central).concat([end]), { type: 'application/zip' });
+  }
+
+  async function upscaleBlobForExport(entry, name, opts) {
+    opts = opts || {};
+    const blob = entry.blob || entry.file;
+    if (!blob) throw new Error('No image bytes for ' + name);
+    entry.upscale = { state: 'queued', progress: 0, elapsed: 0, stage: 'queued' };
+    if (typeof opts.onProgress === 'function') opts.onProgress(entry.upscale);
+    else if (opts.shotIndex != null) updateExportUpscaleCell(opts.shotIndex);
+    const res = await fetch(UPSCALE_URL + '/jobs?scale=2x&name=' + encodeURIComponent(name || 'image.png'), {
+      method: 'POST',
+      headers: { 'Content-Type': blob.type || 'image/png' },
+      body: blob,
+      cache: 'no-store'
+    });
+    if (!res.ok) throw new Error('Upscale submit failed (' + res.status + ')');
+    const job = await res.json();
+    const id = job && job.id;
+    if (!id) throw new Error('Upscale service returned no job id');
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 1000));
+      const st = await fetch(UPSCALE_URL + '/jobs/' + encodeURIComponent(id), { cache: 'no-store' });
+      if (!st.ok) throw new Error('Lost connection to upscale service');
+      const info = await st.json();
+      entry.upscale = {
+        state: info.status === 'queued' ? 'queued' : (info.status === 'done' ? 'done' : 'running'),
+        stage: info.stage,
+        progress: info.progress,
+        elapsed: info.elapsedMs
+      };
+      if (typeof opts.onProgress === 'function') opts.onProgress(entry.upscale, info);
+      else if (opts.shotIndex != null) updateExportUpscaleCell(opts.shotIndex);
+      else if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
+      if (info.status === 'done') {
+        const out = await fetch(UPSCALE_URL + '/jobs/' + encodeURIComponent(id) + '/result', { cache: 'no-store' });
+        entry.upscale = { state: 'done', ms: info.elapsedMs };
+        if (opts.shotIndex != null) updateExportUpscaleCell(opts.shotIndex);
+        return await out.blob();
+      }
+      if (info.status === 'failed') throw new Error(info.error || 'Upscale failed');
+    }
+  }
+
+  /* ---------- Renamer-parity PNG output (3000×3000, 72 dpi, tEXt + XMP) ---------- */
+  const EXPORT_OUTPUT_DPI = 72;
+  const EXPORT_PNG_CRC = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function exportPngCrc32(bytes) {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) c = EXPORT_PNG_CRC[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function exportLatin1(str) {
+    const out = new Uint8Array(str.length);
+    for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      out[i] = code < 256 ? code : 63;
+    }
+    return out;
+  }
+
+  function exportPngChunk(type, data) {
+    const chunk = new Uint8Array(12 + data.length);
+    const view = new DataView(chunk.buffer);
+    view.setUint32(0, data.length);
+    chunk.set(exportLatin1(type), 4);
+    chunk.set(data, 8);
+    view.setUint32(8 + data.length, exportPngCrc32(chunk.subarray(4, 8 + data.length)));
+    return chunk;
+  }
+
+  function exportU32(n) {
+    return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
+  }
+
+  function exportXmlEscape(str) {
+    return String(str).replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
+  }
+
+  function exportLocalIsoWithOffset(d) {
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const off = -d.getTimezoneOffset();
+    const sign = off >= 0 ? '+' : '-';
+    const abs = Math.abs(off);
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) +
+      'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds()) +
+      sign + pad2(Math.floor(abs / 60)) + ':' + pad2(abs % 60);
+  }
+
+  async function encodeExportPngRgb(imageData, dpi) {
+    const width = imageData.width;
+    const height = imageData.height;
+    const data = imageData.data;
+    const stride = width * 3;
+    const raw = new Uint8Array((stride + 1) * height);
+    let prev = new Uint8Array(stride);
+    let cur = new Uint8Array(stride);
+    const cand = [0, 1, 2, 3, 4].map(() => new Uint8Array(stride));
+    for (let y = 0; y < height; y++) {
+      for (let x = 0, s = y * width * 4, d = 0; x < width; x++, s += 4, d += 3) {
+        cur[d] = data[s];
+        cur[d + 1] = data[s + 1];
+        cur[d + 2] = data[s + 2];
+      }
+      let best = 0;
+      let bestScore = Infinity;
+      for (let f = 0; f < 5; f++) {
+        const out = cand[f];
+        let score = 0;
+        for (let i = 0; i < stride; i++) {
+          const a = i >= 3 ? cur[i - 3] : 0;
+          const b = prev[i];
+          const c = i >= 3 ? prev[i - 3] : 0;
+          let pred = 0;
+          if (f === 1) pred = a;
+          else if (f === 2) pred = b;
+          else if (f === 3) pred = (a + b) >> 1;
+          else if (f === 4) {
+            const p = a + b - c;
+            const pa = Math.abs(p - a);
+            const pb = Math.abs(p - b);
+            const pc = Math.abs(p - c);
+            pred = pa <= pb && pa <= pc ? a : (pb <= pc ? b : c);
+          }
+          const v = (cur[i] - pred) & 255;
+          out[i] = v;
+          score += v < 128 ? v : 256 - v;
+          if (score >= bestScore) break;
+        }
+        if (score < bestScore) { bestScore = score; best = f; }
+      }
+      const offset = y * (stride + 1);
+      raw[offset] = best;
+      raw.set(cand[best], offset + 1);
+      const swap = prev; prev = cur; cur = swap;
+    }
+    const compressed = new Uint8Array(await new Response(
+      new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate'))
+    ).arrayBuffer());
+    const ppm = Math.round(dpi / 0.0254);
+    const parts = [
+      new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
+      exportPngChunk('IHDR', new Uint8Array(exportU32(width).concat(exportU32(height), [8, 2, 0, 0, 0]))),
+      exportPngChunk('pHYs', new Uint8Array(exportU32(ppm).concat(exportU32(ppm), [1]))),
+      exportPngChunk('IDAT', compressed),
+      exportPngChunk('IEND', new Uint8Array(0))
+    ];
+    return new Blob(parts, { type: 'image/png' });
+  }
+
+  function exportBuildXmp(fields) {
+    const x = (v) => exportXmlEscape(v || '');
+    return '<?xpacket begin="\uFEFF" id="W5M0MpCehiHzreSzNTczkc9d"?>' +
+      '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">' +
+      '<rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmlns:exif="http://ns.adobe.com/exif/1.0/">' +
+      '<dc:creator><rdf:Seq><rdf:li>' + x(fields.Author) + '</rdf:li></rdf:Seq></dc:creator>' +
+      '<dc:title><rdf:Alt><rdf:li xml:lang="x-default">' + x(fields.Title) + '</rdf:li></rdf:Alt></dc:title>' +
+      '<dc:description><rdf:Alt><rdf:li xml:lang="x-default">' + x(fields.Description) + '</rdf:li></rdf:Alt></dc:description>' +
+      '<exif:UserComment><rdf:Alt><rdf:li xml:lang="x-default">' + x(fields.Description) + '</rdf:li></rdf:Alt></exif:UserComment>' +
+      '<xmp:CreatorTool>' + x(fields.Software) + '</xmp:CreatorTool>' +
+      '<xmp:CreateDate>' + x(fields['Creation Time']) + '</xmp:CreateDate>' +
+      '</rdf:Description></rdf:RDF></x:xmpmeta><?xpacket end="w"?>';
+  }
+
+  async function addExportPngText(blob, fields) {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const ihdrEnd = 8 + 4 + 4 + 13 + 4;
+    function textChunk(key, value) {
+      const k = exportLatin1(key);
+      const v = exportLatin1(String(value));
+      const data = new Uint8Array(k.length + 1 + v.length);
+      data.set(k, 0);
+      data[k.length] = 0;
+      data.set(v, k.length + 1);
+      return exportPngChunk('tEXt', data);
+    }
+    function itxtChunk(key, text) {
+      const k = exportLatin1(key);
+      const v = new TextEncoder().encode(text);
+      const data = new Uint8Array(k.length + 5 + v.length);
+      data.set(k, 0);
+      data[k.length] = 0;
+      data[k.length + 1] = 0;
+      data[k.length + 2] = 0;
+      data[k.length + 3] = 0;
+      data[k.length + 4] = 0;
+      data.set(v, k.length + 5);
+      return exportPngChunk('iTXt', data);
+    }
+    const chunks = Object.keys(fields).filter((k) => fields[k]).map((k) => textChunk(k, fields[k]));
+    chunks.push(itxtChunk('XML:com.adobe.xmp', exportBuildXmp(fields)));
+    const extra = chunks.reduce((s, c) => s + c.length, 0);
+    const out = new Uint8Array(bytes.length + extra);
+    out.set(bytes.subarray(0, ihdrEnd), 0);
+    let offset = ihdrEnd;
+    chunks.forEach((c) => { out.set(c, offset); offset += c.length; });
+    out.set(bytes.subarray(ihdrEnd), offset);
+    return new Blob([out], { type: 'image/png' });
+  }
+
+  function loadImageForExportDraw(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Could not read image for export'));
+      img.src = url;
+    });
+  }
+
+  async function renderExportPng(srcUrl) {
+    const size = EXPORT_OUT_SIZE;
+    const img = await loadImageForExportDraw(srcUrl);
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, size, size);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    const scale = Math.min(size / img.naturalWidth, size / img.naturalHeight);
+    const w = Math.round(img.naturalWidth * scale);
+    const h = Math.round(img.naturalHeight * scale);
+    ctx.drawImage(img, Math.round((size - w) / 2), Math.round((size - h) / 2), w, h);
+    return encodeExportPngRgb(ctx.getImageData(0, 0, size, size), EXPORT_OUTPUT_DPI);
+  }
+
+  async function generateApprovedExportZip() {
+    if (!state.workspace || state.workspace.mode !== 'replace') return;
+    if (state.workspace.exportBusy) return;
+    const task = taskByEan(state.workspace.ean);
+    if (!task) {
+      showToast('Task not found for this EAN.', false, { error: true });
+      return;
+    }
+    const shots = shotListFor(task);
+    seedExportImagesFromApproved(shots);
+    const indexes = orderedRailShots(shots).map(({ idx }) => idx).filter((idx) => {
+      const img = state.workspace.exportImages && state.workspace.exportImages[String(idx)];
+      return !!(img && img.url);
+    });
+    if (!indexes.length) {
+      showToast('Add at least one image.', false, { error: true });
+      return;
+    }
+    const upOn = upscaleOn();
+    const typeName = state.workspace.productTypeName || '';
+    const variant = state.workspace.productTypeVariant || '';
+    state.workspace.exportBusy = true;
+    state.workspace.exportProgress = { file: '', step: 'Starting…', pct: 0 };
+    renderWorkspace();
+    try {
+      const zipFiles = [];
+      const metaBase = {
+        Author: state.author || '',
+        Software: '3D Playground (' + APP_VERSION + ')',
+        'Creation Time': exportLocalIsoWithOffset(new Date())
+      };
+      const total = indexes.length;
+      for (let n = 0; n < indexes.length; n++) {
+        const idx = indexes[n];
+        const shot = shots[idx] || {};
+        const entry = state.workspace.exportImages[String(idx)] || state.workspace.exportImages[idx];
+        const outName = exportOutputName(task, shot, idx);
+        const label = (shot.seq != null ? shot.seq : String(idx).padStart(2, '0')) + ' · ' + outName;
+        const basePct = (n / total) * 100;
+        const span = 100 / total;
+        let srcUrl = entry.url;
+        let blob = entry.blob || entry.file;
+        if (!blob && entry.url) {
+          const res = await fetch(entry.url);
+          blob = await res.blob();
+          entry.blob = blob;
+        }
+        if (!blob && !srcUrl) throw new Error('Missing image data for ' + outName);
+        if (!(entry.w > 0 && entry.h > 0) && blob) {
+          const dims = await measureBlobDims(blob);
+          entry.w = dims.w;
+          entry.h = dims.h;
+        }
+        let workUrl = srcUrl;
+        let revokeWork = false;
+        if (exportNeedsUpscale(entry)) {
+          try {
+            setExportProgress(label, 'Sending to AI upscale…', basePct + span * 0.05);
+            const upBlob = await upscaleBlobForExport(entry, outName, {
+              shotIndex: idx,
+              onProgress: (up, info) => {
+                updateExportUpscaleCell(idx);
+                const p = typeof up.progress === 'number' ? up.progress : 0;
+                const step = up.state === 'queued'
+                  ? 'Queued for AI upscale…'
+                  : (up.stage === 'rate-limited'
+                    ? 'Firefly busy, retrying…'
+                    : (up.stage === 'downloading'
+                      ? 'Downloading upscaled image…'
+                      : 'AI upscaling 2x… ' + Math.round(p) + '%'));
+                setExportProgress(label, step, basePct + span * (0.1 + 0.7 * (p / 100)));
+              }
+            });
+            workUrl = URL.createObjectURL(upBlob);
+            revokeWork = true;
+          } catch (err) {
+            entry.upscale = { state: 'failed' };
+            updateExportUpscaleCell(idx);
+            throw err;
+          }
+        } else if (!workUrl && blob) {
+          workUrl = URL.createObjectURL(blob);
+          revokeWork = true;
+        }
+        try {
+          entry.upscale = Object.assign({}, entry.upscale || {}, { state: 'converting', progress: 92 });
+          updateExportUpscaleCell(idx);
+          setExportProgress(label, 'Converting to ' + EXPORT_OUT_SIZE + '×' + EXPORT_OUT_SIZE + ' PNG…', basePct + span * 0.85);
+          const raw = await renderExportPng(workUrl);
+          setExportProgress(label, 'Writing metadata…', basePct + span * 0.92);
+          const titled = outName.replace(/\.png$/i, '');
+          const finalBlob = await addExportPngText(raw, Object.assign({}, metaBase, {
+            Title: titled,
+            Description: typeName + (variant ? ' · ' + variant : '') + ' · ' + (shot.name || shot.code || '')
+          }));
+          zipFiles.push({ name: task.ean + '/' + outName, blob: finalBlob });
+          entry.exportW = EXPORT_OUT_SIZE;
+          entry.exportH = EXPORT_OUT_SIZE;
+          if (entry.upscale && entry.upscale.state === 'converting') {
+            entry.upscale = entry.upscale.ms != null
+              ? { state: 'done', ms: entry.upscale.ms }
+              : (exportNeedsUpscale({ w: entry.w, h: entry.h }) ? entry.upscale : null);
+          }
+          if (entry.upscale && entry.upscale.state === 'done') updateExportUpscaleCell(idx);
+          else if (!exportNeedsUpscale(entry)) {
+            entry.upscale = null;
+            updateExportUpscaleCell(idx);
+          }
+        } finally {
+          if (revokeWork && workUrl) {
+            try { URL.revokeObjectURL(workUrl); } catch (e) { /* ignore */ }
+          }
+        }
+      }
+      setExportProgress('', 'Creating zip…', 99);
+      const zip = await buildSimpleZip(zipFiles);
+      downloadBlobFile(zip, task.ean + '.zip');
+      showToast(
+        'Downloaded ' + task.ean + '.zip · ' + zipFiles.length + ' PNG' +
+          (zipFiles.length === 1 ? '' : 's') + ' at ' + EXPORT_OUT_SIZE + '×' + EXPORT_OUT_SIZE + '.',
+        false
+      );
+    } catch (err) {
+      showToast('Export failed: ' + esc((err && err.message) || err), false, { error: true });
+    } finally {
+      if (state.workspace) {
+        state.workspace.exportBusy = false;
+        delete state.workspace.exportProgress;
+      }
+      renderWorkspace();
+    }
+  }
+
+  function approvedExportCardHtml(t, shots) {
+    seedExportImagesFromApproved(shots);
+    const list = orderedRailShots(shots);
+    const filled = list.filter(({ idx }) => {
+      const img = state.workspace.exportImages && state.workspace.exportImages[idx];
+      return !!(img && img.url);
+    }).length;
+    const upOn = upscaleOn();
+    const typeName = state.workspace.productTypeName || '';
+    const variant = state.workspace.productTypeVariant || '';
+    return '<section class="card shot-card wr-approved-card" aria-label="Final shots ready for export">' +
+      '<div class="card-head">' +
+        '<div class="card-head-left">' +
+          '<h2 class="card-title">Shots for ' + esc(typeName || 'product') +
+            (variant ? ' · ' + esc(variant) : '') + '</h2>' +
+          '<span class="muted">(Auto-configured from naming data sheet)</span>' +
+        '</div>' +
+        '<div class="card-head-right">' +
+          '<span class="pill' + (filled === list.length && list.length ? ' is-full' : '') + '">' +
+            filled + ' of ' + list.length + ' shots filled</span>' +
+          '<label class="switch" title="Upscale images under ' + EXPORT_OUT_SIZE + 'px 2x with Adobe Firefly before generating">' +
+            '<input type="checkbox" data-ws="export-upscale-toggle" role="switch"' + (upOn ? ' checked' : '') + '>' +
+            '<span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>' +
+            '<span class="switch-label">AI upscale</span>' +
+          '</label>' +
+          '<button type="button" class="btn btn-outline btn-sm btn-clear-all" data-ws="export-clear-all"' +
+            (filled ? '' : ' disabled') + '>Clear all</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="shot-subhead">' +
+        '<span>JPG or PNG. Drop onto a row or anywhere below. Firefly upscales when under ' +
+          EXPORT_OUT_SIZE + ' × ' + EXPORT_OUT_SIZE + ' px.</span>' +
+        '<span class="subhead-right">Target output: ' + EXPORT_OUT_SIZE + ' × ' + EXPORT_OUT_SIZE + ' px PNG</span>' +
+      '</div>' +
+      '<div class="drop-banner wr-approved-drop-banner" data-ws-drop="approved-upscale">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>' +
+        '<strong>Drop to add images</strong>' +
+        '<span>Drag files onto a row to fill that shot, or anywhere here to fill the next empty shots.</span>' +
+      '</div>' +
+      '<div class="table-wrap">' +
+        '<table class="shot-table wr-approved-table">' +
+          '<thead><tr>' +
+            '<th class="c-seq">Seq</th>' +
+            '<th class="c-name">Image Name</th>' +
+            '<th class="c-code">Shot Code</th>' +
+            '<th class="c-img">Image</th>' +
+            '<th class="c-out">Output File Name</th>' +
+            '<th class="c-up">Upscale</th>' +
+            '<th class="c-status">Status</th>' +
+            '<th class="c-action">Action</th>' +
+          '</tr></thead>' +
+          '<tbody>' +
+            list.map(({ s, idx }) => {
+              const img = state.workspace.exportImages && state.workspace.exportImages[idx];
+              const outName = exportOutputName(t, s, idx);
+              const approvedRec = state.workspace.approved && state.workspace.approved[idx];
+              const approved = !!approvedRec;
+              const outForRestore = shotAssets(idx).output;
+              let imageCell;
+              const canRestoreGenerated = !!(
+                (state.workspace.exportCleared && state.workspace.exportCleared[String(idx)]) &&
+                ((approvedRec && approvedRec.url) || (outForRestore && outForRestore.url))
+              );
+              if (!img || !img.url) {
+                imageCell = '<button type="button" class="wr-slot-drop" data-ws-drop-export="' + idx + '">+ Drop image</button>';
+              } else {
+                imageCell =
+                  '<div class="wr-export-img-cell" data-ws-drop-export="' + idx + '">' +
+                    '<img class="wr-approved-thumb" draggable="false" src="' + esc(img.url) + '" alt="">' +
+                    '<div class="wr-export-img-meta">' +
+                      '<span class="dims">' + (img.w && img.h ? (img.w + ' × ' + img.h) : '—') + '</span>' +
+                      (img.name ? '<span class="dims-sub" title="' + esc(img.name) + '">' + esc(img.name) + '</span>' : '') +
+                    '</div>' +
+                  '</div>';
+              }
+              const upCell = exportUpscaleCellHtml(img, upOn);
+              const status = !img ? '<span class="pill is-empty">Empty</span>'
+                : (approved ? '<span class="pill">Approved</span>' : '<span class="pill is-ready">Ready</span>');
+              return '<tr data-export-row="' + idx + '">' +
+                '<td class="c-seq tp-mono">' + esc(String(s.seq != null ? s.seq : String(idx).padStart(2, '0'))) + '</td>' +
+                '<td class="c-name">' + esc(s.name || '') + '</td>' +
+                '<td class="c-code tp-mono">' + esc(s.code || '') + '</td>' +
+                '<td class="c-img">' + imageCell + '</td>' +
+                '<td class="c-out tp-mono">' + esc(outName) + '</td>' +
+                '<td class="c-up" data-up-cell="' + idx + '">' + upCell + '</td>' +
+                '<td class="c-status">' + status + '</td>' +
+                '<td class="c-action">' +
+                  (img
+                    ? '<button type="button" class="btn-clear" data-ws-clear-export="' + idx + '">Clear</button>'
+                    : (canRestoreGenerated
+                      ? '<button type="button" class="btn-clear wr-restore-generated" data-ws-restore-export="' + idx +
+                          '" title="Put the generated / approved D image back into this row">Use generated</button>'
+                      : '')) +
+                '</td>' +
+              '</tr>';
+            }).join('') +
+          '</tbody>' +
+        '</table>' +
+      '</div>' +
+      '<div class="wr-approved-actions">' +
+        '<div class="wr-approved-save">' +
+          '<span class="wr-approved-save-label">Save to: <strong class="tp-mono">' + esc((t.ean || 'EAN') + '.zip') + '</strong></span>' +
+          '<span class="muted">All PNGs download as one zip with a folder named after the EAN.</span>' +
+        '</div>' +
+        '<button type="button" class="tp-btn tp-btn-primary" data-ws="export-generate"' +
+          ((filled && !(state.workspace && state.workspace.exportBusy)) ? '' : ' disabled') +
+          (!filled ? ' title="Add at least one image"' : '') + '>' +
+          (state.workspace && state.workspace.exportBusy
+            ? 'Working…'
+            : (upOn ? 'Upscale &amp; generate images' : 'Generate images')) +
+        '</button>' +
+      '</div>' +
+      ((state.workspace && state.workspace.exportBusy && state.workspace.exportProgress)
+        ? '<div class="wr-export-progress" aria-live="polite">' +
+            '<div class="wr-export-progress-file">' + esc(state.workspace.exportProgress.file || '') + '</div>' +
+            '<div class="wr-export-progress-step">' + esc(state.workspace.exportProgress.step || '') + '</div>' +
+            '<div class="wr-export-progress-track"><div class="wr-export-progress-bar" style="width:' +
+              Math.max(0, Math.min(100, Number(state.workspace.exportProgress.pct) || 0)) + '%"></div></div>' +
+          '</div>'
+        : '') +
+    '</section>';
+  }
+
+  function modelMaxReferenceImages(modelId) {
+    const low = String(modelId || '').toLowerCase();
+    if (/krea|grok|xai\//.test(low)) return 1;
+    return 4;
+  }
+
+  async function writePromptApprove(payload) {
+    if (!PROMPT_DB_URL) throw new Error('PROMPT_DB_URL is not set.');
+    let origin = String(payload.promptOrigin || '');
+    // Automated → blank prompt cell; Custom → full prompt text.
+    // JSONP URLs truncate long Custom prompts and used to fail with "prompt is required".
+    let promptOut = /^custom$/i.test(origin) ? String(payload.prompt || '') : '';
+    if (/^custom$/i.test(origin)) {
+      const encodedLen = encodeURIComponent(promptOut).length;
+      if (!promptOut.trim() || encodedLen > 1600) {
+        // Prefer a successful Automated write over a truncated Custom failure.
+        origin = 'Automated';
+        promptOut = '';
+      }
+    }
+    const q = [
+      'action=promptApprove',
+      'ean=' + encodeURIComponent(payload.ean || ''),
+      'author=' + encodeURIComponent(payload.author || ''),
+      'workflow=' + encodeURIComponent(payload.workflow || 'Product replacement'),
+      'productType=' + encodeURIComponent(payload.productType || ''),
+      // Write the real Answerly model id — any model is allowed.
+      'model=' + encodeURIComponent(payload.model || ''),
+      'imageShortCode=' + encodeURIComponent(payload.imageShortCode || ''),
+      'imageName=' + encodeURIComponent(payload.imageName || ''),
+      'qualityRating=' + encodeURIComponent(payload.qualityRating || ''),
+      'appVersion=' + encodeURIComponent(payload.appVersion || APP_VERSION),
+      'prompt=' + encodeURIComponent(promptOut),
+      'priorImage=' + encodeURIComponent(payload.priorImage || ''),
+      'productImage=' + encodeURIComponent(payload.productImage || ''),
+      'imageInput=' + encodeURIComponent(payload.imageInput || ''),
+      'promptOrigin=' + encodeURIComponent(origin),
+      'universalRow=' + encodeURIComponent(payload.universalRow || '')
+    ].join('&');
+    return jsonp(q, 60000, PROMPT_DB_URL);
+  }
+
+  async function markRenderInProgress(ean) {
+    const id = String(ean || '').replace(/\s+/g, '');
+    if (!id || !FEED_URL) return;
+    if (state.renderMarkedInProgress && state.renderMarkedInProgress[id]) return;
+    try {
+      const data = await jsonp(
+        'action=pdpStatus&ean=' + encodeURIComponent(id) +
+          '&status=' + encodeURIComponent('In progress'),
+        30000
+      );
+      if (!state.renderMarkedInProgress) state.renderMarkedInProgress = {};
+      state.renderMarkedInProgress[id] = true;
+      const t = taskByEan(id);
+      if (t) t.pdpImages = (data && data.pdpImages) || 'In progress';
+      const row = assignmentRow(id);
+      if (row) row.pdpImages = (data && data.pdpImages) || 'In progress';
+    } catch (err) {
+      console.warn('Could not set Render Tracker In progress', err);
+    }
+  }
+
+  function replaceApprovalBadge(t) {
+    if (!t || !t.ean) return null;
+    const ean = t.ean;
+    let approved = {};
+    let outputs = {};
+    let rejected = {};
+    let productType = '';
+    if (state.workspace && state.workspace.ean === ean &&
+        (state.workspace.mode === 'replace' || state.workspace.mode === 'choose')) {
+      approved = state.workspace.approved || {};
+      outputs = state.workspace.outputs || {};
+      rejected = state.workspace.rejected || {};
+      productType = state.workspace.productTypeName || '';
+    } else if (state.replaceDraftCache && state.replaceDraftCache[ean]) {
+      const d = state.replaceDraftCache[ean];
+      approved = d.approved || {};
+      outputs = d.outputs || {};
+      rejected = d.rejected || {};
+      productType = d.productTypeName || '';
+    }
+    const approvedN = Object.keys(approved).length;
+    const rejectedN = Object.keys(rejected).filter((k) => rejected[k] && !approved[k]).length;
+    const outputN = Object.keys(outputs).filter((k) => outputs[k]).length;
+    if (!outputN && !approvedN && !rejectedN) return null;
+
+    let expected = 0;
+    try {
+      const prevPt = state.workspace && state.workspace.productTypeName;
+      const prevVar = state.workspace && state.workspace.productTypeVariant;
+      if (state.workspace && productType) {
+        state.workspace.productTypeName = productType;
+        if (state.replaceDraftCache && state.replaceDraftCache[ean]) {
+          state.workspace.productTypeVariant = state.replaceDraftCache[ean].productTypeVariant || '';
+        }
+      }
+      const shots = shotListFor(t).filter((s) => !isDimensionShot(s));
+      expected = shots.length;
+      if (state.workspace && productType) {
+        state.workspace.productTypeName = prevPt;
+        state.workspace.productTypeVariant = prevVar;
+      }
+    } catch (e) {
+      expected = 0;
+    }
+
+    if (expected > 0 && approvedN >= expected) {
+      return {
+        cls: 'is-approved-all',
+        label: 'All approved',
+        detail: approvedN + ' shot' + (approvedN === 1 ? '' : 's') + ' rated & approved'
+      };
+    }
+    if (rejectedN > 0 && approvedN === 0) {
+      return {
+        cls: 'is-rejected',
+        label: 'Rejected · needs rework',
+        detail: rejectedN + ' shot' + (rejectedN === 1 ? '' : 's') + ' rated 1–3★ — regenerate before approve'
+      };
+    }
+    if (approvedN > 0 || rejectedN > 0) {
+      return {
+        cls: 'is-partial',
+        label: 'Partially approved',
+        detail: approvedN + (expected ? '/' + expected : '') + ' approved' +
+          (rejectedN ? ' · ' + rejectedN + ' rejected' : '') +
+          (outputN > approvedN ? ' · ' + (outputN - approvedN) + ' still pending' : '')
+      };
+    }
+    if (outputN > 0) {
+      return {
+        cls: 'is-pending',
+        label: 'Approval pending',
+        detail: outputN + ' generated shot' + (outputN === 1 ? '' : 's') + ' waiting for Rate & Approve'
+      };
+    }
+    return null;
+  }
+
+  function orderedRailShots(shots) {
+    return (shots || []).map((s, idx) => ({ s: s, idx: idx })).sort((a, b) => {
+      const am = isMainShot(a.s) ? 1 : 0;
+      const bm = isMainShot(b.s) ? 1 : 0;
+      if (am !== bm) return am - bm;
+      return a.idx - b.idx;
+    });
+  }
+
+  function mainShotIndex(shots) {
+    return (shots || []).findIndex((s) => isMainShot(s));
+  }
+
+  function isAngleSourceShot(shot, shots) {
+    if (!shot || isMainShot(shot)) return false;
+    const src = mainAngleSourceShot(shots || []);
+    if (!src) return false;
+    return String(src.code || '').toUpperCase() === String(shot.code || '').toUpperCase() &&
+      String(src.name || '') === String(shot.name || '');
+  }
+
+  async function maybeAutoGenerateMain(fromShotIndex) {
+    if (!state.workspace || state.workspace.mode !== 'replace') return;
+    const task = taskByEan(state.workspace.ean);
+    if (!task) return;
+    const shots = shotListFor(task);
+    const fromShot = shots[fromShotIndex];
+    if (!fromShot || !isAngleSourceShot(fromShot, shots)) return;
+    const mainIdx = mainShotIndex(shots);
+    if (mainIdx < 0) return;
+    if (state.workspace.outputs && state.workspace.outputs[mainIdx] &&
+        shotAssets(mainIdx).output && shotAssets(mainIdx).output.url) {
+      return; // already have MAIN
+    }
+    // Do not copy Hero Front B onto MAIN UI — borrow only at Answerly submit time.
+    const productRefs = productInputsForShot(mainIdx, shots);
+    if (!productRefs.inputs.length) {
+      showToast('MAIN ready to auto-run after Hero Front — add product input B on Hero Front / 01 (or MAIN) first.', false);
+      return;
+    }
+    if (!state.workspace.prompts) state.workspace.prompts = {};
+    if (state.workspace.prompts[mainIdx] == null || !String(state.workspace.prompts[mainIdx]).trim()) {
+      const prior = resolveWorkspaceMatch(task).selected;
+      state.workspace.prompts[mainIdx] = compileReplacePrompt(task, shots[mainIdx], prior).text;
+    }
+    const promptText = state.workspace.prompts[mainIdx];
+    state.workspaceShot = mainIdx;
+    state.workspace.generating = mainIdx;
+    state.workspace.genStage = 'Auto MAIN…';
+    state.workspace.panelOpen = true;
+    renderWorkspace();
+    clearCancelFlags();
+    try {
+      await runAnswerlyForShot(mainIdx, promptText, { requireMainFromHeroOutput: true });
+      showToast('MAIN auto-generated from ' + (fromShot.name || fromShot.code || 'Hero Front') + ' D.', false);
+    } catch (err) {
+      if (isCancelError(err)) showToast('MAIN auto-generate cancelled.', false);
+      else showToast('MAIN auto-generate failed: ' + esc((err && err.message) || err), false, { error: true });
+    } finally {
+      if (state.workspace) {
+        state.workspace.generating = null;
+        state.workspace.genStage = '';
+        clearCancelFlags();
+        persistCurrentReplaceDraft();
+        renderWorkspace();
+      }
+    }
+  }
+
+  function shotHasGeneratedOutput(shotIdx) {
+    return !!(state.workspace && state.workspace.outputs && state.workspace.outputs[shotIdx] &&
+      shotAssets(shotIdx).output && shotAssets(shotIdx).output.url);
+  }
+
+  function shotHasProductInputs(shotIdx) {
+    const a = shotAssets(shotIdx);
+    return !!(a.inputs && a.inputs.length);
+  }
+
+  function angleSourceShotIndex(shots) {
+    const angle = mainAngleSourceShot(shots);
+    if (!angle) return -1;
+    return (shots || []).findIndex((s) =>
+      String(s.code || '').toUpperCase() === String(angle.code || '').toUpperCase() &&
+      String(s.name || '') === String(angle.name || ''));
+  }
+
+  // MAIN in Generate all: only when Hero Front / 01 already has D, or will run (has B).
+  // Other shots: only when that shot has its own B.
+  function shotEligibleForGenAll(shotIdx, shots) {
+    const shot = shots && shots[shotIdx];
+    if (shot && isMainShot(shot)) {
+      const angleIdx = angleSourceShotIndex(shots);
+      if (angleIdx < 0) return false;
+      const angleHasD = shotHasGeneratedOutput(angleIdx);
+      const angleWillRun = shotHasProductInputs(angleIdx);
+      if (!angleHasD && !angleWillRun) return false;
+      // Product refs: MAIN B or borrow from angle B (same as approve → auto-MAIN).
+      return shotHasProductInputs(shotIdx) || shotHasProductInputs(angleIdx);
+    }
+    return shotHasProductInputs(shotIdx);
+  }
+
+  // opts.includeDone = true → regenerate (include shots that already have D).
+  // Only shots with their own B are queued. MAIN is also queued when H-FR / 01 has B.
+  function genAllPendingCandidates(task, prior, shots, opts) {
+    opts = opts || {};
+    const includeDone = !!opts.includeDone;
+    const mapInfo = priorTargetCodeMap(prior, shots);
+    const dimSeparate = !!(state.workspace && state.workspace.dimSeparate);
+    const list = (mapInfo.mapped || []).filter((m) => {
+      const shot = shots[m.shotIdx];
+      if (!shot) return false;
+      if (!includeDone && shotHasGeneratedOutput(m.shotIdx)) return false;
+      if (dimSeparate && isDimensionShot(shot)) return false;
+      if (!shotEligibleForGenAll(m.shotIdx, shots)) return false;
+      return true;
+    });
+    // MAIN last: include when eligible via own B or Hero Front / seq 01 B.
+    const mainIdx = mainShotIndex(shots);
+    if (mainIdx >= 0 && !(dimSeparate && isDimensionShot(shots[mainIdx]))) {
+      const hasMainOut = shotHasGeneratedOutput(mainIdx);
+      if ((includeDone || !hasMainOut) &&
+          shotEligibleForGenAll(mainIdx, shots) &&
+          !list.some((m) => m.shotIdx === mainIdx)) {
+        const angle = mainAngleSourceShot(shots);
+        const angleMap = angle
+          ? (mapInfo.mapped || []).find((m) => {
+              const s = shots[m.shotIdx];
+              return s && String(s.code || '').toUpperCase() === String(angle.code || '').toUpperCase();
+            })
+          : null;
+        list.push({
+          shotIdx: mainIdx,
+          imgIdx: angleMap ? angleMap.imgIdx : (list[0] ? list[0].imgIdx : 0),
+          code: (shots[mainIdx] && shots[mainIdx].code) || 'MAIN'
+        });
+      }
+    }
+    // MAIN last so angle-source shots (e.g. H-FR) run first when batching.
+    return list.slice().sort((a, b) => {
+      const am = isMainShot(shots[a.shotIdx]) ? 1 : 0;
+      const bm = isMainShot(shots[b.shotIdx]) ? 1 : 0;
+      if (am !== bm) return am - bm;
+      return a.shotIdx - b.shotIdx;
+    });
+  }
+
+  function countGeneratedMappedShots(task, prior, shots) {
+    const mapInfo = priorTargetCodeMap(prior, shots);
+    let n = 0;
+    (mapInfo.mapped || []).forEach((m) => {
+      if (shotHasGeneratedOutput(m.shotIdx)) n++;
+    });
+    const mainIdx = mainShotIndex(shots);
+    if (mainIdx >= 0 && shotHasGeneratedOutput(mainIdx) &&
+        !(mapInfo.mapped || []).some((m) => m.shotIdx === mainIdx)) {
+      n++;
+    }
+    return n;
+  }
+
+  function openGenAllChoiceModal(doneCount, pendingCount, onSkip, onRegen) {
+    let overlay = document.getElementById('wr-gen-all-choice');
+    if (overlay) overlay.remove();
+    overlay = document.createElement('div');
+    overlay.id = 'wr-gen-all-choice';
+    overlay.className = 'wr-gen-all-modal';
+    overlay.innerHTML =
+      '<div class="wr-gen-all-modal-backdrop" data-gen-all-close></div>' +
+      '<div class="wr-gen-all-modal-card" role="dialog" aria-modal="true" aria-labelledby="wr-gen-all-title">' +
+        '<h3 id="wr-gen-all-title">Generate all pending</h3>' +
+        '<p><strong>' + doneCount + '</strong> shot' + (doneCount === 1 ? '' : 's') +
+          ' already have an image in D. How should Generate all continue?</p>' +
+        '<ul class="wr-gen-all-modal-list">' +
+          '<li><strong>Skip already generated</strong> — only run the ' + pendingCount +
+            ' empty shot' + (pendingCount === 1 ? '' : 's') + ' (safe mid-process).</li>' +
+          '<li><strong>Regenerate all</strong> — overwrite every mapped shot including ones already in D.</li>' +
+        '</ul>' +
+        '<div class="wr-gen-all-modal-actions">' +
+          '<button type="button" class="tp-btn tp-btn-ghost" data-gen-all-close>Cancel</button>' +
+          '<button type="button" class="tp-btn tp-btn-ghost" data-gen-all-regen>Regenerate all</button>' +
+          '<button type="button" class="tp-btn tp-btn-primary" data-gen-all-skip>Skip already generated</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    function close() {
+      if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }
+    overlay.addEventListener('click', (e) => {
+      if (e.target.closest('[data-gen-all-close]')) {
+        close();
+        return;
+      }
+      if (e.target.closest('[data-gen-all-skip]')) {
+        close();
+        if (typeof onSkip === 'function') onSkip();
+        return;
+      }
+      if (e.target.closest('[data-gen-all-regen]')) {
+        close();
+        if (typeof onRegen === 'function') onRegen();
+      }
+    });
+  }
+
+  function mainHasProductRefs(mainIdx, shots) {
+    return productInputsForShot(mainIdx, shots).inputs.length > 0;
+  }
+
+  async function waitForAngleSourceOutput(shots, angleIdx, opts) {
+    opts = opts || {};
+    const label = (shots[angleIdx] && (shots[angleIdx].name || shots[angleIdx].code)) || 'Hero Front';
+    const deadline = Date.now() + (opts.timeoutMs || 12 * 60 * 1000);
+    while (Date.now() < deadline) {
+      if (isShotCancelRequested(opts.mainIdx != null ? opts.mainIdx : -1) ||
+          (state.workspace && state.workspace.cancelAll) ||
+          (state.workspace && state.workspace.genAllBatch && state.workspace.genAllBatch.cancelRequested)) {
+        throw makeCancelledError();
+      }
+      if (shotHasGeneratedOutput(angleIdx)) {
+        const out = shotAssets(angleIdx).output;
+        if (out && (out.blob || out.file || out.url)) return out;
+      }
+      // Angle failed permanently — stop waiting.
+      const err = shotAssets(angleIdx).error;
+      if (err && !isShotBusy(angleIdx)) {
+        throw new Error(label + ' failed — MAIN needs its D as A (' + err + ')');
+      }
+      markShotBusy(opts.mainIdx != null ? opts.mainIdx : angleIdx, 'Waiting for ' + label + '…');
+      if (state.workspace && state.workspace.mode === 'replace') {
+        state.workspace.genStage = 'MAIN waiting for ' + label;
+        renderWorkspace();
+      }
+      await new Promise((r) => setTimeout(r, 800));
+    }
+    throw new Error('Timed out waiting for ' + label + ' before MAIN');
+  }
+
+  async function genAllOneShot(task, prior, shots, item) {
+    if (isShotCancelRequested(item.shotIdx)) throw makeCancelledError();
+    const shot = shots[item.shotIdx];
+    // MAIN: wait for Hero Front / 01 D → that becomes A; MAIN prompt → D.
+    // Same as approve→auto-MAIN, except Generate all does not wait for Rate & Approve.
+    if (isMainShot(shot)) {
+      const angleIdx = angleSourceShotIndex(shots);
+      if (angleIdx < 0) throw new Error('No Hero Front / seq 01 shot to build MAIN from');
+      if (!mainHasProductRefs(item.shotIdx, shots)) {
+        throw new Error('No product B on Hero Front / 01 (or MAIN) — skipped');
+      }
+      markShotBusy(item.shotIdx, 'Waiting for Hero Front…');
+      await waitForAngleSourceOutput(shots, angleIdx, { mainIdx: item.shotIdx });
+      const angleOut = shotAssets(angleIdx).output;
+      if (!(angleOut && (angleOut.blob || angleOut.file))) {
+        throw new Error('Hero Front / 01 D missing — cannot build MAIN');
+      }
+    }
+    const assets = shotAssets(item.shotIdx);
+    if (!isMainShot(shot) && !(assets.inputs && assets.inputs.length)) {
+      throw new Error('No product input B — skipped (add B on this shot)');
+    }
+    if (isMainShot(shot) && !mainHasProductRefs(item.shotIdx, shots)) {
+      throw new Error('No product B on Hero Front / 01 (or MAIN) — skipped');
+    }
+    if (!state.workspace.prompts) state.workspace.prompts = {};
+    if (state.workspace.prompts[item.shotIdx] == null ||
+        !String(state.workspace.prompts[item.shotIdx]).trim()) {
+      state.workspace.prompts[item.shotIdx] = compileReplacePrompt(task, shot, prior).text;
+    }
+    const promptText = state.workspace.prompts[item.shotIdx];
+    assets.error = null;
+    markShotBusy(item.shotIdx, isMainShot(shot) ? 'MAIN from Hero Front…' : 'Queued…');
+    await runAnswerlyForShot(item.shotIdx, promptText, {
+      driveImgIndex: item.imgIdx,
+      requireMainFromHeroOutput: isMainShot(shot)
+    });
+  }
+
+  // Parallel Answerly for normal shots; MAIN runs after Hero Front / 01 D is ready.
+  function startGenerateAllBatch(task, prior, shots, pending, mapInfo, includeDone) {
+    const mainIdx = mainShotIndex(shots);
+    const angleIdx = angleSourceShotIndex(shots);
+    const mainItems = pending.filter((p) => isMainShot(shots[p.shotIdx]));
+    let otherItems = pending.filter((p) => !isMainShot(shots[p.shotIdx]));
+
+    // If MAIN is queued but Hero Front isn't in the batch and has no D yet, add H-FR when it has B.
+    if (mainItems.length && angleIdx >= 0 && !shotHasGeneratedOutput(angleIdx) &&
+        !otherItems.some((p) => p.shotIdx === angleIdx)) {
+      if (shotHasProductInputs(angleIdx)) {
+        const mapInfoItem = (mapInfo.mapped || []).find((m) => m.shotIdx === angleIdx);
+        otherItems = otherItems.concat([{
+          shotIdx: angleIdx,
+          imgIdx: mapInfoItem ? mapInfoItem.imgIdx : 0,
+          code: (shots[angleIdx] && shots[angleIdx].code) || 'H-FR'
+        }]);
+      }
+    }
+
+    if (mainItems.length && mainIdx >= 0) {
+      scrubBorrowedMainInputs(shots);
+    }
+
+    const skipNote = [];
+    const withoutB = (mapInfo.mapped || []).filter((m) =>
+      !shotEligibleForGenAll(m.shotIdx, shots) &&
+      (includeDone || !shotHasGeneratedOutput(m.shotIdx))
+    ).length;
+    if (withoutB) skipNote.push(withoutB + ' without B');
+    if (mapInfo.unmappedPrior && mapInfo.unmappedPrior.length) {
+      skipNote.push(mapInfo.unmappedPrior.length + ' unmatched prior');
+    }
+    if (mapInfo.missingTarget && mapInfo.missingTarget.length) {
+      skipNote.push(mapInfo.missingTarget.length + ' new shot' + (mapInfo.missingTarget.length === 1 ? '' : 's'));
+    }
+    if (state.workspace.dimSeparate) skipNote.push('M-DIM (dim separate)');
+    const totalN = otherItems.length + mainItems.length;
+    showToast(
+      (includeDone ? 'Regenerating ' : 'Generating ') + otherItems.length + ' shot' +
+        (otherItems.length === 1 ? '' : 's') +
+        (mainItems.length ? ' + MAIN after Hero Front / 01' : '') +
+        (skipNote.length ? ' — skipped ' + skipNote.join(', ') : '') + '.',
+      false
+    );
+    pending = otherItems.concat(mainItems);
+
+    const batchEan = String(task.ean);
+    // Pin live asset map so jobs keep working if the user leaves this EAN mid-batch.
+    const pinnedAssets = state.workspace.assets;
+    const pinnedPrompts = state.workspace.prompts || {};
+    const pinnedOutputs = state.workspace.outputs || {};
+    clearCancelFlags();
+    state.workspace.busyShots = {};
+    state.workspace.activeJobIds = {};
+    otherItems.forEach((item) => { markShotBusy(item.shotIdx, 'Queued…'); });
+    mainItems.forEach((item) => { markShotBusy(item.shotIdx, 'Waiting for Hero Front…'); });
+    state.workspace.genAllBatch = {
+      ean: batchEan,
+      total: totalN,
+      mode: includeDone ? 'regen' : 'skip',
+      parallel: true,
+      cancelRequested: false
+    };
+    state.workspace.genStage = otherItems.length
+      ? (otherItems.length + ' in parallel' + (mainItems.length ? ' · MAIN after H-FR' : ''))
+      : (mainItems.length ? 'MAIN after Hero Front' : '');
+    state.workspace.panelOpen = true;
+    renderWorkspace();
+
+    function withBatchWorkspace(fn) {
+      const stillHere = state.workspace &&
+        state.workspace.mode === 'replace' &&
+        String(state.workspace.ean) === batchEan;
+      if (stillHere) return fn();
+      if (!(state.replaceDraftCache && state.replaceDraftCache[batchEan])) {
+        return Promise.reject(new Error('draft assets missing after leaving EAN'));
+      }
+      const prev = state.workspace;
+      state.workspace = {
+        mode: 'replace',
+        ean: batchEan,
+        assets: pinnedAssets || state.replaceDraftCache[batchEan].assets,
+        prompts: pinnedPrompts,
+        outputs: pinnedOutputs,
+        approved: state.replaceDraftCache[batchEan].approved || {},
+        rejected: state.replaceDraftCache[batchEan].rejected || {},
+        productTypeName: state.replaceDraftCache[batchEan].productTypeName || '',
+        productTypeVariant: state.replaceDraftCache[batchEan].productTypeVariant || '',
+        matchEan: state.replaceDraftCache[batchEan].matchEan || '',
+        dimSeparate: !!state.replaceDraftCache[batchEan].dimSeparate,
+        busyShots: (prev && prev.busyShots) || {},
+        genAllBatch: {
+          ean: batchEan,
+          total: totalN,
+          mode: includeDone ? 'regen' : 'skip',
+          parallel: true,
+          cancelRequested: !!(prev && prev.genAllBatch && prev.genAllBatch.cancelRequested)
+        },
+        cancelAll: !!(prev && prev.cancelAll),
+        panelOpen: false
+      };
+      return Promise.resolve()
+        .then(fn)
+        .then((value) => {
+          state.replaceDraftCache[batchEan].assets = state.workspace.assets;
+          state.replaceDraftCache[batchEan].outputs = Object.assign({}, state.workspace.outputs || {});
+          state.replaceDraftCache[batchEan].prompts = Object.assign({}, state.workspace.prompts || {});
+          state.replaceDraftCache[batchEan].savedAt = Date.now();
+          state.workspace = prev;
+          return value;
+        }, (err) => {
+          if (state.workspace && String(state.workspace.ean) === batchEan) {
+            state.replaceDraftCache[batchEan].assets = state.workspace.assets;
+            state.replaceDraftCache[batchEan].outputs = Object.assign({}, state.workspace.outputs || {});
+          }
+          state.workspace = prev;
+          throw err;
+        });
+    }
+
+    function settleOne(item) {
+      return withBatchWorkspace(() => genAllOneShot(task, prior, shots, item))
+        .then(() => ({ ok: true, item: item }))
+        .catch((err) => {
+          const cancelled = isCancelError(err);
+          const msg = cancelled ? 'Cancelled' : ((err && err.message) || 'Generation failed');
+          try {
+            withBatchWorkspace(() => {
+              const a = shotAssets(item.shotIdx);
+              if (cancelled) a.error = null;
+              else a.error = msg;
+            });
+          } catch (e) { /* ignore */ }
+          return {
+            ok: false,
+            cancelled: cancelled,
+            item: item,
+            error: msg,
+            code: (shots[item.shotIdx] && shots[item.shotIdx].code) || String(item.shotIdx)
+          };
+        });
+    }
+
+    // 1) Parallel non-MAIN shots  2) Then MAIN after Hero Front / 01 D exists.
+    Promise.resolve()
+      .then(() => Promise.allSettled(otherItems.map(settleOne)))
+      .then((otherSettled) => {
+        const otherResults = otherSettled.map((r) =>
+          r.status === 'fulfilled' ? r.value : { ok: false, error: String(r.reason) }
+        );
+        return mainItems.reduce((chain, item) => chain.then((acc) =>
+          settleOne(item).then((val) => acc.concat([val]))
+        ), Promise.resolve(otherResults));
+      })
+      .then((results) => {
+      let okCount = 0;
+      let failCount = 0;
+      let cancelCount = 0;
+      const failReasons = [];
+      results.forEach((val) => {
+        if (val && val.ok) okCount++;
+        else if (val && val.cancelled) cancelCount++;
+        else {
+          failCount++;
+          if (val && val.error) failReasons.push((val.code || '') + ': ' + val.error);
+        }
+      });
+      const stillHere = state.workspace &&
+        state.workspace.mode === 'replace' &&
+        String(state.workspace.ean) === batchEan;
+      if (stillHere) {
+        state.workspace.generating = null;
+        state.workspace.genStage = '';
+        state.workspace.busyShots = {};
+        state.workspace.activeJobIds = {};
+        clearCancelFlags();
+        delete state.workspace.genAllBatch;
+        persistCurrentReplaceDraft();
+        renderWorkspace();
+      } else if (state.replaceDraftCache && state.replaceDraftCache[batchEan]) {
+        state.replaceDraftCache[batchEan].savedAt = Date.now();
+      }
+      const failHint = failReasons.length
+        ? ' · ' + failReasons.slice(0, 2).join('; ')
+        : '';
+      const wasCancelled = cancelCount > 0;
+      showToast(
+        (wasCancelled ? 'Generate all cancelled' : 'Generate all done') +
+          ' · EAN ' + batchEan + ' · ' + okCount + ' ok' +
+          (cancelCount ? ' · ' + cancelCount + ' cancelled' : '') +
+          (failCount ? ' · ' + failCount + ' failed' + failHint : '') + '.',
+        false,
+        failCount && !wasCancelled ? { error: true } : undefined
+      );
+    })
+    .catch((err) => {
+      console.error(err);
+      if (state.workspace && String(state.workspace.ean) === batchEan) {
+        state.workspace.generating = null;
+        state.workspace.genStage = '';
+        state.workspace.busyShots = {};
+        clearCancelFlags();
+        delete state.workspace.genAllBatch;
+        renderWorkspace();
+      }
+      showToast('Generate all failed: ' + esc((err && err.message) || err), false, { error: true });
+    });
   }
 
   function priorFileName(prior, shot) {
@@ -1566,6 +4959,7 @@
   }
 
   // Compare prior Drive shot codes vs target Product Type + Variant shot list.
+  // MAIN can be generated from Hero Front (or seq 01) even when prior has no MAIN file.
   function priorTargetCodeMap(prior, targetShots) {
     const imgs = priorDriveImages(prior);
     const shots = targetShots || [];
@@ -1582,6 +4976,38 @@
         unmappedPrior.push({ imgIdx: idx, code: code, name: img.name });
       }
     });
+
+    const mainIdx = shots.findIndex((s) => isMainShot(s));
+    if (mainIdx >= 0 && !usedTarget.has(String(shots[mainIdx].code || 'MAIN').toUpperCase())) {
+      const angle = mainAngleSourceShot(shots);
+      if (angle) {
+        const angleCode = String(angle.code || '').toUpperCase();
+        let imgIdx = imgs.findIndex((img) => String(driveImgLabel(img.name) || '').toUpperCase() === angleCode);
+        if (imgIdx < 0 && angleCode) {
+          imgIdx = imgs.findIndex((img) => {
+            const label = String(driveImgLabel(img.name) || '').toUpperCase();
+            return label === angleCode || label.indexOf(angleCode) >= 0 || angleCode.indexOf(label) >= 0;
+          });
+        }
+        if (imgIdx < 0) {
+          const seq = String(angle.seq != null ? angle.seq : '').padStart(2, '0');
+          if (seq) {
+            imgIdx = imgs.findIndex((img) => new RegExp('_' + seq + '_', 'i').test(String(img.name || '')));
+          }
+        }
+        if (imgIdx >= 0) {
+          mapped.push({
+            imgIdx: imgIdx,
+            shotIdx: mainIdx,
+            code: 'MAIN',
+            name: imgs[imgIdx].name,
+            fromAngleSource: true
+          });
+          usedTarget.add(String(shots[mainIdx].code || 'MAIN').toUpperCase());
+        }
+      }
+    }
+
     const missingTarget = shots.filter((s) => !usedTarget.has(String(s.code || '').toUpperCase()));
     return {
       mapped: mapped,
@@ -1607,7 +5033,7 @@
           ? '<span>Missing on prior: <span class="tp-mono">' + esc(missing.join(', ')) + '</span></span>'
           : '') +
       '</div>' +
-      '<div class="wr-map-warn-note">Generate all pending will only run mapped shots. Unmapped prior images are skipped.</div>' +
+      '<div class="wr-map-warn-note">Generate all pending only runs mapped shots that already have B. MAIN waits for Hero Front / 01 D, then uses that as A with the MAIN prompt (no Rate &amp; Approve).</div>' +
     '</div>';
   }
 
@@ -1867,7 +5293,7 @@
       withAuthor(() => setView('my', opts));
       return;
     }
-    closeWorkspace();
+    if (!opts.keepWorkspace) closeWorkspace();
     state.view = view;
     state.selectedEan = null;
     state.drawerClosed = false;
@@ -1882,7 +5308,7 @@
       frame.hidden = true;
     }
     const title = view === 'renamer' ? 'Renamer' : view === 'my' ? 'My Tasks' : 'Available Tasks';
-    const ver = /preview\.html$/i.test(location.pathname) ? 'PREVIEW V1.3' : 'V1.3';
+    const ver = /preview\.html$/i.test(location.pathname) ? 'PREVIEW V1.4' : 'V1.4';
     document.title = title + ' · 3D Playground (' + ver + ')';
     const titleEl = $('view-title');
     if (titleEl) titleEl.textContent = title;
@@ -2061,7 +5487,8 @@
         '">' + (flow === 'replace' ? 'Replacement' : 'Primary') + '</span>'
       : '';
     const qcTag = done ? qcHtml(t) : '';
-    return '<div class="tp-row ' + t.colour + (isMy ? ' is-mine' : '') + (done ? ' is-completed-row' : '') + '" data-ean="' + esc(t.ean) + '" tabindex="0" role="button" aria-label="' + esc(t.title + ', EAN ' + t.ean) + '">' +
+    return '<div class="tp-row ' + t.colour + (isMy ? ' is-mine' : '') + (done ? ' is-completed-row' : '') +
+      '" data-ean="' + esc(t.ean) + '" tabindex="0" role="button" aria-label="' + esc(t.title + ', EAN ' + t.ean) + '">' +
       '<div class="tp-row-main">' +
         thumbHtml(t) +
         '<div class="tp-row-text">' +
@@ -2419,26 +5846,60 @@
     return { matches: matches, selected: selected };
   }
 
-  function openWorkspace(mode, ean) {
+  function openWorkspace(mode, ean, opts) {
+    opts = opts || {};
     const t = taskByEan(ean);
+    // Leaving another EAN's Replacement — stash A/B/C/D first.
+    if (state.workspace && state.workspace.mode === 'replace' &&
+        String(state.workspace.ean) !== String(ean)) {
+      persistCurrentReplaceDraft();
+      stashReplaceDraftInMemory();
+    } else if (state.workspace && state.workspace.mode === 'replace' &&
+        String(state.workspace.ean) === String(ean)) {
+      persistCurrentReplaceDraft();
+    }
     state.workspace = {
       mode: mode || 'choose',
       ean: ean,
-      focus: recommendReplace(t) ? 'replace' : 'primary',
-      matchEan: ''
+      focus: opts.focus || (recommendReplace(t) ? 'replace' : 'primary'),
+      matchEan: opts.matchEan || '',
+      draftsLoaded: false
     };
     resolveWorkspaceMatch(t);
-    state.workspaceShot = 0;
+    if (opts.matchEan) state.workspace.matchEan = String(opts.matchEan);
+    state.workspaceShot = opts.shot != null ? (Number(opts.shot) || 0) : 0;
+    if (opts.drive != null && opts.drive !== '') {
+      state.workspace.driveImgIndex = Number(opts.drive);
+    }
     state.selectedEan = ean;
     document.body.classList.add('view-workspace');
     if (els.workspace) els.workspace.hidden = false;
     renderDrawer(null);
     renderWorkspace();
+    syncRoute({ replace: true });
     loadImages();
+    if (state.workspace.mode === 'choose') {
+      hydrateChooseApprovalState();
+    }
+    if (state.workspace.mode === 'replace') {
+      prefetchSelectedDrivePrior();
+      restoreReplaceDraftsIntoWorkspace();
+      loadAnswerlyModels().then(() => {
+        if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
+      });
+    }
+    refreshAnswerlyTokenState().then(() => {
+      if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
+    });
     window.scrollTo(0, 0);
   }
 
   function closeWorkspace() {
+    if (state.workspace && state.workspace.mode === 'replace') {
+      persistCurrentReplaceDraft();
+      stashReplaceDraftInMemory();
+    }
+    // After stash, workspace.assets is empty — safe to revoke leftovers only.
     revokeAllWorkspaceAssets();
     state.workspace = null;
     state.workspaceShot = 0;
@@ -2447,10 +5908,58 @@
       els.workspace.hidden = true;
       els.workspace.innerHTML = '';
     }
+    if (state.view === 'my') syncRoute({ replace: true });
+  }
+
+  function restoreWorkspaceFromRoute(route) {
+    route = route || parseHash();
+    if (!state.model || !route || route.view !== 'my') return false;
+    const ws = route.ws;
+    if (!ws || !route.ean) return false;
+    if (!taskByEan(route.ean)) return false;
+    if (ws !== 'choose' && ws !== 'replace' && ws !== 'primary') return false;
+    if (state.workspace && String(state.workspace.ean) === String(route.ean) &&
+        state.workspace.mode === ws) {
+      if (route.match) state.workspace.matchEan = route.match;
+      if (route.shot != null && route.shot !== '') state.workspaceShot = Number(route.shot) || 0;
+      if (route.drive != null && route.drive !== '') state.workspace.driveImgIndex = Number(route.drive);
+      renderWorkspace();
+      if (ws === 'replace') {
+        prefetchSelectedDrivePrior();
+        restoreReplaceDraftsIntoWorkspace();
+        refreshAnswerlyTokenState().then(() => syncAnswerlyTokenChip());
+      }
+      return true;
+    }
+    openWorkspace(ws, route.ean, {
+      matchEan: route.match || '',
+      shot: route.shot,
+      drive: route.drive,
+      focus: ws === 'primary' ? 'primary' : 'replace'
+    });
+    return true;
+  }
+
+  function captureRailScroll() {
+    if (!els.workspace) return;
+    const list = els.workspace.querySelector('.wr-rail-list');
+    if (list) state.railScrollTop = list.scrollTop;
+  }
+
+  function restoreRailScroll() {
+    if (state.railScrollTop == null || !els.workspace) return;
+    const top = state.railScrollTop;
+    const apply = () => {
+      const list = els.workspace && els.workspace.querySelector('.wr-rail-list');
+      if (list) list.scrollTop = top;
+    };
+    apply();
+    requestAnimationFrame(apply);
   }
 
   function renderWorkspace() {
     if (!els.workspace || !state.workspace) return;
+    persistReplacePromptFromDom();
     const t = taskByEan(state.workspace.ean);
     if (!t) {
       closeWorkspace();
@@ -2464,6 +5973,8 @@
       : mode === 'replace' ? workspaceReplaceHtml(t)
       : workspaceChooseHtml(t);
     if (mode === 'replace') {
+      restoreRailScroll();
+      prefetchSelectedDrivePrior();
       const compare = els.workspace.querySelector('[data-ws-compare]');
       if (compare) {
         const pos = Number(state.workspace.comparePos) || 50;
@@ -2472,7 +5983,11 @@
       }
       requestAnimationFrame(() => {
         syncRailToMainHeight();
-        requestAnimationFrame(syncRailToMainHeight);
+        restoreRailScroll();
+        requestAnimationFrame(() => {
+          syncRailToMainHeight();
+          restoreRailScroll();
+        });
       });
     }
   }
@@ -2536,10 +6051,20 @@
     // Primary: always active — match list is irrelevant.
     const canReplace = !!selected;
 
+    const draftMatchEan = (state.replaceDraftCache && state.replaceDraftCache[t.ean] &&
+      state.replaceDraftCache[t.ean].matchEan) || (state.workspace && state.workspace.matchEan) || '';
+    const workBadge = replaceApprovalBadge(t);
     const matchHtml = matches.length
       ? '<div class="tw-match-list">' + matches.map((m) => {
           const isSel = selected && selected.ean === m.ean;
-          return '<div class="tw-match-row' + (isSel ? ' is-selected' : '') + '" data-ws-match="' + esc(m.ean) + '">' +
+          const isWorkPrior = !!(workBadge && (
+            String(draftMatchEan) === String(m.ean) ||
+            (isSel && (!draftMatchEan || String(draftMatchEan) === String(m.ean)))
+          ));
+          const rowBadge = isWorkPrior ? workBadge : null;
+          return '<div class="tw-match-row' + (isSel ? ' is-selected' : '') +
+            (rowBadge ? ' has-approve-state ' + rowBadge.cls : '') +
+            '" data-ws-match="' + esc(m.ean) + '">' +
             '<label class="tw-match-select">' +
               '<input type="radio" name="tw-selected-match" value="' + esc(m.ean) + '"' + (isSel ? ' checked' : '') + '>' +
               '<div class="tw-match-thumb" data-folder="' + esc(m.folderId || '') + '">' + matchThumbHtml(m) + '</div>' +
@@ -2553,6 +6078,14 @@
                   '<span class="tp-copy" data-action="copy-match" data-ean="' + esc(m.ean) + '" title="Copy EAN" aria-label="Copy EAN">' + ICON.copy + '</span></span>' +
                   (m.artist ? ' <span class="tw-dot">·</span> by ' + esc(m.artist) : '') +
                 '</div>' +
+                (rowBadge
+                  ? '<div class="tw-match-approve ' + rowBadge.cls + '" title="' + esc(rowBadge.detail || rowBadge.label) + '">' +
+                      '<span class="tw-match-approve-label">' + esc(rowBadge.label) + '</span>' +
+                      (rowBadge.detail
+                        ? '<span class="tw-match-approve-detail">' + esc(rowBadge.detail) + '</span>'
+                        : '') +
+                    '</div>'
+                  : '') +
               '</div>' +
             '</label>' +
             (m.drive
@@ -2782,6 +6315,7 @@
   function workspaceReplaceHtml(t) {
     ensureReplaceState(t);
     const shots = shotListFor(t);
+    scrubBorrowedMainInputs(shots);
     const i = Math.min(state.workspaceShot, Math.max(0, shots.length - 1));
     const shot = shots[i] || shots[0];
     const prior = resolveWorkspaceMatch(t).selected;
@@ -2789,20 +6323,38 @@
     const assets = shotAssets(i);
     const inputAssets = assets.inputs || [];
     const priorOverride = assets.priorOverride || null;
-    const promptText = (state.workspace.prompts && state.workspace.prompts[i]) || defaultReplacePrompt(t, shot, prior);
-    const hasOutput = !!(state.workspace.outputs && state.workspace.outputs[i]);
+    const mainBorrowNote = isMainShot(shot) && !inputAssets.length && mainHasProductRefs(i, shots);
+    const compiled = compileReplacePrompt(t, shot, prior);
+    const promptText = (state.workspace.prompts && state.workspace.prompts[i] != null)
+      ? state.workspace.prompts[i]
+      : compiled.text;
+    if (!state.workspace.prompts) state.workspace.prompts = {};
+    if (!state.workspace.promptBaselines) state.workspace.promptBaselines = {};
+    if (state.workspace.prompts[i] == null) {
+      state.workspace.prompts[i] = compiled.text;
+      rememberPromptBaseline(i, compiled.text);
+    } else if (state.workspace.promptBaselines[i] == null &&
+        normalizePromptCompare(state.workspace.prompts[i]) === normalizePromptCompare(compiled.text)) {
+      rememberPromptBaseline(i, compiled.text);
+    }
+    const promptOriginPreview = promptOriginForShot(t, shot, prior, promptText, i);
+    const outAsset = assets.output || null;
+    const hasOutput = !!(outAsset && outAsset.url) || !!(state.workspace.outputs && state.workspace.outputs[i]);
+    const shotError = assets.error || null;
     const dimsDiffer = productDimsDiffer(t, prior);
     const panelOpen = state.workspace.panelOpen !== false;
     const panelMax = !!state.workspace.panelMax;
     const pdp = t.pdpLink
       ? '<a class="tw-chip tw-chip-link" href="' + esc(t.pdpLink) + '" target="_blank" rel="noopener">PDP guideline' + ICON.external + '</a>'
       : '';
-    const outHref = (prior && prior.drive) || outputLinkOf(t) || '';
-    const driveChip = outHref
-      ? '<a class="tw-chip tw-chip-link" href="' + esc(outHref) + '" target="_blank" rel="noopener" data-action="output">Output folder' + ICON.external + '</a>'
+    // Target EAN photoshoot Drive folder (Shoot Tracker), not prior/output.
+    const shootHref = t.driveLink || '';
+    const driveChip = shootHref
+      ? '<a class="tw-chip tw-chip-link" href="' + esc(shootHref) + '" target="_blank" rel="noopener">Shoot folder' + ICON.external + '</a>'
       : '';
     const generating = state.workspace.generating;
-    const rating = Number(state.workspace.rating) || 0;
+    const genStage = state.workspace.genStage || '';
+    const rating = shotRating(i);
     const comparePos = Math.min(100, Math.max(0, Number(state.workspace.comparePos) || 50));
     const driveImgs = priorDriveImages(prior);
     if (state.workspace.driveImgIndex == null && driveImgs.length) {
@@ -2811,48 +6363,96 @@
     const driveImgIndex = driveImgs.length
       ? Math.min(Math.max(0, Number(state.workspace.driveImgIndex) || 0), driveImgs.length - 1)
       : 0;
-    const selectedDriveName = (driveImgs[driveImgIndex] && driveImgs[driveImgIndex].name) || '';
-    const synthName = synthesizeFileName(t, selectedDriveName, shot);
-    const headCode = selectedDriveName ? driveImgLabel(selectedDriveName) : shot.code;
-    const headName = selectedDriveName ? driveImgFullName(selectedDriveName, shots) : shot.name;
-    const showDimBanner = isMDimCode(headCode) && dimsDiffer;
-    const dimSeparate = !!state.workspace.dimSeparate && showDimBanner;
-    const dimNote = dimDiffSummary(t, prior);
     const canGenerate = hasWorkspaceProductType();
     const codeMap = canGenerate ? priorTargetCodeMap(prior, shots) : { mapped: [], unmappedPrior: [], missingTarget: [], hasConflict: false };
     const unmappedIdx = new Set((codeMap.unmappedPrior || []).map((x) => x.imgIdx));
-    const mappedPending = (codeMap.mapped || []).filter((m) => !(state.workspace.outputs && state.workspace.outputs[m.shotIdx]));
+    const mappedPending = canGenerate
+      ? genAllPendingCandidates(t, prior, shots, { includeDone: false })
+      : [];
+    const mappedAll = canGenerate
+      ? genAllPendingCandidates(t, prior, shots, { includeDone: true })
+      : [];
+    const mappedDoneCount = canGenerate ? countGeneratedMappedShots(t, prior, shots) : 0;
+    const canGenAll = canGenerate && mappedAll.length > 0 && !anyShotBusy();
     const selectedMapped = !driveImgs.length || !canGenerate || !unmappedIdx.has(driveImgIndex);
+    const drivePriorMeta = selectedDrivePriorMeta();
+    const priorFetch = state.workspace.priorFetch || null;
+    const priorLoading = !!(drivePriorMeta && !priorOverride && priorFetch && priorFetch.id === drivePriorMeta.img.id && priorFetch.status === 'loading');
+    const priorFetchError = !!(drivePriorMeta && !priorOverride && priorFetch && priorFetch.id === drivePriorMeta.img.id && priorFetch.status === 'error');
+    const selectedDriveName = (driveImgs[driveImgIndex] && driveImgs[driveImgIndex].name) || '';
+    const synthName = (outAsset && outAsset.name) || synthesizeFileName(t, selectedDriveName, shot);
+    const headCode = shot.code || (selectedDriveName ? driveImgLabel(selectedDriveName) : '');
+    const headName = shot.name || (selectedDriveName ? driveImgFullName(selectedDriveName, shots) : '');
+    const showDimBanner = isMDimCode(headCode) && dimsDiffer;
+    const dimSeparate = !!state.workspace.dimSeparate && showDimBanner;
+    const dimNote = dimDiffSummary(t, prior);
+    const savedSize = localStorage.getItem(ANSWERLY_SIZE_KEY) || '2K';
+    const savedModel = localStorage.getItem(ANSWERLY_MODEL_KEY) || 'gemini-3.1-flash-image';
+    const modelOptions = (state.answerlyModels && state.answerlyModels.length)
+      ? state.answerlyModels.map((m) => [m.id, m.label || m.id])
+      : [
+          ['gemini-3.1-flash-image', 'Gemini 3.1 Flash Image'],
+          ['gemini-3-pro-image', 'Gemini 3 Pro Image'],
+          ['gemini-nano-banana-2.1', 'Nano Banana 2.1'],
+          ['openai/gpt-image-2.5-sunburst', 'GPT Image 2.5 Sunburst'],
+          ['krea/krea-realtime', 'Krea Realtime'],
+          ['xai/grok-imagine', 'Grok Imagine']
+        ];
 
-    const rail = driveImgs.length
-      ? driveImgs.map((img, idx) => {
-          const active = idx === driveImgIndex;
-          const label = driveImgLabel(img.name);
-          const shotIdx = shotIndexForDriveName(shots, img.name);
-          const mapped = shotIdx >= 0 && canGenerate;
-          const full = mapped ? driveImgFullName(img.name, shots) : (canGenerate ? 'No match in product type' : driveImgFullName(img.name, shots));
-          const done = mapped && !!(state.workspace.outputs && state.workspace.outputs[shotIdx]);
-          const busy = mapped && generating === shotIdx;
-          const conflict = canGenerate && unmappedIdx.has(idx);
-          const inputCount = shotIdx >= 0 ? (shotAssets(shotIdx).inputs || []).length : 0;
-          return '<button type="button" class="wr-shot' + (active ? ' is-active' : '') + (busy ? ' is-busy' : '') + (done ? ' is-done' : '') + (conflict ? ' is-conflict' : '') + '" data-ws-drive-img="' + idx + '" data-ws-drop-shot="' + (shotIdx >= 0 ? shotIdx : '') + '">' +
-            '<div class="wr-shot-thumb" data-folder="' + esc((prior && prior.folderId) || '') + '" data-drive-img="' + idx + '">' +
-              priorImgAt(prior, idx, 360) +
-              (busy ? '<span class="wr-shot-busy">In progress</span>' : '') +
-              (done && !busy ? '<span class="wr-shot-done">Done</span>' : '') +
-              (conflict ? '<span class="wr-shot-conflict">No match</span>' : '') +
-              (inputCount ? '<span class="wr-shot-inputs">' + inputCount + '/4</span>' : '') +
-            '</div>' +
-            '<div class="wr-shot-meta">' +
-              '<span class="wr-shot-code-lbl">' + esc(label) + '</span>' +
-              (full ? '<span class="wr-shot-full">' + esc(full) + '</span>' : '') +
-            '</div>' +
-          '</button>';
-        }).join('')
-      : shots.map((s, idx) => {
+    // Target Product Type shot rail. Prior Drive match when available; else blank A (override any image).
+    const mappedByShot = {};
+    (codeMap.mapped || []).forEach((m) => {
+      if (mappedByShot[m.shotIdx] == null) mappedByShot[m.shotIdx] = m;
+    });
+    const activeMap = mappedByShot[i];
+    const shotHasPriorDrive = !!(activeMap && driveImgs[activeMap.imgIdx]);
+    const shotNeedsPriorOverride = canGenerate && !shotHasPriorDrive;
+    const priorReady = !!(priorOverride || (shotHasPriorDrive && drivePriorMeta));
+    // MAIN uses Hero Front / seq 01 as A — treat as prior-ready when angle source is available.
+    const mainAngleReady = isMainShot(shot) && !!mainAngleSourceShot(shots);
+    const canRunShot = canGenerate && (priorReady || mainAngleReady) && !!inputAssets.length &&
+      !(shotHasPriorDrive && priorLoading && !priorOverride && !mainAngleReady);
+    // Keep Generate enabled after a result so user can regenerate when B (+ prompt C) are present.
+    const canApprove = hasOutput && rating >= 4;
+    const approvedCount = state.workspace.approved
+      ? Object.keys(state.workspace.approved).length
+      : 0;
+
+    const rail = canGenerate
+      ? orderedRailShots(shots).map(({ s, idx }) => {
+          const map = mappedByShot[idx];
+          const driveIdxForShot = map ? map.imgIdx : -1;
+          const blank = !map;
+          const done = !!(state.workspace.outputs && state.workspace.outputs[idx]);
+          const busy = isShotBusy(idx);
+          const approved = !!(state.workspace.approved && state.workspace.approved[idx]);
           const inputCount = (shotAssets(idx).inputs || []).length;
-          return '<button type="button" class="wr-shot' + (idx === i ? ' is-active' : '') + '" data-ws-shot="' + idx + '" data-ws-drop-shot="' + idx + '">' +
-            '<div class="wr-shot-thumb"><span class="wr-ph">—</span>' +
+          const hasOverride = !!(shotAssets(idx).priorOverride);
+          const isMain = isMainShot(s);
+          return '<button type="button" class="wr-shot' +
+            (idx === i ? ' is-active' : '') +
+            (busy ? ' is-busy' : '') +
+            (done ? ' is-done' : '') +
+            (blank ? ' is-blank-prior' : '') +
+            (approved ? ' is-approved' : '') +
+            (isMain ? ' is-main' : '') +
+            '" data-ws-shot="' + idx + '"' +
+            (driveIdxForShot >= 0 ? ' data-ws-drive-img="' + driveIdxForShot + '"' : '') +
+            ' data-ws-drop-shot="' + idx + '" draggable="false">' +
+            '<div class="wr-shot-thumb" draggable="false"' +
+              (driveIdxForShot >= 0
+                ? ' data-folder="' + esc((prior && prior.folderId) || '') + '" data-drive-img="' + driveIdxForShot + '"'
+                : '') + '>' +
+              (driveIdxForShot >= 0
+                ? String(priorImgAt(prior, driveIdxForShot, 360) || '').replace(/<img /g, '<img draggable="false" ')
+                : (hasOverride
+                  ? '<img class="tp-img" draggable="false" src="' + esc(shotAssets(idx).priorOverride.url) + '" alt="">'
+                  : '<span class="wr-ph">—</span>')) +
+              (busy ? '<span class="wr-shot-busy">In progress</span>' : '') +
+              (approved && !busy ? '<span class="wr-shot-done">Approved</span>' :
+                (done && !busy ? '<span class="wr-shot-done">Done</span>' : '')) +
+              (blank && !hasOverride && !isMain ? '<span class="wr-shot-conflict">New shot</span>' : '') +
+              (isMain && !busy ? '<span class="wr-shot-main-tag">MAIN</span>' : '') +
               (inputCount ? '<span class="wr-shot-inputs">' + inputCount + '/4</span>' : '') +
             '</div>' +
             '<div class="wr-shot-meta">' +
@@ -2860,7 +6460,30 @@
               '<span class="wr-shot-full">' + esc(s.name) + '</span>' +
             '</div>' +
           '</button>';
-        }).join('');
+        }).join('')
+      : (driveImgs.length
+        ? driveImgs.map((img, idx) => {
+            const active = idx === driveImgIndex;
+            const label = driveImgLabel(img.name);
+            return '<button type="button" class="wr-shot' + (active ? ' is-active' : '') + '" data-ws-drive-img="' + idx + '">' +
+              '<div class="wr-shot-thumb" data-folder="' + esc((prior && prior.folderId) || '') + '" data-drive-img="' + idx + '">' +
+                priorImgAt(prior, idx, 360) +
+              '</div>' +
+              '<div class="wr-shot-meta">' +
+                '<span class="wr-shot-code-lbl">' + esc(label) + '</span>' +
+                '<span class="wr-shot-full">' + esc(driveImgFullName(img.name, shots)) + '</span>' +
+              '</div>' +
+            '</button>';
+          }).join('')
+        : shots.map((s, idx) =>
+            '<button type="button" class="wr-shot' + (idx === i ? ' is-active' : '') + '" data-ws-shot="' + idx + '">' +
+              '<div class="wr-shot-thumb"><span class="wr-ph">—</span></div>' +
+              '<div class="wr-shot-meta">' +
+                '<span class="wr-shot-code-lbl">' + esc(s.code) + '</span>' +
+                '<span class="wr-shot-full">' + esc(s.name) + '</span>' +
+              '</div>' +
+            '</button>'
+          ).join(''));
 
     const cappedInputs = inputAssets.slice(0, 4);
     const inputTiles = cappedInputs.length
@@ -2879,9 +6502,17 @@
               '<span class="wr-in-empty-hint">Drop or browse</span>' +
             '</div>'
           : '')
-      : '<div class="wr-in-empty" data-ws="add-input" role="button" tabindex="0">' +
-          '<span class="wr-in-empty-title">Drop new product image(s)</span>' +
-          '<span class="wr-in-empty-hint">JPG / PNG · up to 4 · local files</span>' +
+      : '<div class="wr-in-empty' + (mainBorrowNote ? ' is-borrow-note' : '') + '" data-ws="add-input" role="button" tabindex="0">' +
+          '<span class="wr-in-empty-title">' +
+            (mainBorrowNote
+              ? 'Uses Hero Front / 01 product B at generate'
+              : 'Drop new product image(s)') +
+          '</span>' +
+          '<span class="wr-in-empty-hint">' +
+            (mainBorrowNote
+              ? 'Optional: drop MAIN-only B here · not copied from Hero Front'
+              : 'JPG / PNG · up to 4 · local files') +
+          '</span>' +
         '</div>';
 
     return '<div class="tw-shell tw-shell-replace">' +
@@ -2914,23 +6545,31 @@
               (t.setLabel ? '<span class="tw-chip">' + esc(t.setLabel) + '</span>' : '') +
               '<span class="tw-chip">' + (canGenerate ? shots.length + ' shots' : 'Select product type') + '</span>' +
               pdp + driveChip +
+              '<button type="button" class="tw-reset-ean" data-ws="reset-ean" title="Clear B, D, ratings and restore default prompts for this EAN">' +
+                'Reset EAN</button>' +
             '</div>' +
           '</div>' +
           productTypePickerHtml() +
         '</div>' +
-        (prior
-          ? '<div class="wr-prior-bar">' +
-              '<div class="wr-prior-meta">' +
-                '<span>Prior EAN ' + eanCopyHtml(prior.ean) + '</span>' +
+        '<div class="wr-prior-bar">' +
+          '<div class="wr-prior-meta">' +
+            (prior
+              ? '<span>Prior EAN ' + eanCopyHtml(prior.ean) + '</span>' +
                 '<span class="tw-dot">·</span>' +
                 '<span class="tw-match-level is-best">' + (prior.best ? 'Best match · ' : '') + esc(prior.label) + '</span>' +
-                (prior.artist ? '<span class="tw-dot">·</span><span>by ' + esc(prior.artist) + '</span>' : '') +
-              '</div>' +
-              '<div class="wr-prior-actions">' +
-                '<button type="button" class="wr-link-btn" data-ws="choose">Change</button>' +
-              '</div>' +
-            '</div>'
-          : '') +
+                (prior.artist ? '<span class="tw-dot">·</span><span>by ' + esc(prior.artist) + '</span>' : '')
+              : '<span>No prior match selected</span>') +
+          '</div>' +
+          '<div class="wr-prior-actions">' +
+            '<button type="button" class="wr-token-chip ' + tokenChipClass(state.answerlyToken) +
+              '" data-ws="answerly-token" title="' +
+              esc((state.answerlyToken && state.answerlyToken.error) || (formatTokenExpiry(state.answerlyToken) + ' · click to refresh')) + '">' +
+              esc(state.answerlyToken && state.answerlyToken.bridgeOffline
+                ? 'Bridge offline'
+                : formatTokenExpiry(state.answerlyToken)) +
+            '</button>' +
+          '</div>' +
+        '</div>' +
         codeMapWarnHtml(codeMap) +
       '</section>' +
 
@@ -2945,15 +6584,25 @@
           '</div>' +
           '<nav class="wr-rail-list">' + rail + '</nav>' +
           '<div class="wr-rail-foot">' +
-            '<button type="button" class="wr-btn-outline" data-ws="gen-all"' +
-              (!canGenerate || !mappedPending.length ? ' disabled' : '') +
-              (canGenerate
-                ? (mappedPending.length
-                    ? ' title="Generate ' + mappedPending.length + ' mapped pending shot' + (mappedPending.length > 1 ? 's' : '') + '"'
-                    : ' title="No mapped pending shots"')
-                : ' title="Select a Product Type first"') + '>' +
-              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>' +
-              'Generate all pending</button>' +
+            (anyShotBusy()
+              ? '<button type="button" class="wr-btn-outline wr-cancel-all-btn" data-ws="cancel-gen" data-cancel-all="1" title="Stop all in-flight Answerly jobs">' +
+                  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg>' +
+                  (state.workspace.genAllBatch ? 'Cancel all' : 'Cancel generation') +
+                '</button>'
+              : '<button type="button" class="wr-btn-outline" data-ws="gen-all"' +
+                  (!canGenAll ? ' disabled' : '') +
+                  (canGenerate
+                    ? (mappedAll.length
+                        ? ' title="' +
+                          (mappedDoneCount
+                            ? mappedDoneCount + ' already in D · choose skip or regenerate'
+                            : 'Generate ' + mappedPending.length + ' shot' + (mappedPending.length > 1 ? 's' : '') + ' that have B') +
+                          ' (skips shots without B' + (state.workspace.dimSeparate ? '; skips M-DIM' : '') +
+                          '; MAIN waits for Hero Front / 01 D as A · parallel)"'
+                        : ' title="No mapped shots to generate"')
+                    : ' title="Select a Product Type first"') + '>' +
+                  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>' +
+                  'Generate all pending</button>') +
           '</div>' +
         '</aside>' +
 
@@ -2962,7 +6611,14 @@
           '<header class="wr-main-head">' +
             '<h2 class="wr-main-title">' + esc(headName) + '</h2>' +
             '<span class="wr-code">' + esc(headCode) + '</span>' +
-            (generating === i ? '<span class="wr-pill-progress">In progress</span>' : '') +
+            (isShotBusy(i)
+              ? '<span class="wr-pill-progress">' +
+                  esc((state.workspace.busyShots && state.workspace.busyShots[i]) || genStage || 'In progress') +
+                '</span>'
+              : '') +
+            (shotError && !isShotBusy(i)
+              ? '<span class="wr-pill-error" title="' + esc(shotError) + '">Failed</span>'
+              : '') +
           '</header>' +
 
           (showDimBanner
@@ -2983,25 +6639,44 @@
                     ? '<span class="wr-badge-muted">Skipped</span>'
                     : (priorOverride
                         ? '<span class="wr-badge-teal">Local override</span>'
-                        : '<span class="wr-badge-ok">1:1 Mapped</span>')) +
+                        : (shotNeedsPriorOverride
+                          ? '<span class="wr-badge-muted">No prior match</span>'
+                          : (priorLoading
+                            ? '<span class="wr-badge-ghost">Loading Drive…</span>'
+                            : (priorFetchError
+                              ? '<span class="wr-badge-muted">Drive error</span>'
+                              : '<span class="wr-badge-ok">From Drive</span>'))))) +
                 '</div>' +
                 (priorOverride
                   ? '<button type="button" class="wr-text-btn" data-ws="clear-prior">Clear override</button>'
-                  : '<button type="button" class="wr-text-btn" data-ws="browse-prior">Replace…</button>') +
+                  : '') +
               '</div>' +
-              '<div class="wr-frame wr-frame-prior' + (priorOverride ? ' has-override' : '') + '" data-ws-drop="prior" data-folder="' +
-                esc((prior && prior.folderId) || '') + '" data-drive-img="' + driveImgIndex + '">' +
+              '<div class="wr-frame wr-frame-prior' + (priorOverride ? ' has-override' : '') +
+                (shotNeedsPriorOverride && !priorOverride ? ' is-blank-prior' : '') +
+                '" data-ws-drop="prior" data-folder="' +
+                esc((prior && prior.folderId) || '') + '" data-drive-img="' +
+                (shotHasPriorDrive && activeMap ? activeMap.imgIdx : driveImgIndex) + '">' +
                 (priorOverride
                   ? '<img class="tp-img" src="' + esc(priorOverride.url) + '" alt="' + esc(priorOverride.name) + '">'
-                  : (prior ? priorImgAt(prior, driveImgIndex, 640) : '<span class="wr-frame-empty">No prior</span>')) +
+                  : (shotHasPriorDrive
+                    ? priorImgAt(prior, activeMap.imgIdx, 640)
+                    : '<span class="wr-frame-empty">' +
+                        (shotNeedsPriorOverride
+                          ? 'No matching prior — drop or Override any image'
+                          : 'No prior') +
+                      '</span>')) +
               '</div>' +
               '<div class="wr-card-meta">' +
                 '<span class="tp-mono" title="' + esc(priorOverride
                   ? priorOverride.name
-                  : ((driveImgs[driveImgIndex] && driveImgs[driveImgIndex].name) || priorFileName(prior, shot))) + '">' +
+                  : (shotHasPriorDrive && driveImgs[activeMap.imgIdx]
+                    ? driveImgs[activeMap.imgIdx].name
+                    : (shotNeedsPriorOverride ? 'Add a prior image to generate this new shot' : priorFileName(prior, shot)))) + '">' +
                   esc(priorOverride
                     ? priorOverride.name
-                    : ((driveImgs[driveImgIndex] && driveImgs[driveImgIndex].name) || priorFileName(prior, shot))) + '</span>' +
+                    : (shotHasPriorDrive && driveImgs[activeMap.imgIdx]
+                      ? driveImgs[activeMap.imgIdx].name
+                      : (shotNeedsPriorOverride ? '—' : priorFileName(prior, shot)))) + '</span>' +
                 '<span>' + (priorOverride && priorOverride.w ? priorOverride.w + '×' + priorOverride.h : 'Square') + '</span>' +
               '</div>' +
             '</div>' +
@@ -3009,7 +6684,9 @@
             '<div class="wr-card">' +
               '<div class="wr-card-head">' +
                 '<div class="wr-card-label">B · New product input ' +
-                  (cappedInputs.length ? '<span class="wr-badge-teal">' + cappedInputs.length + ' / 4</span>' : '') +
+                  (cappedInputs.length
+                    ? '<span class="wr-badge-teal">' + cappedInputs.length + ' / 4</span>'
+                    : (mainBorrowNote ? '<span class="wr-badge-ghost">From Hero Front</span>' : '')) +
                 '</div>' +
                 (cappedInputs.length < 4
                   ? '<button type="button" class="wr-text-btn" data-ws="add-input">+ Browse</button>'
@@ -3026,14 +6703,23 @@
             '<div class="wr-card wr-card-prompt">' +
               '<div class="wr-card-head">' +
                 '<div class="wr-card-label">C · Prompt</div>' +
-                '<span class="wr-badge-ghost">Pre-filled</span>' +
+                '<div class="wr-prompt-head-actions">' +
+                  '<span class="wr-badge-ghost">' + (String(promptText || '').trim() ? 'Draft' : 'Empty') + '</span>' +
+                  '<button type="button" class="wr-icon-btn wr-prompt-expand" data-ws="prompt-expand" title="Expand prompt" aria-label="Expand prompt">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>' +
+                  '</button>' +
+                '</div>' +
               '</div>' +
-              '<textarea class="wr-prompt" data-ws-prompt="' + i + '" rows="8">' + esc(promptText) + '</textarea>' +
+              '<div class="wr-prompt-wrap">' +
+                '<textarea class="wr-prompt" data-ws-prompt="' + i + '" rows="8" placeholder="Compiled from Universal + Shoot Tracker + Naming">' + esc(promptText) + '</textarea>' +
+              '</div>' +
               '<div class="wr-prompt-foot">' +
-                '<span class="wr-prompt-note">Auto-syncs to prompt DB upon Approval.</span>' +
+                '<span class="wr-prompt-note">Universal: ' + esc(compiled.universalLabel) +
+                  ' · ' + esc(promptOriginPreview) +
+                  ' if approved now. Reset restores compiled prompt. Approve needs 4–5 stars.</span>' +
                 '<div class="wr-prompt-actions">' +
-                  '<button type="button" class="wr-text-btn" data-ws="noop">Reset</button>' +
-                  '<button type="button" class="wr-text-btn" data-ws="noop">Copy</button>' +
+                  '<button type="button" class="wr-text-btn" data-ws="prompt-reset">Reset</button>' +
+                  '<button type="button" class="wr-text-btn" data-ws="prompt-copy">Copy</button>' +
                 '</div>' +
               '</div>' +
             '</div>' +
@@ -3045,25 +6731,72 @@
               '</div>' +
               '<div class="wr-out-controls">' +
                 '<label class="wr-size-label">Size <select class="wr-size-select">' +
-                  '<option value="1K">1K</option>' +
-                  '<option value="2K" selected>2K</option>' +
-                  '<option value="4K">4K</option>' +
+                  ['1K', '2K', '4K'].map((s) =>
+                    '<option value="' + s + '"' + (s === savedSize ? ' selected' : '') + '>' + s + '</option>'
+                  ).join('') +
                 '</select></label>' +
-                '<label class="wr-model-label">Model <select disabled><option>Answerly-Diffusion-v3.1</option></select></label>' +
+                '<label class="wr-model-label">Model <select class="wr-model-select">' +
+                  modelOptions.map((opt) =>
+                    '<option value="' + esc(opt[0]) + '"' + (opt[0] === savedModel ? ' selected' : '') + '>' +
+                      esc(opt[1]) + '</option>'
+                  ).join('') +
+                '</select></label>' +
               '</div>' +
-              '<div class="wr-out-frame' + (hasOutput ? ' has-result' : '') + '">' +
-                (hasOutput
-                  ? '<div class="wr-out-result">Output ready</div><div class="tp-mono">' + esc(synthName) + '</div>'
-                  : canGenerate
-                    ? '<div class="wr-out-ready">Ready to synthesize</div><div class="tp-mono">' + esc(synthName) + '</div>'
-                    : '<div class="wr-out-ready">Select Product Type to start</div><div class="tp-mono">' + esc(synthName) + '</div>') +
+              '<div class="wr-out-frame' + (hasOutput ? ' has-result' : '') + (shotError ? ' has-error' : '') + '">' +
+                (outAsset && outAsset.url
+                  ? '<img class="wr-out-img" src="' + esc(outAsset.url) + '" alt="Answerly output">' +
+                    '<button type="button" class="wr-out-download" data-ws="download-out" title="Download generated image" aria-label="Download generated image">' +
+                      ICON.download +
+                    '</button>' +
+                    '<div class="wr-out-meta">' +
+                      '<div class="tp-mono">' + esc(synthName) + '</div>' +
+                      (outAsset.w && outAsset.h
+                        ? '<div class="wr-out-dims">' + outAsset.w + ' × ' + outAsset.h + '</div>'
+                        : '') +
+                    '</div>'
+                  : shotError
+                    ? '<div class="wr-out-error">' + esc(shotError) + '</div><div class="tp-mono">' + esc(synthName) + '</div>'
+                    : canGenerate
+                      ? '<div class="wr-out-ready">' +
+                          (priorFetchError
+                            ? esc((priorFetch && priorFetch.error) || 'Could not load prior from Drive')
+                            : (priorLoading
+                              ? 'Loading prior full-res from Drive…'
+                              : (!priorReady
+                                ? (shotNeedsPriorOverride
+                                  ? 'No prior match — drop or Override any image onto A'
+                                  : 'Select a prior on the left rail or Override on A')
+                                : (!inputAssets.length
+                                  ? 'Drop a JPG/PNG product input onto B, then Generate'
+                                  : 'Ready to generate (Image to Image)')))) +
+                        '</div><div class="tp-mono">' + esc(synthName) + '</div>'
+                      : '<div class="wr-out-ready">Select Product Type to start</div><div class="tp-mono">' + esc(synthName) + '</div>') +
               '</div>' +
-              '<button type="button" class="tp-btn tp-btn-primary wr-gen-btn" data-ws="gen-shot"' +
-                (!canGenerate || !selectedMapped || generating === i ? ' disabled' : '') +
-                (!canGenerate
-                  ? ' title="Select a Product Type first"'
-                  : (!selectedMapped ? ' title="This prior image has no matching target shot code"' : '')) + '>' +
-                (generating === i ? 'Generating…' : 'Generate this shot') + '</button>' +
+              (isShotBusy(i)
+                ? '<button type="button" class="tp-btn tp-btn-ghost wr-gen-btn wr-cancel-btn" data-ws="cancel-gen" data-shot="' + i + '"' +
+                    ' title="Stop this Answerly job">' +
+                    ((state.workspace.cancelShots && state.workspace.cancelShots[i]) || state.workspace.cancelAll
+                      ? 'Cancelling…'
+                      : 'Cancel generation') +
+                  '</button>'
+                : '<button type="button" class="tp-btn tp-btn-primary wr-gen-btn" data-ws="gen-shot"' +
+                    (!canRunShot || anyShotBusy() ? ' disabled' : '') +
+                    (!canGenerate
+                      ? ' title="Select a Product Type first"'
+                      : (shotNeedsPriorOverride && !priorOverride && !mainAngleReady
+                        ? ' title="This shot has no prior match — drop or Override any image onto A first"'
+                        : (priorLoading && !priorOverride && !mainAngleReady
+                          ? ' title="Loading prior full-res from Drive…"'
+                          : (priorFetchError && !priorOverride && !mainAngleReady
+                            ? ' title="Prior Drive file failed to load — Override with a local image or re-select"'
+                            : (!(priorReady || mainAngleReady)
+                              ? ' title="Add a prior image on A first"'
+                              : (!inputAssets.length
+                                ? ' title="Drop a JPG/PNG product input onto B first"'
+                                : (hasOutput
+                                  ? ' title="Regenerate with current B inputs and prompt C"'
+                                  : ' title="Image to Image: prior + product input(s)"'))))))) + '>' +
+                    (hasOutput ? 'Regenerate this shot' : 'Generate this shot') + '</button>') +
             '</div>' +
           '</div>' +
         '</section>' +
@@ -3085,9 +6818,11 @@
               '</div>' +
               '<div class="wr-compare" data-ws-compare>' +
                 '<div class="wr-compare-base">' +
-                  (hasOutput
-                    ? '<div class="wr-compare-ph is-out">Generated</div>'
-                    : '<div class="wr-compare-ph">Generate to compare</div>') +
+                  (outAsset && outAsset.url
+                    ? '<img class="wr-compare-img" src="' + esc(outAsset.url) + '" alt="Generated output">'
+                    : hasOutput
+                      ? '<div class="wr-compare-ph is-out">Generated</div>'
+                      : '<div class="wr-compare-ph">Generate to compare</div>') +
                 '</div>' +
                 '<div class="wr-compare-overlay" style="width:' + comparePos + '%">' +
                   '<div class="wr-compare-overlay-inner" data-folder="' + esc((prior && prior.folderId) || '') + '" data-drive-img="' + driveImgIndex + '">' +
@@ -3102,7 +6837,8 @@
                 '<div class="wr-spec"><span>Target EAN</span>' + eanCopyHtml(t.ean) + '</div>' +
                 '<div class="wr-spec"><span>Prior EAN</span>' +
                   (prior ? eanCopyHtml(prior.ean) : '<span class="tp-mono">—</span>') + '</div>' +
-                '<div class="wr-spec"><span>Model</span><span>Answerly-Diffusion-v3.1</span></div>' +
+                '<div class="wr-spec"><span>Model</span><span class="tp-mono">' +
+                  esc((outAsset && outAsset.model) || savedModel) + '</span></div>' +
               '</div>' +
               '<div class="wr-panel-actions">' +
                 '<div class="wr-rating">' +
@@ -3115,14 +6851,25 @@
                     ).join('') +
                   '</div>' +
                 '</div>' +
-                '<button type="button" class="tp-btn tp-btn-primary" data-ws="noop"' +
-                  (hasOutput ? '' : ' disabled title="Generate an image first"') + '>Rate &amp; Approve</button>' +
-                '<button type="button" class="wr-btn-outline" data-ws="noop"' +
+                '<button type="button" class="tp-btn tp-btn-primary" data-ws="prompt-approve"' +
+                  (canApprove ? '' : ' disabled title="' +
+                    (!hasOutput
+                      ? 'Generate an image first'
+                      : (rating < 1
+                        ? 'Set a Quality Rating first'
+                        : 'Need 4 or 5 stars to approve for production — use Re-roll for 1–3 stars')) + '"') +
+                  '>Rate &amp; Approve</button>' +
+                '<button type="button" class="wr-btn-outline" data-ws="reroll-prompt"' +
                   (hasOutput ? '' : ' disabled title="Generate an image first"') + '>Re-roll with prompt tweaks</button>' +
+                (rating >= 1 && rating <= 3
+                  ? '<div class="wr-approve-hint">1–3 stars: re-roll only — Rate &amp; Approve stays off so low quality does not go to production.</div>'
+                  : '') +
               '</div>' +
             '</aside>'
           : '') +
       '</div>' +
+
+      (canGenerate && shots.length ? approvedExportCardHtml(t, shots) : '') +
     '</div>';
   }
 
@@ -3320,6 +7067,7 @@
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (!els.nameModal.hidden) closeNameModal();
+    else if (els.answerlyModal && !els.answerlyModal.hidden) closeAnswerlyModal();
     else if (els.setupModal && !els.setupModal.hidden) closeSetupModal();
     else if (!els.menu.hidden) closeMenu();
     else if (!els.settingsMenu.hidden) closeSettings();
@@ -3522,8 +7270,18 @@
   $('toast-close').addEventListener('click', hideToast);
 
   window.addEventListener('hashchange', () => {
-    const v = hashView() || 'available';
-    if (v !== state.view) setView(v, { syncHash: false });
+    const route = parseHash();
+    const v = route.view || 'available';
+    if (v !== state.view) setView(v, { syncHash: false, keepWorkspace: true });
+    if (v === 'my' && route.ws && route.ean && state.model) {
+      restoreWorkspaceFromRoute(route);
+    } else if (v === 'my' && state.workspace && !route.ws) {
+      closeWorkspace();
+      render();
+    } else if (v !== 'my' && state.workspace) {
+      closeWorkspace();
+      render();
+    }
   });
   // Nav uses <a href="#…">; hashchange drives the view. Keep a click fallback for same-hash re-clicks.
   ['renamer', 'available', 'my'].forEach((v) => {
@@ -3583,9 +7341,11 @@
       state.workspace.productTypeVariant = type.variants ? Object.keys(type.variants)[0] : '';
       state.workspace.productTypeOpen = false;
       state.workspace.productTypeWarn = false;
-      state.workspaceShot = 0;
-      state.workspace.driveImgIndex = null;
+      // New Product Type → new Naming shots; rebuild compiled prompts.
+      state.workspace.prompts = {};
+      writeProductTypePrefs(state.workspace.productTypeName, state.workspace.productTypeVariant);
       renderWorkspace();
+      syncRoute({ replace: true });
     });
 
     els.workspace.addEventListener('click', (e) => {
@@ -3608,7 +7368,38 @@
           showToast('Generate an image before rating.', false);
           return;
         }
-        state.workspace.rating = Number(ratingBtn.dataset.wsRating) || 0;
+        const stars = Number(ratingBtn.dataset.wsRating) || 0;
+        setShotRating(shotIdx, stars);
+        if (!state.workspace.rejected) state.workspace.rejected = {};
+        if (stars >= 1 && stars <= 3) {
+          state.workspace.rejected[shotIdx] = { rating: stars, at: Date.now() };
+          if (state.workspace.approved) delete state.workspace.approved[shotIdx];
+        } else if (stars >= 4) {
+          delete state.workspace.rejected[shotIdx];
+        }
+        persistCurrentReplaceDraft();
+        renderWorkspace();
+        return;
+      }
+      const restoreExport = e.target.closest('[data-ws-restore-export]');
+      if (restoreExport && state.workspace) {
+        e.preventDefault();
+        e.stopPropagation();
+        restoreExportImageFromGenerated(Number(restoreExport.getAttribute('data-ws-restore-export')));
+        return;
+      }
+      const clearExport = e.target.closest('[data-ws-clear-export]');
+      if (clearExport && state.workspace) {
+        e.preventDefault();
+        e.stopPropagation();
+        const idx = clearExport.getAttribute('data-ws-clear-export');
+        const key = String(idx);
+        if (!state.workspace.exportCleared) state.workspace.exportCleared = {};
+        state.workspace.exportCleared[key] = true;
+        if (state.workspace.exportImages) {
+          delete state.workspace.exportImages[key];
+          delete state.workspace.exportImages[Number(idx)];
+        }
         renderWorkspace();
         return;
       }
@@ -3635,6 +7426,7 @@
       if (focusBtn && state.workspace) {
         state.workspace.focus = focusBtn.dataset.wsFocus === 'primary' ? 'primary' : 'replace';
         renderWorkspace();
+        syncRoute({ replace: true });
         return;
       }
       const matchRow = e.target.closest('[data-ws-match]');
@@ -3643,6 +7435,7 @@
         state.workspace.matchEan = ean;
         previewPriorMatch(ean, matchRow);
         renderWorkspace();
+        syncRoute({ replace: true });
         return;
       }
       if (matchRow) {
@@ -3653,6 +7446,7 @@
       if (removeIn && state.workspace && state.workspace.mode === 'replace') {
         e.preventDefault();
         e.stopPropagation();
+        persistReplacePromptFromDom();
         const idx = state.workspaceShot || 0;
         const n = Number(removeIn.dataset.wsRemoveInput);
         removeShotInput(idx, n);
@@ -3661,6 +7455,7 @@
       }
       const driveImgBtn = e.target.closest('[data-ws-drive-img]');
       if (driveImgBtn && state.workspace && state.workspace.mode === 'replace') {
+        captureRailScroll();
         const promptEl = els.workspace.querySelector('[data-ws-prompt]');
         if (promptEl) {
           if (!state.workspace.prompts) state.workspace.prompts = {};
@@ -3673,11 +7468,15 @@
         const imgs = priorDriveImages(prior);
         const shotIdx = shotIndexForDriveName(shotListFor(task || {}), (imgs[imgIdx] && imgs[imgIdx].name) || '');
         if (shotIdx >= 0) state.workspaceShot = shotIdx;
+        state.workspace.priorFetch = null;
+        persistCurrentReplaceDraft();
         renderWorkspace();
+        syncRoute({ replace: true });
         return;
       }
       const shotBtn = e.target.closest('[data-ws-shot]');
       if (shotBtn) {
+        captureRailScroll();
         if (state.workspace && state.workspace.mode === 'replace') {
           const promptEl = els.workspace.querySelector('[data-ws-prompt]');
           if (promptEl) {
@@ -3686,7 +7485,13 @@
           }
         }
         state.workspaceShot = Number(shotBtn.dataset.wsShot) || 0;
+        if (shotBtn.dataset.wsDriveImg != null && shotBtn.dataset.wsDriveImg !== '') {
+          state.workspace.driveImgIndex = Number(shotBtn.dataset.wsDriveImg) || 0;
+          state.workspace.priorFetch = null;
+        }
+        persistCurrentReplaceDraft();
         renderWorkspace();
+        syncRoute({ replace: true });
         return;
       }
       const actionEl = e.target.closest('[data-ws]');
@@ -3696,6 +7501,7 @@
       if (action === 'choose' && state.workspace) {
         state.workspace.mode = 'choose';
         renderWorkspace();
+        syncRoute({ replace: true });
         window.scrollTo(0, 0);
         return;
       }
@@ -3704,6 +7510,7 @@
         state.workspace.focus = 'primary';
         state.workspaceShot = 0;
         renderWorkspace();
+        syncRoute({ replace: true });
         window.scrollTo(0, 0);
         return;
       }
@@ -3717,11 +7524,205 @@
         state.workspace.mode = 'replace';
         state.workspace.focus = 'replace';
         state.workspace.matchEan = String(resolved.selected.ean);
-        state.workspace.replaceInit = false;
-        state.workspaceShot = 0;
+        state.workspace.draftsLoaded = false;
         renderDrawer(null);
         renderWorkspace();
+        syncRoute({ replace: true });
+        restoreReplaceDraftsIntoWorkspace();
+        ensureUniversalPrompts(true).then(() => {
+          if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
+        });
+        loadAnswerlyModels().then(() => {
+          if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
+        });
+        refreshAnswerlyTokenState().then(() => {
+          if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
+        });
         window.scrollTo(0, 0);
+        return;
+      }
+      if (action === 'reset-ean' && state.workspace && state.workspace.mode === 'replace') {
+        resetEanReplaceDraft();
+        return;
+      }
+      if (action === 'export-upscale-toggle' && state.workspace) {
+        // Handled via change listener; keep click from bubbling as noop.
+        return;
+      }
+      if (action === 'export-clear-all' && state.workspace) {
+        e.preventDefault();
+        e.stopPropagation();
+        const task = taskByEan(state.workspace.ean);
+        const shots = shotListFor(task || {});
+        if (!state.workspace.exportCleared) state.workspace.exportCleared = {};
+        orderedRailShots(shots).forEach(({ idx }) => {
+          state.workspace.exportCleared[String(idx)] = true;
+        });
+        state.workspace.exportImages = {};
+        renderWorkspace();
+        showToast('Cleared export images for this EAN.', false);
+        return;
+      }
+      if (action === 'export-generate' && state.workspace && state.workspace.mode === 'replace') {
+        generateApprovedExportZip();
+        return;
+      }
+      if (action === 'prompt-reset' && state.workspace && state.workspace.mode === 'replace') {
+        const idx = state.workspaceShot || 0;
+        const task = taskByEan(state.workspace.ean) || { ean: state.workspace.ean };
+        const shots = shotListFor(task);
+        const shot = shots[idx] || shots[0];
+        const prior = resolveWorkspaceMatch(task).selected;
+        const compiled = compileReplacePrompt(task, shot, prior);
+        if (!state.workspace.prompts) state.workspace.prompts = {};
+        state.workspace.prompts[idx] = compiled.text;
+        rememberPromptBaseline(idx, compiled.text);
+        const promptEl = els.workspace.querySelector('[data-ws-prompt]');
+        if (promptEl) promptEl.value = compiled.text;
+        persistCurrentReplaceDraft();
+        renderWorkspace();
+        showToast('Prompt reset to compiled Universal · ' + compiled.universalLabel + '.', false);
+        return;
+      }
+      if (action === 'prompt-approve' && state.workspace && state.workspace.mode === 'replace') {
+        persistReplacePromptFromDom();
+        const idx = state.workspaceShot || 0;
+        const task = taskByEan(state.workspace.ean);
+        if (!task) {
+          showToast('Task not found for this EAN.', false, { error: true });
+          return;
+        }
+        const assets = shotAssets(idx);
+        if (!(assets.output && assets.output.url)) {
+          showToast('Generate an image before Rate & Approve.', false, { error: true });
+          return;
+        }
+        const rating = shotRating(idx);
+        if (rating < 4) {
+          showToast(rating < 1
+            ? 'Set a Quality Rating before approving.'
+            : 'Need 4 or 5 stars to Rate & Approve. Use Re-roll for 1–3 star results.', false, { error: true });
+          return;
+        }
+        const author = String(state.author || '').trim();
+        if (!author) {
+          showToast('Set your author name in the header before approving.', false, { error: true });
+          return;
+        }
+        const shots = shotListFor(task);
+        const shot = shots[idx] || shots[0] || { name: '', code: '' };
+        const prior = resolveWorkspaceMatch(task).selected;
+        const promptText = (state.workspace.prompts && state.workspace.prompts[idx] != null)
+          ? state.workspace.prompts[idx]
+          : defaultReplacePrompt(task, shot, prior);
+        if (!String(promptText || '').trim()) {
+          showToast('Prompt is empty.', false, { error: true });
+          return;
+        }
+        const compiled = compileReplacePrompt(task, shot, prior);
+        let origin = promptOriginForShot(task, shot, prior, promptText, idx);
+        // If unchanged vs current compile, lock baseline so DB stays Automated.
+        if (origin === 'Automated') rememberPromptBaseline(idx, compiled.text);
+        const priorMeta = selectedDrivePriorMeta();
+        const priorImageName = (assets.priorOverride && assets.priorOverride.name) ||
+          (priorMeta && priorMeta.img && priorMeta.img.name) ||
+          (isMainShot(shot) ? 'Hero Front / seq 01 (angle source)' : '');
+        const productImageNames = (assets.inputs || []).map((a) => a.name || 'product.png').filter(Boolean);
+        const imageInputCombined = [
+          priorImageName ? ('A · Prior: ' + priorImageName) : '',
+          productImageNames.length ? ('B · Product: ' + productImageNames.join(', ')) : ''
+        ].filter(Boolean).join(' | ');
+        showToast('Saving approval to Prompt DB…', false);
+        writePromptApprove({
+          ean: task.ean,
+          author: author,
+          workflow: 'Product replacement',
+          productType: state.workspace.productTypeName || '',
+          model: (assets.output && assets.output.model) || localStorage.getItem(ANSWERLY_MODEL_KEY) || '',
+          imageShortCode: shot.code || '',
+          imageName: shot.name || '',
+          qualityRating: String(rating),
+          appVersion: APP_VERSION,
+          prompt: promptText,
+          priorImage: priorImageName,
+          productImage: productImageNames.join(', '),
+          imageInput: imageInputCombined,
+          promptOrigin: origin,
+          universalRow: compiled.universalLabel || 'master'
+        }).then((data) => {
+          if (!state.workspace) return;
+          if (!state.workspace.approved) state.workspace.approved = {};
+          state.workspace.approved[idx] = {
+            seq: shot.seq != null ? shot.seq : idx,
+            shotName: shot.name || '',
+            code: shot.code || '',
+            outputName: (assets.output && assets.output.name) || '',
+            url: (assets.output && assets.output.url) || '',
+            rating: rating,
+            promptOrigin: origin,
+            approvedAt: Date.now()
+          };
+          if (assets.output) assets.output.approved = true;
+          if (state.workspace.rejected) delete state.workspace.rejected[idx];
+          // Seed renamer-style export row from this approved output.
+          if (!state.workspace.exportImages) state.workspace.exportImages = {};
+          state.workspace.exportImages[idx] = {
+            url: (assets.output && assets.output.url) || '',
+            name: (assets.output && assets.output.name) || '',
+            blob: (assets.output && (assets.output.blob || assets.output.file)) || null,
+            file: (assets.output && assets.output.file) || null,
+            w: (assets.output && assets.output.w) || 0,
+            h: (assets.output && assets.output.h) || 0,
+            status: 'ready',
+            fromApproved: true,
+            upscale: null
+          };
+          persistCurrentReplaceDraft();
+          showToast('Approved · ' + origin + ' · All user row ' + ((data && data.row) || '') + '.', false);
+          renderWorkspace();
+          // Hero Front / seq 01 Rate & Approve → auto-generate MAIN (prompt kept; no manual MAIN run).
+          return maybeAutoGenerateMain(idx);
+        }).catch((err) => {
+          showToast('Could not write All user: ' + esc((err && err.message) || err), false, { error: true });
+        });
+        return;
+      }
+      if (action === 'prompt-expand' && state.workspace && state.workspace.mode === 'replace') {
+        persistReplacePromptFromDom();
+        const idx = state.workspaceShot || 0;
+        const promptEl = els.workspace.querySelector('[data-ws-prompt]');
+        const text = (promptEl && promptEl.value) ||
+          ((state.workspace.prompts && state.workspace.prompts[idx]) || '');
+        openPromptExpandModal(text, idx);
+        return;
+      }
+      if (action === 'reroll-prompt' && state.workspace && state.workspace.mode === 'replace') {
+        persistReplacePromptFromDom();
+        const idx = state.workspaceShot || 0;
+        if (!(state.workspace.outputs && state.workspace.outputs[idx])) {
+          showToast('Generate an image before re-rolling.', false);
+          return;
+        }
+        const promptEl = els.workspace.querySelector('[data-ws-prompt]');
+        if (promptEl) {
+          promptEl.focus();
+          promptEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        showToast('Tweak the prompt in C, then Generate this shot again.', false);
+        return;
+      }
+      if (action === 'prompt-copy' && state.workspace && state.workspace.mode === 'replace') {
+        const promptEl = els.workspace.querySelector('[data-ws-prompt]');
+        const text = promptEl ? promptEl.value : '';
+        if (!text) {
+          showToast('Prompt is empty.', false);
+          return;
+        }
+        navigator.clipboard.writeText(text).then(() => {
+          showToast('Prompt copied.', false);
+        }).catch(() => {
+          showToast('Could not copy prompt.', false, { error: true });
+        });
         return;
       }
       if (action === 'add-input' && state.workspace) {
@@ -3742,6 +7743,42 @@
         renderWorkspace();
         return;
       }
+      if (action === 'download-out' && state.workspace) {
+        const idx = state.workspaceShot || 0;
+        const out = shotAssets(idx).output;
+        if (!(out && (out.blob || out.file || out.url))) {
+          showToast('No generated image to download.', false, { error: true });
+          return;
+        }
+        const name = out.name || ((state.workspace.ean || 'output') + '.png');
+        if (out.blob || out.file) {
+          downloadBlobFile(out.blob || out.file, name);
+        } else {
+          const a = document.createElement('a');
+          a.href = out.url;
+          a.download = name;
+          a.target = '_blank';
+          a.rel = 'noopener';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        }
+        showToast('Downloading ' + esc(name) + '…', false);
+        return;
+      }
+      if (action === 'cancel-gen' && state.workspace) {
+        const cancelAll = actionEl.getAttribute('data-cancel-all') === '1' || !!state.workspace.genAllBatch;
+        const shotAttr = actionEl.getAttribute('data-shot');
+        const shotIndex = shotAttr != null && shotAttr !== '' ? Number(shotAttr) : null;
+        // During a parallel batch, the per-shot Cancel stops that shot only;
+        // rail "Cancel all" sets data-cancel-all and stops everything.
+        cancelAnswerlyGeneration(
+          actionEl.getAttribute('data-cancel-all') === '1'
+            ? { all: true }
+            : { shotIndex: shotIndex != null && !isNaN(shotIndex) ? shotIndex : undefined }
+        );
+        return;
+      }
       if (action === 'gen-all' && state.workspace) {
         if (!hasWorkspaceProductType()) {
           state.workspace.productTypeWarn = true;
@@ -3750,45 +7787,55 @@
           renderWorkspace();
           return;
         }
-        const task = taskByEan(state.workspace.ean);
-        const prior = resolveWorkspaceMatch(task).selected;
-        const shots = shotListFor(task || {});
-        const mapInfo = priorTargetCodeMap(prior, shots);
-        const pending = mapInfo.mapped.filter((m) => !(state.workspace.outputs && state.workspace.outputs[m.shotIdx]));
-        if (!pending.length) {
-          showToast(mapInfo.hasConflict
-            ? 'No mapped pending shots. Unmapped prior codes were skipped.'
-            : 'No pending mapped shots to generate.', false);
+        if (anyShotBusy()) {
+          showToast('A generation is already running — Cancel it first.', false);
           return;
         }
-        if (mapInfo.hasConflict) {
-          showToast('Generating ' + pending.length + ' mapped shot' + (pending.length > 1 ? 's' : '') +
-            ' — skipped ' + mapInfo.unmappedPrior.length + ' unmatched prior image' +
-            (mapInfo.unmappedPrior.length === 1 ? '' : 's') + '.', false);
+        const task = taskByEan(state.workspace.ean);
+        if (!task) {
+          showToast('Task not found for this EAN.', false, { error: true });
+          return;
         }
-        let n = 0;
-        function runNext() {
-          if (!state.workspace || state.workspace.mode !== 'replace') return;
-          if (n >= pending.length) {
-            state.workspace.generating = null;
-            showToast('UI mock — generated ' + pending.length + ' mapped shot' + (pending.length > 1 ? 's' : '') + '.', false);
-            renderWorkspace();
+        const prior = resolveWorkspaceMatch(task).selected;
+        const shots = shotListFor(task);
+        const mapInfo = priorTargetCodeMap(prior, shots);
+        const pendingSkip = genAllPendingCandidates(task, prior, shots, { includeDone: false });
+        const pendingAll = genAllPendingCandidates(task, prior, shots, { includeDone: true });
+        const doneCount = countGeneratedMappedShots(task, prior, shots);
+        if (!pendingAll.length) {
+          const anyMapped = (mapInfo.mapped || []).length > 0;
+          showToast(
+            anyMapped
+              ? 'No shots ready — add a product image on B for each shot you want (MAIN can use Hero Front / 01 B).'
+              : (mapInfo.hasConflict
+                ? 'No mapped shots. Unmapped / new shots and dim-separate M-DIM were skipped.'
+                : 'No mapped shots to generate.'),
+            false
+          );
+          return;
+        }
+
+        function beginGenAll(mode) {
+          const includeDone = mode === 'regen';
+          const pending = includeDone ? pendingAll : pendingSkip;
+          if (!pending.length) {
+            showToast(includeDone
+              ? 'No shots with B to regenerate.'
+              : 'Nothing left — shots with B already have D. Choose Regenerate all to overwrite, or add B on more shots.', false);
             return;
           }
-          const item = pending[n++];
-          state.workspace.driveImgIndex = item.imgIdx;
-          state.workspaceShot = item.shotIdx;
-          state.workspace.generating = item.shotIdx;
-          state.workspace.panelOpen = true;
-          renderWorkspace();
-          setTimeout(() => {
-            if (!state.workspace || state.workspace.mode !== 'replace') return;
-            if (!state.workspace.outputs) state.workspace.outputs = {};
-            state.workspace.outputs[item.shotIdx] = true;
-            runNext();
-          }, 450);
+          startGenerateAllBatch(task, prior, shots, pending, mapInfo, includeDone);
         }
-        runNext();
+
+        if (doneCount > 0) {
+          openGenAllChoiceModal(doneCount, pendingSkip.length, function () {
+            beginGenAll('skip');
+          }, function () {
+            beginGenAll('regen');
+          });
+          return;
+        }
+        beginGenAll('skip');
         return;
       }
       if (action === 'gen-shot' && state.workspace) {
@@ -3799,38 +7846,93 @@
           renderWorkspace();
           return;
         }
-        const task = taskByEan(state.workspace.ean);
-        const prior = resolveWorkspaceMatch(task).selected;
-        const shots = shotListFor(task || {});
-        const driveImgs = priorDriveImages(prior);
-        const driveIdx = driveImgs.length
-          ? Math.min(Math.max(0, Number(state.workspace.driveImgIndex) || 0), driveImgs.length - 1)
-          : -1;
-        if (driveIdx >= 0) {
-          const shotIdx = shotIndexForDriveName(shots, (driveImgs[driveIdx] && driveImgs[driveIdx].name) || '');
-          if (shotIdx < 0) {
-            showToast('This prior image has no matching shot code for the selected Product Type.', false);
+        persistReplacePromptFromDom();
+        // Use the shot currently on screen (B inputs belong here). Do not remap on click —
+        // Product Type changes can shift Drive→shot mapping and would look like "B is empty".
+        const idx = state.workspaceShot || 0;
+        const taskNow = taskByEan(state.workspace.ean);
+        const shotsNow = shotListFor(taskNow || {});
+        const activeShot = shotsNow[idx];
+        const isMain = isMainShot(activeShot);
+        if (!isMain && !(shotAssets(idx).inputs && shotAssets(idx).inputs.length)) {
+          showToast('Drop at least one new product image onto B.', false, { error: true });
+          return;
+        }
+        if (isMain && !mainHasProductRefs(idx, shotsNow)) {
+          showToast('Add a product image on B for Hero Front / 01 (or MAIN) first.', false, { error: true });
+          return;
+        }
+        if (!shotAssets(idx).priorOverride) {
+          const mapForPrior = priorTargetCodeMap(
+            resolveWorkspaceMatch(taskNow).selected,
+            shotsNow
+          );
+          const hasMappedPrior = (mapForPrior.mapped || []).some((m) => m.shotIdx === idx);
+          const mainOk = isMain && !!mainAngleSourceShot(shotsNow);
+          if (!hasMappedPrior && !mainOk) {
+            showToast('No matching prior for this shot — drop or Override any image onto A.', false, { error: true });
             return;
           }
-          state.workspaceShot = shotIdx;
         }
-        const idx = state.workspaceShot || 0;
         const promptEl = els.workspace.querySelector('[data-ws-prompt]');
-        if (promptEl) {
-          if (!state.workspace.prompts) state.workspace.prompts = {};
-          state.workspace.prompts[idx] = promptEl.value;
-        }
+        const promptText = (state.workspace.prompts && state.workspace.prompts[idx] != null)
+          ? state.workspace.prompts[idx]
+          : ((promptEl && promptEl.value) || '');
+        const assets = shotAssets(idx);
+        assets.error = null;
+        clearCancelFlags();
+        // Hide previous D while regenerating; keep blob on _previousOutput so drafts
+        // survive EAN switches / reload if the job is still running or fails.
+        const previousOutput = assets.output;
+        const hadPreviousOutput = !!(state.workspace.outputs && state.workspace.outputs[idx]);
+        assets._previousOutput = previousOutput || assets._previousOutput || null;
+        assets.output = null;
+        if (state.workspace.outputs) delete state.workspace.outputs[idx];
         state.workspace.generating = idx;
+        state.workspace.genStage = 'Loading prior…';
         state.workspace.panelOpen = true;
         renderWorkspace();
-        setTimeout(() => {
+        runAnswerlyForShot(idx, promptText, {
+          requireMainFromHeroOutput: isMainShot(shotsNow[idx])
+        }).then((result) => {
           if (!state.workspace || state.workspace.mode !== 'replace') return;
-          if (!state.workspace.outputs) state.workspace.outputs = {};
-          state.workspace.outputs[idx] = true;
+          const prev = shotAssets(idx)._previousOutput;
+          if (prev && prev !== result.output) revokeAssetUrl(prev);
+          delete shotAssets(idx)._previousOutput;
           state.workspace.generating = null;
-          showToast('UI mock — Answerly output placed on this shot row.', false);
+          state.workspace.genStage = '';
+          clearCancelFlags();
+          persistCurrentReplaceDraft();
+          showToast('Answerly done · ' + esc((result.source && result.source.reason) || 'ok'), false);
           renderWorkspace();
-        }, 900);
+        }).catch((err) => {
+          if (!state.workspace || state.workspace.mode !== 'replace') return;
+          // Restore prior D so a failed/cancelled regen does not wipe a good output.
+          const prev = shotAssets(idx)._previousOutput || previousOutput;
+          if (prev) {
+            shotAssets(idx).output = prev;
+            if (!state.workspace.outputs) state.workspace.outputs = {};
+            if (hadPreviousOutput || prev) state.workspace.outputs[idx] = true;
+          }
+          delete shotAssets(idx)._previousOutput;
+          const cancelled = isCancelError(err);
+          shotAssets(idx).error = cancelled ? null : ((err && err.message) || 'Generation failed');
+          state.workspace.generating = null;
+          state.workspace.genStage = '';
+          clearCancelFlags();
+          persistCurrentReplaceDraft();
+          showToast(
+            cancelled ? 'Generation cancelled.' : esc(shotAssets(idx).error || 'Generation failed'),
+            false,
+            cancelled ? undefined : { error: true }
+          );
+          renderWorkspace();
+          if (err && (err.code === 'no_token' || err.code === 'token_expired')) openAnswerlyModal();
+        });
+        return;
+      }
+      if (action === 'answerly-token') {
+        openAnswerlyModal();
         return;
       }
       if (action === 'noop') {
@@ -3846,11 +7948,20 @@
         renderWorkspace();
         return;
       }
+      if (e.target.matches('.wr-size-select')) {
+        localStorage.setItem(ANSWERLY_SIZE_KEY, e.target.value || '2K');
+        return;
+      }
+      if (e.target.matches('.wr-model-select')) {
+        localStorage.setItem(ANSWERLY_MODEL_KEY, e.target.value || 'gemini-3.1-flash-image');
+        return;
+      }
       if (e.target.matches('[data-ws-pt-variant]')) {
         state.workspace.productTypeVariant = e.target.value;
-        state.workspaceShot = 0;
-        state.workspace.driveImgIndex = null;
+        state.workspace.prompts = {};
+        writeProductTypePrefs(state.workspace.productTypeName, state.workspace.productTypeVariant);
         renderWorkspace();
+        syncRoute({ replace: true });
       }
     });
 
@@ -3876,8 +7987,7 @@
             state.workspace.productTypeQuery = exact[0].name;
             state.workspace.productTypeVariant = exact[0].variants ? Object.keys(exact[0].variants)[0] : '';
             state.workspace.productTypeWarn = false;
-            state.workspaceShot = 0;
-            state.workspace.driveImgIndex = null;
+            writeProductTypePrefs(state.workspace.productTypeName, state.workspace.productTypeVariant);
           } else {
             state.workspace.productTypeWarn = true;
           }
@@ -3901,12 +8011,23 @@
         refreshProductTypeSuggestDom();
         return;
       }
+      if (e.target.matches('[data-ws-prompt]')) {
+        persistReplacePromptFromDom();
+        return;
+      }
       if (!e.target.matches('.wr-compare-range')) return;
       const pos = Number(e.target.value) || 0;
       state.workspace.comparePos = pos;
       const compare = e.target.closest('[data-ws-compare]');
       if (!compare) return;
       syncCompareSlider(compare, pos);
+    });
+
+    els.workspace.addEventListener('focusout', (e) => {
+      if (!state.workspace || state.workspace.mode !== 'replace') return;
+      if (!e.target.matches('[data-ws-prompt]')) return;
+      persistReplacePromptFromDom();
+      persistCurrentReplaceDraft();
     });
 
     function replaceDropHasFiles(e) {
@@ -3917,6 +8038,18 @@
 
     function resolveReplaceDropTarget(el) {
       if (!el || !state.workspace || state.workspace.mode !== 'replace') return null;
+      const exportSlot = el.closest('[data-ws-drop-export]');
+      if (exportSlot && exportSlot.getAttribute('data-ws-drop-export') !== '') {
+        return {
+          kind: 'export',
+          shotIndex: Number(exportSlot.getAttribute('data-ws-drop-export')) || 0,
+          highlight: exportSlot.closest('tr') || exportSlot
+        };
+      }
+      const exportBanner = el.closest('[data-ws-drop="approved-upscale"]');
+      if (exportBanner) {
+        return { kind: 'export-fill', highlight: exportBanner };
+      }
       const prior = el.closest('[data-ws-drop="prior"]');
       if (prior) return { kind: 'prior', shotIndex: state.workspaceShot || 0, highlight: prior };
       const shotBtn = el.closest('[data-ws-drop-shot]');
@@ -3925,7 +8058,9 @@
           kind: 'inputs',
           shotIndex: Number(shotBtn.getAttribute('data-ws-drop-shot')) || 0,
           highlight: shotBtn,
-          switchShot: true
+          // Keep rail order stable — switch active shot for B attach, but do not remap Drive thumbs.
+          switchShot: true,
+          keepDriveIndex: true
         };
       }
       const inputs = el.closest('[data-ws-drop="inputs"]');
@@ -3972,21 +8107,38 @@
       const files = e.dataTransfer && e.dataTransfer.files;
       if (!files || !files.length) return;
       if (dest.switchShot) {
+        captureRailScroll();
+        persistReplacePromptFromDom();
         state.workspaceShot = dest.shotIndex;
-        const task = taskByEan(state.workspace.ean);
-        const prior = resolveWorkspaceMatch(task).selected;
-        const imgs = priorDriveImages(prior);
-        const matchImg = imgs.findIndex((_, idx) => {
-          const sIdx = shotIndexForDriveName(shotListFor(task || {}), (imgs[idx] && imgs[idx].name) || '');
-          return sIdx === dest.shotIndex;
-        });
-        if (matchImg >= 0) state.workspace.driveImgIndex = matchImg;
+        if (!dest.keepDriveIndex) {
+          const task = taskByEan(state.workspace.ean);
+          const prior = resolveWorkspaceMatch(task).selected;
+          const imgs = priorDriveImages(prior);
+          const matchImg = imgs.findIndex((_, idx) => {
+            const sIdx = shotIndexForDriveName(shotListFor(task || {}), (imgs[idx] && imgs[idx].name) || '');
+            return sIdx === dest.shotIndex;
+          });
+          if (matchImg >= 0) state.workspace.driveImgIndex = matchImg;
+        }
       }
       if (dest.kind === 'prior') {
         setPriorOverrideFromFile(dest.shotIndex, files[0]);
+      } else if (dest.kind === 'export') {
+        addExportImageToShot(dest.shotIndex, files[0]);
+      } else if (dest.kind === 'export-fill') {
+        fillNextExportSlots(files);
       } else {
         addLocalFilesToShot(dest.shotIndex, files);
       }
+    });
+
+    els.workspace.addEventListener('change', (e) => {
+      const toggle = e.target.closest('[data-ws="export-upscale-toggle"]');
+      if (!toggle) return;
+      localStorage.setItem(UPSCALE_KEY, String(!!toggle.checked));
+      state.upscaleOn = !!toggle.checked;
+      if (toggle.checked) checkUpscalerService();
+      renderWorkspace();
     });
   }
 
@@ -4028,6 +8180,146 @@
   });
   $('menu-author').addEventListener('click', () => { closeSettings(); openNameModal(); });
   // menu-setup wired in the AI upscale setup block above
+
+  /* ---------- Answerly token (Settings › Answerly token) ---------- */
+  els.answerlyModal = $('answerly-modal');
+  els.answerlyForm = $('answerly-form');
+  els.answerlyToken = $('answerly-token');
+  els.answerlyStatus = $('answerly-status');
+  els.menuAnswerly = $('menu-answerly');
+
+  function setAnswerlyStatus(text, ok) {
+    if (!els.answerlyStatus) return;
+    els.answerlyStatus.textContent = text;
+    els.answerlyStatus.classList.toggle('is-ok', ok === true);
+    els.answerlyStatus.classList.toggle('is-bad', ok === false);
+  }
+
+  async function refreshAnswerlyStatus() {
+    setAnswerlyStatus('Checking bridge…');
+    const tok = await refreshAnswerlyTokenState();
+    if (tok && tok.bridgeOffline) {
+      setAnswerlyStatus(tok.error || ('Bridge offline at ' + UPSCALE_URL), false);
+      return;
+    }
+    if (tok && tok.hasToken && !tok.expired) {
+      const personal = String(tok.workspaceKind || '').toLowerCase() === 'personal';
+      setAnswerlyStatus(
+        'Bridge online · ' + formatTokenExpiry(tok) +
+          (personal ? ' — still on Personal; re-save token to switch to Marketing Visualization' : ''),
+        !personal
+      );
+    } else if (tok && tok.hasToken && tok.expired) {
+      setAnswerlyStatus('Bridge online · ' + formatTokenExpiry(tok) + ' — paste a fresh session JSON', false);
+    } else {
+      setAnswerlyStatus('Bridge online · workspace: Marketing Visualization · no token saved yet', false);
+    }
+    if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
+  }
+
+  function openAnswerlyModal() {
+    if (!els.answerlyModal) return;
+    closeSettings();
+    // Don't prefill a raw JWT into the box if user will paste session JSON; show placeholder hint only.
+    const saved = localStorage.getItem(ANSWERLY_TOKEN_KEY) || '';
+    els.answerlyToken.value = saved && saved.charAt(0) === '{' ? saved : '';
+    els.answerlyToken.placeholder = saved && saved.charAt(0) !== '{'
+      ? 'Token on file (hidden). Paste a fresh session JSON or accessToken to replace it.'
+      : 'Paste full session JSON or accessToken';
+    els.answerlyModal.hidden = false;
+    refreshAnswerlyStatus();
+    setTimeout(() => els.answerlyToken.focus(), 30);
+  }
+
+  function closeAnswerlyModal() {
+    if (!els.answerlyModal) return;
+    els.answerlyModal.hidden = true;
+  }
+
+  if (els.menuAnswerly) {
+    els.menuAnswerly.addEventListener('click', () => openAnswerlyModal());
+  }
+  if ($('answerly-cancel')) {
+    $('answerly-cancel').addEventListener('click', closeAnswerlyModal);
+  }
+  if ($('answerly-open-session')) {
+    $('answerly-open-session').addEventListener('click', () => {
+      window.open(ANSWERLY_SESSION_URL, '_blank', 'noopener');
+    });
+  }
+  if ($('answerly-clear')) {
+    $('answerly-clear').addEventListener('click', async () => {
+      localStorage.removeItem(ANSWERLY_TOKEN_KEY);
+      els.answerlyToken.value = '';
+      try {
+        await answerlyFetch('/answerly/token', { method: 'DELETE' });
+        await refreshAnswerlyTokenState();
+        setAnswerlyStatus('Token cleared on bridge', true);
+        if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
+      } catch (err) {
+        setAnswerlyStatus(friendlyBridgeError(err), false);
+      }
+    });
+  }
+  if (els.answerlyModal) {
+    els.answerlyModal.addEventListener('click', (e) => {
+      if (e.target === els.answerlyModal) closeAnswerlyModal();
+    });
+  }
+  if (els.answerlyForm) {
+    els.answerlyForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const extracted = extractAnswerlyAccessToken(els.answerlyToken.value);
+      if (extracted.error) {
+        setAnswerlyStatus(extracted.error, false);
+        return;
+      }
+      setAnswerlyStatus('Saving for Marketing Visualization Team…');
+      try {
+        const saved = await answerlyFetch('/answerly/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accessToken: extracted.token,
+            // Force shared team workspace (not personal).
+            workspaceId: '9901bfd2-4c06-4746-8d63-aa2867248f1e'
+          })
+        });
+        localStorage.setItem(ANSWERLY_TOKEN_KEY, extracted.token);
+        state.answerlyToken = (saved && saved.token) || null;
+        if (saved && saved.workspace) {
+          state.answerlyToken = Object.assign({}, state.answerlyToken || {}, {
+            workspaceId: saved.workspace.id,
+            workspaceName: saved.workspace.name,
+            workspaceKind: saved.workspace.kind
+          });
+        }
+        await refreshAnswerlyStatus();
+        showToast('Answerly token saved · ' + formatTokenExpiry(state.answerlyToken), false);
+        closeAnswerlyModal();
+      } catch (err) {
+        setAnswerlyStatus(friendlyBridgeError(err), false);
+      }
+    });
+  }
+
+  function syncAnswerlyTokenChip() {
+    if (!els.workspace || !state.workspace || state.workspace.mode !== 'replace') return;
+    const chip = els.workspace.querySelector('.wr-token-chip');
+    if (!chip) return;
+    const tok = state.answerlyToken;
+    chip.className = 'wr-token-chip ' + tokenChipClass(tok);
+    chip.title = (tok && tok.error) || formatTokenExpiry(tok);
+    chip.textContent = (tok && tok.bridgeOffline) ? 'Bridge offline' : formatTokenExpiry(tok);
+  }
+
+  // Keep expiry chip fresh while Replacement is open (avoid full re-render so the prompt isn't disrupted).
+  setInterval(() => {
+    if (!state.workspace || state.workspace.mode !== 'replace') return;
+    if (document.visibilityState !== 'visible') return;
+    refreshAnswerlyTokenState().then(() => syncAnswerlyTokenChip());
+  }, 60000);
+
   $('menu-refresh').addEventListener('click', () => { closeSettings(); load(); });
   $('btn-refresh').addEventListener('click', () => load());
   $('name-cancel').addEventListener('click', () => {
@@ -4053,24 +8345,97 @@
   /* ---------- Load ---------- */
 
   let loading = false;
+  async function applyFeedData(data, opts) {
+    opts = opts || {};
+    state.model = buildModel(data);
+    state.loadedAt = Date.now();
+    renderSource(data);
+    fillFilters();
+    updateTimestamp();
+    const route = parseHash();
+    if (!restoreWorkspaceFromRoute(route)) render();
+    if (!opts.silentWarnings && data.warnings && data.warnings.length) {
+      showToast('Some tabs could not be read: ' + esc(data.warnings.join('; ')), false);
+    }
+    // Drive thumbs only when needed for the open EAN workspace / list — avoid extra full reloads mid-edit.
+    if (!opts.skipImages) loadImages();
+  }
+
   async function load() {
     if (loading) return;
     loading = true;
+    const route = parseHash();
+    const deepReplace = route && route.view === 'my' && route.ws === 'replace' && route.ean;
     els.updated.textContent = 'Loading…';
     if (els.synced) els.synced.textContent = '…';
-    if (!state.model) {
+
+    // Deep-link into Replacement: restore cached feed + this EAN's drafts first (no full sheet wait).
+    if (deepReplace && !state.model) {
+      try {
+        const cached = await loadFeedCache();
+        if (cached && cached.feed) {
+          const data = buildTaskDataFromFeed(cached.feed);
+          await applyFeedData(data, { silentWarnings: true, skipImages: false });
+          els.updated.textContent = 'Cached sheets · refreshing…';
+        } else if (!state.model) {
+          els.list.innerHTML = '<div class="tp-state"><span class="tp-spinner"></span>Opening EAN ' +
+            esc(String(route.ean)) + '… loading sheets once for this session.</div>';
+        }
+      } catch (e) {
+        console.warn('Cached feed restore failed', e);
+      }
+    } else if (!state.model) {
       els.list.innerHTML = '<div class="tp-state"><span class="tp-spinner"></span>Reading the live sheets… the first load can take up to a minute.</div>';
     }
+
     try {
       const data = await loadTaskData();
-      state.model = buildModel(data);
-      state.loadedAt = Date.now();
-      renderSource(data);
-      fillFilters();
-      updateTimestamp();
-      render();
-      if (data.warnings.length) showToast('Some tabs could not be read: ' + esc(data.warnings.join('; ')), false);
-      loadImages();
+      // Keep the open Replacement workspace; only refresh the model underneath.
+      const keepWs = state.workspace && state.workspace.mode === 'replace'
+        ? {
+            ean: state.workspace.ean,
+            matchEan: state.workspace.matchEan,
+            shot: state.workspaceShot,
+            drive: state.workspace.driveImgIndex,
+            draftsLoaded: state.workspace.draftsLoaded,
+            assets: state.workspace.assets,
+            prompts: state.workspace.prompts,
+            outputs: state.workspace.outputs,
+            approved: state.workspace.approved,
+            rejected: state.workspace.rejected,
+            ratings: state.workspace.ratings,
+            exportImages: state.workspace.exportImages,
+            exportCleared: state.workspace.exportCleared,
+            productTypeName: state.workspace.productTypeName,
+            productTypeVariant: state.workspace.productTypeVariant,
+            productTypeQuery: state.workspace.productTypeQuery,
+            dimSeparate: state.workspace.dimSeparate,
+            promptBaselines: state.workspace.promptBaselines
+          }
+        : null;
+      await applyFeedData(data);
+      if (keepWs && state.workspace && String(state.workspace.ean) === String(keepWs.ean) &&
+          state.workspace.mode === 'replace') {
+        // Re-attach live in-memory A/B/C/D after model refresh so B is not wiped.
+        state.workspace.assets = keepWs.assets || state.workspace.assets;
+        state.workspace.prompts = keepWs.prompts || state.workspace.prompts;
+        state.workspace.outputs = keepWs.outputs || state.workspace.outputs;
+        state.workspace.approved = keepWs.approved || state.workspace.approved;
+        state.workspace.rejected = keepWs.rejected || state.workspace.rejected;
+        state.workspace.ratings = keepWs.ratings || state.workspace.ratings;
+        state.workspace.exportImages = keepWs.exportImages || state.workspace.exportImages;
+        state.workspace.exportCleared = keepWs.exportCleared || state.workspace.exportCleared;
+        state.workspace.productTypeName = keepWs.productTypeName || state.workspace.productTypeName;
+        state.workspace.productTypeVariant = keepWs.productTypeVariant || state.workspace.productTypeVariant;
+        state.workspace.productTypeQuery = keepWs.productTypeQuery || state.workspace.productTypeQuery;
+        state.workspace.dimSeparate = keepWs.dimSeparate;
+        state.workspace.promptBaselines = keepWs.promptBaselines || state.workspace.promptBaselines;
+        state.workspace.draftsLoaded = !!keepWs.draftsLoaded;
+        if (keepWs.matchEan) state.workspace.matchEan = keepWs.matchEan;
+        if (keepWs.shot != null) state.workspaceShot = keepWs.shot;
+        if (keepWs.drive != null) state.workspace.driveImgIndex = keepWs.drive;
+        renderWorkspace();
+      }
     } catch (err) {
       console.error(err);
       if (state.model) {
@@ -4125,6 +8490,15 @@
   }, ASSIGN_POLL_MS);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') refreshAssigns();
+    if (document.visibilityState === 'hidden' &&
+        state.workspace && state.workspace.mode === 'replace') {
+      persistCurrentReplaceDraft();
+    }
+  });
+  window.addEventListener('pagehide', () => {
+    if (state.workspace && state.workspace.mode === 'replace') {
+      persistCurrentReplaceDraft();
+    }
   });
   load();
 })();

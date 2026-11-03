@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Answerly smoke test · 3D Playground</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #fff;
+      --ink: #1a1f26;
+      --muted: #5b6570;
+      --line: #d8dee6;
+      --accent: #5b4fcf;
+      --ok: #1a7f4b;
+      --bad: #b42318;
+      --warn: #9a6700;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 15px/1.45 "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(160deg, #eef1f6, #f8f5f1 55%, #eef4f8);
+      min-height: 100vh;
+    }
+    main {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 28px 20px 60px;
+    }
+    h1 { font-size: 1.45rem; margin: 0 0 6px; letter-spacing: -0.02em; }
+    .sub { color: var(--muted); margin: 0 0 22px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 18px 18px 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 0 rgba(255,255,255,.7) inset;
+    }
+    .card h2 { font-size: .95rem; margin: 0 0 12px; }
+    label { display: block; font-size: .78rem; font-weight: 600; color: var(--muted); margin: 0 0 6px; text-transform: uppercase; letter-spacing: .04em; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 700px) { .row { grid-template-columns: 1fr; } }
+    input[type="text"], textarea, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font: inherit;
+      background: #fff;
+      color: var(--ink);
+    }
+    textarea { min-height: 96px; resize: vertical; }
+    .hint { font-size: .82rem; color: var(--muted); margin-top: 6px; }
+    .hint a { color: var(--accent); }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+    button, .btn {
+      appearance: none;
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+    }
+    button.secondary { background: #eef0f4; color: var(--ink); }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #eef0f4;
+      font-size: .82rem;
+      color: var(--muted);
+    }
+    .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: #98a2b3; }
+    .pill.ok { background: #e8f7ee; color: var(--ok); }
+    .pill.ok .dot { background: var(--ok); }
+    .pill.bad { background: #fdeceb; color: var(--bad); }
+    .pill.bad .dot { background: var(--bad); }
+    .pill.warn { background: #fff6db; color: var(--warn); }
+    .pill.warn .dot { background: var(--warn); }
+    .drop {
+      border: 1.5px dashed var(--line);
+      border-radius: 10px;
+      padding: 22px;
+      text-align: center;
+      color: var(--muted);
+      background: #fafbfc;
+      cursor: pointer;
+    }
+    .drop.has-file { border-color: #b7b0ef; background: #f6f5ff; color: var(--ink); }
+    .drop img { max-width: 180px; max-height: 180px; display: block; margin: 10px auto 0; border-radius: 8px; }
+    .hidden { display: none !important; }
+    .status { font-size: .9rem; color: var(--muted); min-height: 1.3em; }
+    .results {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 700px) { .results { grid-template-columns: 1fr; } }
+    .result-box {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: #fafbfc;
+      min-height: 160px;
+    }
+    .result-box h3 { margin: 0 0 8px; font-size: .85rem; color: var(--muted); font-weight: 600; }
+    .result-box img { max-width: 100%; border-radius: 8px; display: block; }
+    .err { color: var(--bad); white-space: pre-wrap; }
+    code { font-family: ui-monospace, Consolas, monospace; font-size: .85em; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Answerly smoke test</h1>
+    <p class="sub">Runs Image Edit / Image to Image / Image Generation through the local bridge on <code>127.0.0.1:5175</code> — no Answerly Jobs UI needed.</p>
+
+    <section class="card">
+      <h2>1. Local service + token</h2>
+      <div class="actions" style="margin-top:0">
+        <span class="pill" id="svc-pill"><span class="dot"></span><span id="svc-text">Checking service…</span></span>
+        <span class="pill" id="token-pill"><span class="dot"></span><span id="token-text">No token</span></span>
+        <button type="button" class="secondary" id="btn-health">Recheck</button>
+      </div>
+      <div style="margin-top:14px">
+        <label for="token">Answerly accessToken</label>
+        <textarea id="token" placeholder="Paste accessToken from Answerly session JSON"></textarea>
+        <p class="hint">
+          While logged into Answerly, open
+          <a href="https://answerly.livspace.com/api/auth/session" target="_blank" rel="noopener">/api/auth/session</a>,
+          copy <code>accessToken</code>, paste here. JWT lasts ~4 hours; session cookie lasts much longer.
+        </p>
+      </div>
+      <div class="actions">
+        <button type="button" id="btn-save-token">Save token to local service</button>
+        <button type="button" class="secondary" id="btn-clear-token">Clear token</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2. Run</h2>
+      <div class="row">
+        <div>
+          <label for="workflow">Workflow</label>
+          <select id="workflow">
+            <option value="image-edit-workflow">Image Edit</option>
+            <option value="image-to-image-workflow">Image to Image</option>
+            <option value="image-generate-workflow">Image Generation</option>
+          </select>
+        </div>
+        <div>
+          <label for="model">Model</label>
+          <select id="model"><option value="gemini-3.1-flash-image">Gemini 3.1 Flash Image</option></select>
+          <p class="hint">Aspect locked to <strong>1:1</strong> · size <strong>1K</strong></p>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <label for="prompt">Prompt / edit instructions</label>
+        <textarea id="prompt" placeholder="e.g. change the color of the lid to dark green"></textarea>
+      </div>
+      <div style="margin-top:12px" id="image-wrap">
+        <label>Input image</label>
+        <div class="drop" id="drop" tabindex="0">
+          Drop JPG/PNG here or click to choose
+          <input type="file" id="file" accept="image/png,image/jpeg,image/webp" hidden>
+          <img id="preview" class="hidden" alt="Input preview">
+        </div>
+        <p class="hint" id="image-hint">Required for Image Edit and Image to Image.</p>
+      </div>
+      <div class="actions">
+        <button type="button" id="btn-run">Run</button>
+        <span class="status" id="run-status"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>3. Result</h2>
+      <div class="results">
+        <div class="result-box">
+          <h3>Input</h3>
+          <div id="out-input"><span class="hint">No image yet</span></div>
+        </div>
+        <div class="result-box">
+          <h3>Output</h3>
+          <div id="out-result"><span class="hint">Run a job to see the result here</span></div>
+        </div>
+      </div>
+      <p class="hint" id="job-meta" style="margin-top:10px"></p>
+    </section>
+  </main>
+
+  <script>
+  (function () {
+    const API = 'http://127.0.0.1:5175';
+    const TOKEN_KEY = 'answerlySmoke.token';
+
+    const els = {
+      svcPill: document.getElementById('svc-pill'),
+      svcText: document.getElementById('svc-text'),
+      tokenPill: document.getElementById('token-pill'),
+      tokenText: document.getElementById('token-text'),
+      token: document.getElementById('token'),
+      workflow: document.getElementById('workflow'),
+      model: document.getElementById('model'),
+      prompt: document.getElementById('prompt'),
+      drop: document.getElementById('drop'),
+      file: document.getElementById('file'),
+      preview: document.getElementById('preview'),
+      imageWrap: document.getElementById('image-wrap'),
+      imageHint: document.getElementById('image-hint'),
+      runStatus: document.getElementById('run-status'),
+      outInput: document.getElementById('out-input'),
+      outResult: document.getElementById('out-result'),
+      jobMeta: document.getElementById('job-meta'),
+      btnHealth: document.getElementById('btn-health'),
+      btnSave: document.getElementById('btn-save-token'),
+      btnClear: document.getElementById('btn-clear-token'),
+      btnRun: document.getElementById('btn-run')
+    };
+
+    let imageFile = null;
+    let imageDataUrl = null;
+
+    function setPill(pill, textEl, kind, text) {
+      pill.className = 'pill' + (kind ? ' ' + kind : '');
+      textEl.textContent = text;
+    }
+
+    async function api(path, opts) {
+      const res = await fetch(API + path, opts);
+      const ct = res.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || json.detail || res.statusText);
+        return json;
+      }
+      if (!res.ok) throw new Error(await res.text() || res.statusText);
+      return res;
+    }
+
+    function workflowNeedsImage() {
+      return els.workflow.value !== 'image-generate-workflow';
+    }
+
+    function syncImageUi() {
+      const need = workflowNeedsImage();
+      els.imageWrap.classList.toggle('hidden', !need);
+      els.imageHint.textContent = need
+        ? 'Required for Image Edit and Image to Image.'
+        : 'Not used for Image Generation.';
+    }
+
+    async function refreshModels() {
+      const tool =
+        els.workflow.value === 'image-generate-workflow' ? 'image_generate'
+        : els.workflow.value === 'image-to-image-workflow' ? 'image_to_image'
+        : 'image_edit';
+      try {
+        const data = await api('/answerly/models?tool=' + encodeURIComponent(tool));
+        const current = els.model.value;
+        els.model.innerHTML = (data.models || []).map((m) =>
+          '<option value="' + m.id.replace(/"/g, '&quot;') + '">' +
+          (m.label || m.id).replace(/</g, '&lt;') + '</option>'
+        ).join('');
+        const pick = (data.models || []).some((m) => m.id === current)
+          ? current
+          : (data.default_model_id || (data.models[0] && data.models[0].id));
+        if (pick) els.model.value = pick;
+      } catch (_) {}
+    }
+
+    async function refreshHealth() {
+      try {
+        const h = await api('/answerly/health');
+        if (!h.ok) {
+          setPill(els.svcPill, els.svcText, 'bad', 'Service error');
+        } else {
+          setPill(els.svcPill, els.svcText, 'ok', 'Local bridge online');
+        }
+        if (!h.token || !h.token.hasToken) {
+          setPill(els.tokenPill, els.tokenText, 'warn', 'No token saved');
+        } else if (h.token.expired) {
+          setPill(els.tokenPill, els.tokenText, 'bad', 'Token expired — paste a fresh one');
+        } else if (h.token.secondsLeft != null) {
+          const mins = Math.max(0, Math.round(h.token.secondsLeft / 60));
+          setPill(els.tokenPill, els.tokenText, 'ok', 'Token OK · ~' + mins + ' min left');
+        } else {
+          setPill(els.tokenPill, els.tokenText, 'ok', 'Token saved');
+        }
+      } catch (err) {
+        setPill(els.svcPill, els.svcText, 'bad', 'Service offline — start firefly-upscaler');
+        setPill(els.tokenPill, els.tokenText, 'warn', 'Cannot reach bridge');
+      }
+    }
+
+    function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+    }
+
+    async function setImage(file) {
+      if (!file) return;
+      imageFile = file;
+      imageDataUrl = await fileToDataUrl(file);
+      els.preview.src = imageDataUrl;
+      els.preview.classList.remove('hidden');
+      els.drop.classList.add('has-file');
+      els.drop.firstChild && (els.drop.childNodes[0].textContent = file.name + ' · click to replace');
+      els.outInput.innerHTML = '<img src="' + imageDataUrl + '" alt="Input">';
+    }
+
+    els.drop.addEventListener('click', () => els.file.click());
+    els.drop.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); els.file.click(); }
+    });
+    els.file.addEventListener('change', () => {
+      if (els.file.files && els.file.files[0]) setImage(els.file.files[0]);
+    });
+    els.drop.addEventListener('dragover', (e) => { e.preventDefault(); });
+    els.drop.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) setImage(f);
+    });
+
+    els.workflow.addEventListener('change', () => {
+      syncImageUi();
+      refreshModels();
+    });
+
+    els.btnHealth.addEventListener('click', () => {
+      refreshHealth();
+      refreshModels();
+    });
+
+    els.btnSave.addEventListener('click', async () => {
+      const accessToken = els.token.value.trim();
+      if (!accessToken) {
+        els.runStatus.innerHTML = '<span class="err">Paste an accessToken first</span>';
+        return;
+      }
+      try {
+        localStorage.setItem(TOKEN_KEY, accessToken);
+        await api('/answerly/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accessToken })
+        });
+        els.runStatus.textContent = 'Token saved on local service';
+        await refreshHealth();
+        await refreshModels();
+      } catch (err) {
+        els.runStatus.innerHTML = '<span class="err">' + String(err.message || err) + '</span>';
+      }
+    });
+
+    els.btnClear.addEventListener('click', async () => {
+      localStorage.removeItem(TOKEN_KEY);
+      els.token.value = '';
+      try {
+        await api('/answerly/token', { method: 'DELETE' });
+      } catch (_) {}
+      refreshHealth();
+    });
+
+    async function pollJob(id) {
+      for (;;) {
+        const job = await api('/answerly/jobs/' + id);
+        const pct = typeof job.progress === 'number' ? job.progress : 0;
+        els.runStatus.textContent = (job.stage || job.status) + ' · ' + pct + '%';
+        if (job.status === 'done') return job;
+        if (job.status === 'failed') throw new Error(job.error || 'Job failed');
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+    }
+
+    els.btnRun.addEventListener('click', async () => {
+      const prompt = els.prompt.value.trim();
+      if (!prompt) {
+        els.runStatus.innerHTML = '<span class="err">Enter a prompt</span>';
+        return;
+      }
+      if (workflowNeedsImage() && !imageFile) {
+        els.runStatus.innerHTML = '<span class="err">Add an input image</span>';
+        return;
+      }
+
+      els.btnRun.disabled = true;
+      els.outResult.innerHTML = '<span class="hint">Working…</span>';
+      els.jobMeta.textContent = '';
+      els.runStatus.textContent = 'Submitting…';
+
+      try {
+        // Ensure token on service if textarea has one
+        const accessToken = els.token.value.trim() || localStorage.getItem(TOKEN_KEY) || '';
+        if (accessToken) {
+          await api('/answerly/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accessToken })
+          });
+        }
+
+        const body = {
+          workflow: els.workflow.value,
+          model: els.model.value,
+          prompt,
+          image_size: '1K',
+          aspect_ratio: '1:1'
+        };
+        if (imageFile && workflowNeedsImage()) {
+          const dataUrl = imageDataUrl || await fileToDataUrl(imageFile);
+          const base64 = String(dataUrl).split(',')[1];
+          body.image = {
+            name: imageFile.name,
+            mime: imageFile.type || 'image/png',
+            base64
+          };
+        }
+
+        const created = await api('/answerly/jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        const job = await pollJob(created.id);
+        const resultUrl = API + '/answerly/jobs/' + job.id + '/result';
+        els.outResult.innerHTML =
+          '<img src="' + resultUrl + '" alt="Result">' +
+          (job.resultUrl
+            ? '<p class="hint" style="margin-top:8px"><a href="' + job.resultUrl + '" target="_blank" rel="noopener">Open Answerly file URL</a></p>'
+            : '');
+        els.jobMeta.textContent =
+          'execution ' + (job.executionId || '—') +
+          ' · ' + (job.workflow || '') +
+          ' · ' + (job.model || '') +
+          (job.elapsedMs ? ' · ' + Math.round(job.elapsedMs / 1000) + 's' : '');
+        els.runStatus.textContent = 'Done';
+      } catch (err) {
+        els.runStatus.innerHTML = '<span class="err">' + String(err.message || err) + '</span>';
+        els.outResult.innerHTML = '<span class="err">' + String(err.message || err) + '</span>';
+      } finally {
+        els.btnRun.disabled = false;
+      }
+    });
+
+    // boot
+    const saved = localStorage.getItem(TOKEN_KEY);
+    if (saved) els.token.value = saved;
+    syncImageUi();
+    refreshHealth().then(refreshModels);
+  })();
+  </script>
+</body>
+</html>

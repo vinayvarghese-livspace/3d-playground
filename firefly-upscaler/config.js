@@ -39,6 +39,11 @@ module.exports = {
   jobsDir: path.join(__dirname, 'jobs'),
   // Rough Firefly upscale time, used for the progress ring until real timings are measured
   expectedUpscaleMs: 20 * 1000,
+
+  // Answerly / Triflo bridge (same port)
+  answerlyPollMs: 2000,
+  answerlyJobTimeoutMs: 5 * 60 * 1000,
+  answerlyWorkspaceId: '9901bfd2-4c06-4746-8d63-aa2867248f1e',
   // Pages allowed to call the service. file:// pages send the origin "null".
   allowedOrigins: [
     'null',

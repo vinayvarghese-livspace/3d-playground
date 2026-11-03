@@ -1,9 +1,9 @@
 # 3D Playground: Overview
 
 **Live link (production, V1.1 Renamer):** https://vinayvarghese-livspace.github.io/3d-playground/
-**Preview link (V1.3 Tasks):** https://vinayvarghese-livspace.github.io/3d-playground/preview.html
+**Preview link (V1.4 Tasks + Product Replacement):** https://vinayvarghese-livspace.github.io/3d-playground/preview.html
 **Source code:** https://github.com/vinayvarghese-livspace/3d-playground
-**Current version:** Preview V1.3 (Tasks refinements on `preview.html`). Production root stays V1.1 Renamer until cutover.
+**Current version:** Preview V1.4 (Product Replacement / Answerly on `preview.html`). Production root also on V1.4 Tasks shell.
 
 ---
 
@@ -11,7 +11,7 @@
 
 ### In one line
 
-3D Playground turns a folder of product photos or renders into a ready-to-upload set of marketplace images: correctly named, correctly sized, in the correct order, in one click. Preview V1.3 also shows which products are ready to work, who should take them, and what each person already has on their plate.
+3D Playground turns a folder of product photos or renders into a ready-to-upload set of marketplace images: correctly named, correctly sized, in the correct order, in one click. Preview V1.4 also shows which products are ready to work, who should take them, Product Replacement via Answerly, and what each person already has on their plate.
 
 ### The problem before
 
@@ -195,7 +195,7 @@ We deliberately avoided servers, app stores and installers.
 
 **Everyone (basic Renamer use):** just the production link, https://vinayvarghese-livspace.github.io/3d-playground/. Nothing else is needed.
 
-**Preview V1.3 testers:** open https://vinayvarghese-livspace.github.io/3d-playground/preview.html (or `#available` / `#my`). Sign in to Google in the same browser so the Apps Script feed can read the sheets. Enter the same author name used in the Renamer.
+**Preview V1.4 testers:** open https://vinayvarghese-livspace.github.io/3d-playground/preview.html (or `#available` / `#my`). Sign in to Google in the same browser so the Apps Script feed can read the sheets. Enter the same author name used in the Renamer. For Product Replacement, keep the local bridge on `:5175` updated (re-run setup zip) and paste a personal Answerly token.
 
 **AI upscale (one time per PC, about 10 minutes, no admin rights):**
 
@@ -286,7 +286,7 @@ Adds a task board on top of the Renamer, backed by the team's live Google Sheets
 
 ### Preview V1.3: My Tasks status + Assign UX, 28 Oct 2026
 
-Refines the V1.2 Tasks preview. Production `index.html` (https://vinayvarghese-livspace.github.io/3d-playground/) stays the V1.1 Renamer — only `preview.html` changes.
+Refines the V1.2 Tasks preview.
 
 **Changes:**
 
@@ -296,18 +296,30 @@ Refines the V1.2 Tasks preview. Production `index.html` (https://vinayvarghese-l
 - **Templates** such as `T2a`, `T61a`, `T7 set` are recognised (letter suffixes and set variants).
 - Artist matching accepts first-name forms (e.g. Naveen ≈ Naveen Kumar). Tracker status refreshes on poll so sheet Completed / In progress updates appear without a full reload.
 
+### Preview V1.4: Product Replacement + Answerly, 3 Nov 2026
+
+Adds Product Replacement on the Tasks shell (preview and production root).
+
+**Changes:**
+
+- **Product Replacement** workspace: prior A from Drive, product B inputs, Universal + Shoot Tracker prompt C, Answerly D output.
+- Local **Answerly bridge** on `127.0.0.1:5175` (same upscaler package); personal Answerly token per user; job cancel supported.
+- **Generate all** runs eligible shots in parallel; **MAIN** waits for Hero Front / 01 D as A and borrows product B at submit only (not copied into MAIN UI).
+- Prompt DB + Universal MAIN resolution; Renamer-parity export/upscale for approved outputs.
+- Setup zip includes `answerly.js` — users must re-download zip / update `firefly-upscaler` for Answerly features.
+
 ### Summary of changes
 
-| | Beta (V1.0) | Beta V1.1 | Preview V1.2 | Preview V1.3 |
-|---|---|---|---|---|
-| Name | Image Renamer | 3D Playground | 3D Playground (Preview Tasks) | Same preview shell |
-| Where people open it | GitHub Pages | GitHub Pages | Production = V1.1 Renamer; Preview = `preview.html` | Same (production root unchanged) |
-| Minimum image size | 3000 px | 2000 px with AI upscale (3000 px without) | Same as V1.1 | Same as V1.1 |
-| Small images | Rejected | Upscaled 2x by Adobe Firefly | Same as V1.1 | Same as V1.1 |
-| Output | One download per image | One `EAN.zip` with an `EAN` folder | Same as V1.1 | Same as V1.1 |
-| Task board | None | None | Available Tasks + My Tasks | Status buckets + Active priority sort |
-| Assignments | Manual sheet edits | Manual sheet edits | One-click Assign to live Render Tracker | Assign-to menu only; red error toasts |
-| Install needed | None | None for basic use; one-time `Setup.bat` for AI upscale | Same + Google sign-in for Tasks feed | Same |
-| Data leaves the PC | Never | Only images that need upscaling, to the user's own Firefly account | Same for images; task metadata read/written via Apps Script to team sheets | Same |
-| Help | None in the page | Settings menu with a full setup guide and troubleshooting | Same + task drawer warnings and empty-state guidance | Same |
-| Preferences remembered | Author name | Author name and AI upscale on/off | Same; author shared across Renamer and Tasks | Same |
+| | Beta (V1.0) | Beta V1.1 | Preview V1.2 | Preview V1.3 | Preview V1.4 |
+|---|---|---|---|---|---|
+| Name | Image Renamer | 3D Playground | 3D Playground (Preview Tasks) | Same preview shell | Tasks + Product Replacement |
+| Where people open it | GitHub Pages | GitHub Pages | Production = V1.1 Renamer; Preview = `preview.html` | Same | Preview + production root on V1.4 |
+| Minimum image size | 3000 px | 2000 px with AI upscale (3000 px without) | Same as V1.1 | Same as V1.1 | Same |
+| Small images | Rejected | Upscaled 2x by Adobe Firefly | Same as V1.1 | Same as V1.1 | Same |
+| Output | One download per image | One `EAN.zip` with an `EAN` folder | Same as V1.1 | Same as V1.1 | Same + PR export zip |
+| Task board | None | None | Available Tasks + My Tasks | Status buckets + Active priority sort | Same + Product Replacement |
+| Assignments | Manual sheet edits | Manual sheet edits | One-click Assign to live Render Tracker | Assign-to menu only; red error toasts | Same |
+| Install needed | None | None for basic use; one-time `Setup.bat` for AI upscale | Same + Google sign-in for Tasks feed | Same | Same + Answerly token; refresh setup zip for bridge |
+| Data leaves the PC | Never | Only images that need upscaling, to the user's own Firefly account | Same for images; task metadata read/written via Apps Script to team sheets | Same | Same + Answerly API via local bridge |
+| Help | None in the page | Settings menu with a full setup guide and troubleshooting | Same + task drawer warnings and empty-state guidance | Same | Same + Answerly status bar |
+| Preferences remembered | Author name | Author name and AI upscale on/off | Same; author shared across Renamer and Tasks | Same | Same + Answerly token locally |

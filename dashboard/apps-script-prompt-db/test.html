@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt DB API — local test</title>
+<style>
+  body { font-family: Segoe UI, Arial, sans-serif; margin: 16px; color: #222; max-width: 960px; }
+  h1 { font-size: 18px; margin: 0 0 8px; }
+  .muted { color: #666; font-size: 13px; margin-bottom: 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+  input[type=text] { flex: 1; min-width: 280px; padding: 6px 8px; border: 1px solid #bbb; border-radius: 4px; }
+  button { padding: 6px 14px; border: 0; border-radius: 4px; background: #0B6B5F; color: #fff; cursor: pointer; }
+  button.secondary { background: #5f6368; }
+  button.danger { background: #c5221f; }
+  #status { margin: 8px 0; font-size: 13px; white-space: pre-wrap; }
+  #status.err { color: #c5221f; }
+  #status.ok { color: #0B6B5F; }
+  pre { background: #f6f8fa; border: 1px solid #e3e3e3; padding: 10px; overflow: auto; max-height: 60vh; font-size: 12px; }
+</style>
+</head>
+<body>
+<h1>Prompt DB API test</h1>
+<p class="muted">Open this file while signed into your Livspace Google account. Uses JSONP against the web app (same pattern as the playground).</p>
+
+<div class="row">
+  <input id="url" type="text" value="https://script.google.com/a/macros/livspace.com/s/AKfycbwjLPIuL9J_XtHmnEm7jdbnJHlUIEjscACqYiSIB3ISTQNXHDhKHAVyuOc9VuPaobHT/exec">
+</div>
+<div class="row">
+  <button type="button" id="ping">1. Ping</button>
+  <button type="button" id="universal" class="secondary">2. Read Universal</button>
+  <button type="button" id="approve" class="danger">3. Test write (All user)</button>
+</div>
+<div id="status">Ready.</div>
+<pre id="out">(no response yet)</pre>
+
+<script>
+  const els = {
+    url: document.getElementById('url'),
+    status: document.getElementById('status'),
+    out: document.getElementById('out')
+  };
+  let seq = 0;
+
+  function setStatus(msg, kind) {
+    els.status.textContent = msg;
+    els.status.className = kind || '';
+  }
+
+  function baseUrl() {
+    return String(els.url.value || '').trim().replace(/\/?$/, '');
+  }
+
+  function jsonp(query, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      const cb = '_pdb_cb_' + (++seq) + '_' + Date.now();
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error('Timed out after ' + (timeoutMs || 30000) + 'ms — open the /exec URL once in this browser while signed in, then retry.'));
+      }, timeoutMs || 30000);
+      function cleanup() {
+        clearTimeout(timer);
+        try { delete window[cb]; } catch (e) { window[cb] = undefined; }
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+      window[cb] = function (body) {
+        cleanup();
+        if (!body || body.ok === false) {
+          reject(new Error((body && body.error) || 'Request failed'));
+          return;
+        }
+        resolve(body.data != null ? body.data : body);
+      };
+      const script = document.createElement('script');
+      const join = query.indexOf('?') >= 0 || baseUrl().indexOf('?') >= 0 ? '&' : '?';
+      // query already starts without ? when we pass "action=..."
+      script.src = baseUrl() + '?' + query + '&callback=' + cb + '&t=' + Date.now();
+      script.onerror = function () {
+        cleanup();
+        reject(new Error('Script load failed (auth or network). Open ' + baseUrl() + ' once, allow access, retry.'));
+      };
+      document.body.appendChild(script);
+    });
+  }
+
+  document.getElementById('ping').onclick = async function () {
+    setStatus('Pinging…');
+    try {
+      const data = await jsonp('action=ping');
+      els.out.textContent = JSON.stringify(data, null, 2);
+      setStatus('Ping OK — version ' + (data.version != null ? data.version : '?'), 'ok');
+    } catch (err) {
+      els.out.textContent = String(err.message || err);
+      setStatus('Ping failed', 'err');
+    }
+  };
+
+  document.getElementById('universal').onclick = async function () {
+    setStatus('Reading Universal…');
+    try {
+      const data = await jsonp('action=universal', 60000);
+      const rows = (data.values && data.values.length) || 0;
+      els.out.textContent = JSON.stringify(data, null, 2);
+      setStatus('Universal OK — ' + rows + ' row(s) including header. Tab: ' + (data.tab || '?'), 'ok');
+    } catch (err) {
+      els.out.textContent = String(err.message || err);
+      setStatus('Universal read failed', 'err');
+    }
+  };
+
+  document.getElementById('approve').onclick = async function () {
+    if (!confirm('Append a TEST row to All user (EAN 0000000000000)? You can delete it after.')) return;
+    setStatus('Writing test approve…');
+    const q =
+      'action=promptApprove' +
+      '&ean=0000000000000' +
+      '&author=' + encodeURIComponent('Test') +
+      '&prompt=' + encodeURIComponent('Prompt DB deploy smoke test') +
+      '&promptOrigin=Automated' +
+      '&qualityRating=5' +
+      '&universalRow=master' +
+      '&productType=SmokeTest' +
+      '&appVersion=prompt-db-test';
+    try {
+      const data = await jsonp(q, 60000);
+      els.out.textContent = JSON.stringify(data, null, 2);
+      setStatus('Write OK — All user row ' + (data.row != null ? data.row : '?') + '. Check the sheet, then delete the test row.', 'ok');
+    } catch (err) {
+      els.out.textContent = String(err.message || err);
+      setStatus('Write failed', 'err');
+    }
+  };
+</script>
+</body>
+</html>

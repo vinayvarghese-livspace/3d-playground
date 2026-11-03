@@ -6,4 +6,5 @@ done/*
 failed/*
 logs/*
 jobs/
+answerly-token.json
 !*/.gitkeep

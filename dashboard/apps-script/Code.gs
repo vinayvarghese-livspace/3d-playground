@@ -17,7 +17,10 @@ const SOURCES = {
 };
 const RENDER_TAB = 'Tracker';
 const NAMING_TAB = 'Shot List';
-const NAMING_COLUMNS = ['Category', 'Product Type', 'Variant', 'Seq', 'Image Name', 'Shot Code'];
+const NAMING_COLUMNS = [
+  'Category', 'Product Type', 'Variant', 'Seq', 'Image Name',
+  'Shot Family', 'Shot Code', 'What to Shoot'
+];
 // Written into PDP Images on assign (one of that column's dropdown values).
 const ASSIGN_PDP_STATUS = 'Blocked';
 const CACHE_SECONDS = 21600;
@@ -25,7 +28,7 @@ const CACHE_CHUNK = 30000;
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const XLSX_MEMO = {};
 // tasks.js warns when the deployed web app is older than this; raise both together.
-const FEED_VERSION = 28;
+const FEED_VERSION = 32;
 // Written by tools/shoot-sync (key/value tab). Used for "Data last sync" in the playground.
 const SYNC_META_TAB = 'Sync Meta';
 
@@ -45,8 +48,10 @@ function apiResponse_(p) {
   try {
     if (p.action === 'tasks') body = { ok: true, data: getTaskFeed() };
     else if (p.action === 'thumbs') body = { ok: true, data: getFolderImages(String(p.ids || '').split(',')) };
+    else if (p.action === 'file') body = { ok: true, data: getDriveFile_(String(p.id || '')) };
     else if (p.action === 'assign') body = { ok: true, data: writeAssigns_(p) };
     else if (p.action === 'assigns') body = { ok: true, data: readAssignSheet_() };
+    else if (p.action === 'pdpStatus') body = { ok: true, data: writePdpStatus_(p) };
     else throw new Error('Unknown action: ' + p.action);
   } catch (err) {
     body = { ok: false, error: String((err && err.message) || err) };
@@ -265,6 +270,40 @@ function writeAssigns_(p) {
 
 function formatAssignDate_(d) {
   return Utilities.formatDate(d, Session.getScriptTimeZone() || 'Asia/Kolkata', 'dd-MMM-yyyy');
+}
+
+/**
+ * Update PDP Images (col D) for an existing Render Tracker EAN.
+ * Used when the first Product Replacement image is generated → "In progress".
+ * Does not create rows; skips Completed; only upgrades Not started / Blocked / blank.
+ */
+function writePdpStatus_(p) {
+  const ean = lookupKey_(p.ean);
+  if (!ean || !/^\d{8,}/.test(ean)) throw new Error('ean is required');
+  const want = String(p.status || 'In progress').trim() || 'In progress';
+  const src = source_('assign');
+  const ss = SpreadsheetApp.openById(src.id);
+  const sheet = ss.getSheetByName(assignTabTitle_(src)) || ss.getSheets()[0];
+  if (!sheet) throw new Error('No tab found in the assign sheet');
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) throw new Error('EAN not found on Render Tracker');
+  const values = sheet.getRange(1, 1, lastRow, 4).getDisplayValues();
+  let rowIndex = -1;
+  for (let i = 1; i < values.length; i++) {
+    if (lookupKey_(values[i][0]) === ean) { rowIndex = i + 1; break; }
+  }
+  if (rowIndex < 0) throw new Error('EAN ' + ean + ' not found on Render Tracker');
+  const current = String(values[rowIndex - 1][3] || '').trim();
+  const curNorm = current.toLowerCase().replace(/\s+/g, ' ');
+  if (/completed|complete|done|finished/.test(curNorm)) {
+    return { ean: ean, updated: false, skipped: 'completed', pdpImages: current, row: rowIndex };
+  }
+  if (/in\s*-?\s*progress|\bwip\b/.test(curNorm) && /in\s*-?\s*progress/i.test(want)) {
+    return { ean: ean, updated: false, skipped: 'already', pdpImages: current, row: rowIndex };
+  }
+  sheet.getRange(rowIndex, 4).setValue(want); // D PDP Images
+  SpreadsheetApp.flush();
+  return { ean: ean, updated: true, pdpImages: want, row: rowIndex, previous: current };
 }
 
 // Run once from the editor to grant write access (Authorize when prompted), then deploy a new version.
@@ -563,6 +602,42 @@ const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const MAX_FOLDERS_PER_CALL = 50;
 const MAX_IMAGES_PER_FOLDER = 40;
 const FOLDER_CACHE_SECONDS = 1800;
+// Full-res file fetch for Product Replacement prior (A). JSONP response size stays practical.
+const MAX_DRIVE_FILE_BYTES = 12 * 1024 * 1024;
+
+// Returns { id, name, mimeType, size, base64 } for one image file the caller can already see via thumbs.
+function getDriveFile_(id) {
+  id = String(id || '').trim();
+  if (!/^[\w-]{10,100}$/.test(id)) throw new Error('Invalid Drive file id');
+  let meta = null;
+  try {
+    meta = Drive.Files.get(id, {
+      supportsAllDrives: true,
+      fields: 'id,name,mimeType,size,trashed'
+    });
+  } catch (err) {
+    throw new Error('Could not read Drive file: ' + ((err && err.message) || err));
+  }
+  if (!meta || meta.trashed) throw new Error('Drive file not found');
+  const mime = String(meta.mimeType || '');
+  if (!/^image\//i.test(mime)) throw new Error('Drive file is not an image');
+  const size = Number(meta.size || 0);
+  if (size > MAX_DRIVE_FILE_BYTES) {
+    throw new Error('Image is too large (' + Math.round(size / (1024 * 1024)) + ' MB). Max 12 MB.');
+  }
+  const blob = DriveApp.getFileById(id).getBlob();
+  const bytes = blob.getBytes();
+  if (bytes.length > MAX_DRIVE_FILE_BYTES) {
+    throw new Error('Image is too large (' + Math.round(bytes.length / (1024 * 1024)) + ' MB). Max 12 MB.');
+  }
+  return {
+    id: meta.id,
+    name: meta.name || 'drive-image',
+    mimeType: blob.getContentType() || mime || 'image/jpeg',
+    size: bytes.length,
+    base64: Utilities.base64Encode(bytes)
+  };
+}
 
 // Returns { folderId: [{ id, name, thumb }] }. thumb is Drive's short-lived thumbnail link, which loads in the
 // page without a Google cookie (browsers block that cookie on drive.google.com images inside other sites).
@@ -996,7 +1071,18 @@ function fillNativeDriveFromLog_(src, values, links) {
   src._driveFillInfo = 'filled ' + filled + ' GDRIVE cells from Upload Log map (' + Object.keys(map).length + ' EANs, col ' + (driveCols[0] + 1) + ')';
 }
 
-// Upload Log layout (local data): column A = EAN, column E = EAN Folder Link. One Values.get only.
+// Upload Log: native shoot-sync sheet is 2-col (A=EAN, B=folder URL). Legacy xlsx / full log uses E.
+function nativeUploadLinkCol_(headerRow) {
+  const header = (headerRow || []).map(h => String(h || '').toLowerCase().replace(/\s+/g, ' ').trim());
+  for (let c = 0; c < header.length; c++) {
+    if (/folder\s*link|gdrive|drive\s*link|drive\s*folder/.test(header[c])) return c;
+  }
+  // 2-col projected tab from shoot-sync: header row is often ["EAN","EAN Folder Link"]
+  if (header.length >= 2 && /ean/.test(header[0])) return 1;
+  return LOG_LINK_COL;
+}
+
+// Upload Log layout (local data): A = EAN; folder URL in B (2-col sync sheet) or E (full Upload Log).
 function nativeDriveMap_(src) {
   if (src._driveMap) return src._driveMap;
   const map = {};
@@ -1010,7 +1096,7 @@ function nativeDriveMap_(src) {
     const range = "'" + title.replace(/'/g, "''") + "'!A:E";
     const shown = Sheets.Spreadsheets.Values.get(src.id, range, { valueRenderOption: 'FORMATTED_VALUE' }).values || [];
     const eanCol = LOG_EAN_COL;
-    const linkCol = LOG_LINK_COL;
+    const linkCol = nativeUploadLinkCol_(shown[0]);
     let added = 0;
     const firstKey = lookupKey_(shown[0] && shown[0][eanCol]);
     const start = /^\d{8,}/.test(firstKey) ? 0 : 1;
@@ -1022,8 +1108,9 @@ function nativeDriveMap_(src) {
       map[key] = m[0].replace(/[.,);]+$/, '');
       added++;
     }
-    src._driveMapInfo.push('"' + title + '": ' + added + ' EANs with a folder link (A=EAN, E=EAN Folder Link). Sample: A=' +
-      String((shown[start] && shown[start][eanCol]) || '').slice(0, 20) + ' E=' +
+    src._driveMapInfo.push('"' + title + '": ' + added + ' EANs with a folder link (A=EAN, col ' +
+      (linkCol + 1) + '=folder). Sample: A=' +
+      String((shown[start] && shown[start][eanCol]) || '').slice(0, 20) + ' link=' +
       String((shown[start] && shown[start][linkCol]) || '').slice(0, 60));
   });
   return (src._driveMap = map);

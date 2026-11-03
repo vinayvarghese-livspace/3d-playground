@@ -2,7 +2,7 @@
 // Source: LSH-HH-Naming Convention-Test-2 - Shot List.csv
 window.NAMING_DATA = {
   source: "LSH-HH-Naming Convention-Test-2 - Shot List.csv",
-  updatedAt: "2026-10-30T14:51:44",
+  updatedAt: "2026-10-30T18:26:30",
   minSize: 3000,
   outputSize: 3000,
   productTypes: [
@@ -10,26 +10,26 @@ window.NAMING_DATA = {
       name: "Figurines",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Side/ Angle", code: "H-SDAN" },
-        { seq: "04", name: "Hero Back (If Applicable)", code: "H-BK" },
-        { seq: "05", name: "Hero Close Up", code: "D-CU" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" },
-        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Side/ Angle", code: "H-SDAN", family: "Product Shot", whatToShoot: "Product from the side or at a three-quarter angle." },
+        { seq: "04", name: "Hero Back (If Applicable)", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background.  Only shoot this if the product actually has it." },
+        { seq: "05", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Book End",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Back", code: "H-BK" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
@@ -37,20 +37,20 @@ window.NAMING_DATA = {
       category: "Decor",
       variants: {
         "Single (Terracotta & Glass)": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "02", name: "Hero Front", code: "H-FR" },
-          { seq: "03", name: "Hero Close Up", code: "D-CU" },
-          { seq: "04", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+          { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ],
         "Set": [
-          { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "02", name: "Hero Front - Set", code: "H-FR-SET" },
-          { seq: "03", name: "Hero Close Up", code: "D-CU" },
-          { seq: "04", name: "Hero Front - Individual Product", code: "H-FR-INDIV" },
-          { seq: "05", name: "Hero Close Up - Individual Product", code: "D-CU-INDIV" },
-          { seq: "06", name: "Product Dimension - Set", code: "M-DIM-SET" }
+          { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front - Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "02", name: "Hero Front - Set", code: "H-FR-SET", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show all the pieces together." },
+          { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+          { seq: "04", name: "Hero Front - Individual Product", code: "H-FR-INDIV", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show one piece from the set on its own." },
+          { seq: "05", name: "Hero Close Up - Individual Product", code: "D-CU-INDIV", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Show one piece from the set on its own." },
+          { seq: "06", name: "Product Dimension - Set", code: "M-DIM-SET", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on. Show all the pieces together." }
         ]
       }
     },
@@ -58,233 +58,233 @@ window.NAMING_DATA = {
       name: "Table Accents",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Side/ Angle", code: "H-SDAN" },
-        { seq: "04", name: "Hero Back (If Applicable)", code: "H-BK" },
-        { seq: "05", name: "Hero Close Up", code: "D-CU" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" },
-        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Side/ Angle", code: "H-SDAN", family: "Product Shot", whatToShoot: "Product from the side or at a three-quarter angle." },
+        { seq: "04", name: "Hero Back (If Applicable)", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background.  Only shoot this if the product actually has it." },
+        { seq: "05", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Mirror Box",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Side/ Angle", code: "H-SDAN" },
-        { seq: "04", name: "Hero Front - Lid Open", code: "H-FR-OPEN" },
-        { seq: "05", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Side/ Angle", code: "H-SDAN", family: "Product Shot", whatToShoot: "Product from the side or at a three-quarter angle." },
+        { seq: "04", name: "Hero Front - Lid Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the lid open." },
+        { seq: "05", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Decorative Jar",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Hero Front - Lid Open", code: "H-FR-OPEN" },
-        { seq: "03", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "04", name: "Hero Close Up - Lid", code: "D-CU-LID" },
-        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Hero Front - Lid Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the lid open." },
+        { seq: "03", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "04", name: "Hero Close Up - Lid", code: "D-CU-LID", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the lid." },
+        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Lanterns",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot (Not Lit)", code: "L-CTX-UNLIT" },
-        { seq: "02", name: "Lifestyle Shot (Candle Lit)", code: "L-CTX-LIT" },
-        { seq: "03", name: "Hero Front", code: "H-FR" },
-        { seq: "04", name: "Hero Front - Product Open", code: "H-FR-OPEN" },
-        { seq: "05", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot (Not Lit)", code: "L-CTX-UNLIT", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the candle unlit." },
+        { seq: "02", name: "Lifestyle Shot (Candle Lit)", code: "L-CTX-LIT", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the candle lit, showing the glow through the material." },
+        { seq: "03", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "04", name: "Hero Front - Product Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the product opened up." },
+        { seq: "05", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Candle Holders",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot - Candle Lit", code: "L-CTX-LIT" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Front - Candle Lit", code: "H-FR-LIT" },
-        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot - Candle Lit", code: "L-CTX-LIT", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the candle lit, showing the glow through the material." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Front - Candle Lit", code: "H-FR-LIT", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the candle lit, showing the glow through the material." },
+        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Hurricane Candle Holder",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot - Candle Lit", code: "L-CTX-LIT" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "04", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot - Candle Lit", code: "L-CTX-LIT", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the candle lit, showing the glow through the material." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "04", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Bowls",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Side/ Angle", code: "H-SDAN" },
-        { seq: "04", name: "Hero Close Up (Base)", code: "D-CU-BASE" },
-        { seq: "05", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Side/ Angle", code: "H-SDAN", family: "Product Shot", whatToShoot: "Product from the side or at a three-quarter angle." },
+        { seq: "04", name: "Hero Close Up (Base)", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "05", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Platters",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Side/ Angle", code: "H-SDAN" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Side/ Angle", code: "H-SDAN", family: "Product Shot", whatToShoot: "Product from the side or at a three-quarter angle." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Clocks",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Side/ Angle", code: "H-SDAN" },
-        { seq: "04", name: "Hero Back", code: "H-BK" },
-        { seq: "05", name: "Hero Back Close Up", code: "D-BKCU" },
-        { seq: "06", name: "Hero Front Close Up - Dial", code: "D-FRCU-DIAL" },
-        { seq: "07", name: "Hero Front Close Up - Unique Aspects (If Applicable)", code: "D-FRCU-UNIQ" },
-        { seq: "08", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Side/ Angle", code: "H-SDAN", family: "Product Shot", whatToShoot: "Product from the side or at a three-quarter angle." },
+        { seq: "04", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "05", name: "Hero Back Close Up", code: "D-BKCU", family: "Close-Up", whatToShoot: "Tight crop on the back of the product." },
+        { seq: "06", name: "Hero Front Close Up - Dial", code: "D-FRCU-DIAL", family: "Close-Up", whatToShoot: "Tight crop on the front of the product. Focus on the dial." },
+        { seq: "07", name: "Hero Front Close Up - Unique Aspects (If Applicable)", code: "D-FRCU-UNIQ", family: "Close-Up", whatToShoot: "Tight crop on the front of the product. Focus on the unique aspects.  Only shoot this if the product actually has it." },
+        { seq: "08", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Table Lamp",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot (Light Off)", code: "L-CTX-OFF" },
-        { seq: "02", name: "Lifestyle Shot (Light On)", code: "L-CTX-ON" },
-        { seq: "03", name: "Hero Front", code: "H-FR" },
-        { seq: "04", name: "Hero Close Up - Top/ Shade", code: "D-CU-SHADE" },
-        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "06", name: "Hero Close Up - Bulb Holder", code: "D-CU-BLBHLD" },
-        { seq: "07", name: "Hero Close Up - Switch & Wire", code: "D-CU-WIRE" },
-        { seq: "08", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot (Light Off)", code: "L-CTX-OFF", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the lamp switched off." },
+        { seq: "02", name: "Lifestyle Shot (Light On)", code: "L-CTX-ON", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the lamp switched on, showing the light it throws." },
+        { seq: "03", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "04", name: "Hero Close Up - Top/ Shade", code: "D-CU-SHADE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top/ shade." },
+        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "06", name: "Hero Close Up - Bulb Holder", code: "D-CU-BLBHLD", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the bulb holder." },
+        { seq: "07", name: "Hero Close Up - Switch & Wire", code: "D-CU-WIRE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the switch & wire." },
+        { seq: "08", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Wall Lamp",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot (Light Off)", code: "L-CTX-OFF" },
-        { seq: "02", name: "Lifestyle Shot (Light On)", code: "L-CTX-ON" },
-        { seq: "03", name: "Hero Front", code: "H-FR" },
-        { seq: "04", name: "Hero Side/ Angle", code: "H-SDAN" },
-        { seq: "05", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "06", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot (Light Off)", code: "L-CTX-OFF", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the lamp switched off." },
+        { seq: "02", name: "Lifestyle Shot (Light On)", code: "L-CTX-ON", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the lamp switched on, showing the light it throws." },
+        { seq: "03", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "04", name: "Hero Side/ Angle", code: "H-SDAN", family: "Product Shot", whatToShoot: "Product from the side or at a three-quarter angle." },
+        { seq: "05", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "06", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Hanging Lamp",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot (Light Off)", code: "L-CTX-OFF" },
-        { seq: "02", name: "Lifestyle Shot (Light On)", code: "L-CTX-ON" },
-        { seq: "03", name: "Hero Front", code: "H-FR" },
-        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot (Light Off)", code: "L-CTX-OFF", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the lamp switched off." },
+        { seq: "02", name: "Lifestyle Shot (Light On)", code: "L-CTX-ON", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the lamp switched on, showing the light it throws." },
+        { seq: "03", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Floor Lamp",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot (Light Off)", code: "L-CTX-OFF" },
-        { seq: "02", name: "Lifestyle Shot (Light On)", code: "L-CTX-ON" },
-        { seq: "03", name: "Hero Front", code: "H-FR" },
-        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "05", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1" },
-        { seq: "06", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2" },
-        { seq: "07", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "08", name: "Hero Close Up - Switch & Wire", code: "D-CU-WIRE" },
-        { seq: "09", name: "Product Dimension - Human Scale Reference", code: "M-DIM-HSR" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot (Light Off)", code: "L-CTX-OFF", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the lamp switched off." },
+        { seq: "02", name: "Lifestyle Shot (Light On)", code: "L-CTX-ON", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the lamp switched on, showing the light it throws." },
+        { seq: "03", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "05", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 1." },
+        { seq: "06", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 2." },
+        { seq: "07", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "08", name: "Hero Close Up - Switch & Wire", code: "D-CU-WIRE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the switch & wire." },
+        { seq: "09", name: "Product Dimension - Human Scale Reference", code: "M-DIM-HSR", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on. Show a person standing beside it, to show how big it is." }
       ]
     },
     {
       name: "String Lamp",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front/ Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot (Light Off)", code: "L-CTX-OFF" },
-        { seq: "02", name: "Lifestyle Shot (Light On)", code: "L-CTX-ON" },
-        { seq: "03", name: "Hero Front/ Flat Lay", code: "H-FRFL" },
-        { seq: "04", name: "Hero Close Up - Bulb", code: "D-CU-BULB" },
-        { seq: "05", name: "Hero Close Up - Switch & Wire", code: "D-CU-WIRE" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front/ Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front/ Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot (Light Off)", code: "L-CTX-OFF", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the lamp switched off." },
+        { seq: "02", name: "Lifestyle Shot (Light On)", code: "L-CTX-ON", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the lamp switched on, showing the light it throws." },
+        { seq: "03", name: "Hero Front/ Flat Lay", code: "H-FRFL", family: "Product Shot", whatToShoot: "Front-on, or from directly above." },
+        { seq: "04", name: "Hero Close Up - Bulb", code: "D-CU-BULB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the bulb." },
+        { seq: "05", name: "Hero Close Up - Switch & Wire", code: "D-CU-WIRE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the switch & wire." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Wall Accents",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Side/ Angle", code: "H-SDAN" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Hero Close Up - Detail (If Applicable)", code: "D-CU-DTL" },
-        { seq: "06", name: "Hero Back", code: "H-BK" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Side/ Angle", code: "H-SDAN", family: "Product Shot", whatToShoot: "Product from the side or at a three-quarter angle." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Hero Close Up - Detail (If Applicable)", code: "D-CU-DTL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail.  Only shoot this if the product actually has it." },
+        { seq: "06", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Wall Mirrors",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Lifestyle Shot - Set of 3 (If Applicable)", code: "L-CTX-SET3" },
-        { seq: "03", name: "Hero Front", code: "H-FR" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Hero Back", code: "H-BK" },
-        { seq: "06", name: "Hero Back Close Up - Hook", code: "D-BKCU-HOOK" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Lifestyle Shot - Set of 3 (If Applicable)", code: "L-CTX-SET3", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the set of 3.  Only shoot this if the product actually has it." },
+        { seq: "03", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "06", name: "Hero Back Close Up - Hook", code: "D-BKCU-HOOK", family: "Close-Up", whatToShoot: "Tight crop on the back of the product. Focus on the hook." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Standalone Mirrors",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front/ Angle - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front/ Angle", code: "H-FRAN" },
-        { seq: "03", name: "Hero Side/ Back", code: "H-SDBK" },
-        { seq: "04", name: "Hero Close Up - Mirror", code: "D-CU-MIRR" },
-        { seq: "05", name: "Hero Close Up - Stand", code: "D-CU-STAND" },
-        { seq: "06", name: "Hero - Product Accessories (If Applicable)", code: "H-PROD-ACCS" },
-        { seq: "07", name: "Product Dimension - Human Scale Reference", code: "M-DIM-HSR" }
+        { seq: "00", name: "Hero Front/ Angle - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front/ Angle below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front/ Angle", code: "H-FRAN", family: "Product Shot", whatToShoot: "Front-on, or at a three-quarter angle." },
+        { seq: "03", name: "Hero Side/ Back", code: "H-SDBK", family: "Product Shot", whatToShoot: "From the side, or from behind." },
+        { seq: "04", name: "Hero Close Up - Mirror", code: "D-CU-MIRR", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the mirror." },
+        { seq: "05", name: "Hero Close Up - Stand", code: "D-CU-STAND", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the stand." },
+        { seq: "06", name: "Hero - Product Accessories (If Applicable)", code: "H-PROD-ACCS", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the product accessories.  Only shoot this if the product actually has it." },
+        { seq: "07", name: "Product Dimension - Human Scale Reference", code: "M-DIM-HSR", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on. Show a person standing beside it, to show how big it is." }
       ]
     },
     {
@@ -292,24 +292,24 @@ window.NAMING_DATA = {
       category: "Decor",
       variants: {
         "Single": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "02", name: "Hero Front", code: "H-FR" },
-          { seq: "03", name: "Hero Angle/ Back", code: "H-ANBK" },
-          { seq: "04", name: "Hero Back Close Up - Hook", code: "D-BKCU-HOOK" },
-          { seq: "05", name: "Hero Close Up - Frame", code: "D-CU-FRAME" },
-          { seq: "06", name: "Product Dimension", code: "M-DIM" },
-          { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "03", name: "Hero Angle/ Back", code: "H-ANBK", family: "Product Shot", whatToShoot: "At an angle, or from behind." },
+          { seq: "04", name: "Hero Back Close Up - Hook", code: "D-BKCU-HOOK", family: "Close-Up", whatToShoot: "Tight crop on the back of the product. Focus on the hook." },
+          { seq: "05", name: "Hero Close Up - Frame", code: "D-CU-FRAME", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the frame." },
+          { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+          { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
         ],
         "Multi Frame": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "02", name: "Hero Front", code: "H-FR" },
-          { seq: "03", name: "Hero Angle/ Back", code: "H-ANBK" },
-          { seq: "04", name: "Hero Back Close Up - Hook", code: "D-BKCU-HOOK" },
-          { seq: "05", name: "Hero Close Up - Frame", code: "D-CU-FRAME" },
-          { seq: "06", name: "Hero Close Up - Edge", code: "D-CU-EDGE" },
-          { seq: "07", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "03", name: "Hero Angle/ Back", code: "H-ANBK", family: "Product Shot", whatToShoot: "At an angle, or from behind." },
+          { seq: "04", name: "Hero Back Close Up - Hook", code: "D-BKCU-HOOK", family: "Close-Up", whatToShoot: "Tight crop on the back of the product. Focus on the hook." },
+          { seq: "05", name: "Hero Close Up - Frame", code: "D-CU-FRAME", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the frame." },
+          { seq: "06", name: "Hero Close Up - Edge", code: "D-CU-EDGE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the edge." },
+          { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ]
       }
     },
@@ -317,30 +317,30 @@ window.NAMING_DATA = {
       name: "Posters & Paintings",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Angle - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Angle", code: "H-AN" },
-        { seq: "03", name: "Hero Front Close Up - Artwork", code: "D-FRCU-ART" },
-        { seq: "04", name: "Hero Close Up - Corner", code: "D-CU-CRNR" },
-        { seq: "05", name: "Hero Back", code: "H-BK" },
-        { seq: "06", name: "Hero Back Close Up - Hook", code: "D-BKCU-HOOK" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" },
-        { seq: "08", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Angle - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Angle below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "03", name: "Hero Front Close Up - Artwork", code: "D-FRCU-ART", family: "Close-Up", whatToShoot: "Tight crop on the front of the product. Focus on the artwork." },
+        { seq: "04", name: "Hero Close Up - Corner", code: "D-CU-CRNR", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the corner." },
+        { seq: "05", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "06", name: "Hero Back Close Up - Hook", code: "D-BKCU-HOOK", family: "Close-Up", whatToShoot: "Tight crop on the back of the product. Focus on the hook." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "08", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Candles",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Angle - Lid Open", code: "H-AN-OPEN" },
-        { seq: "04", name: "Hero Front/ Angle - Candle Lit", code: "H-FRAN-LIT" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product with Packaging", code: "P-BOX" },
-        { seq: "07", name: "Fragrance Notes", code: "P-NOTE" },
-        { seq: "08", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Angle - Lid Open", code: "H-AN-OPEN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background. Show the lid open." },
+        { seq: "04", name: "Hero Front/ Angle - Candle Lit", code: "H-FRAN-LIT", family: "Product Shot", whatToShoot: "Front-on, or at a three-quarter angle. Show the candle lit, showing the glow through the material." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product with Packaging", code: "P-BOX", family: "Packaging", whatToShoot: "Product shown with its retail box." },
+        { seq: "07", name: "Fragrance Notes", code: "P-NOTE", family: "Packaging", whatToShoot: "Graphic listing the scent notes." },
+        { seq: "08", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
@@ -348,23 +348,23 @@ window.NAMING_DATA = {
       category: "Decor",
       variants: {
         "With Lid": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "02", name: "Hero Front", code: "H-FR" },
-          { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN" },
-          { seq: "04", name: "Hero Close Up", code: "D-CU" },
-          { seq: "05", name: "Product Dimension", code: "M-DIM" },
-          { seq: "06", name: "Product with Packaging", code: "P-BOX" },
-          { seq: "07", name: "Fragrance Notes", code: "P-NOTE" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the lid open." },
+          { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+          { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+          { seq: "06", name: "Product with Packaging", code: "P-BOX", family: "Packaging", whatToShoot: "Product shown with its retail box." },
+          { seq: "07", name: "Fragrance Notes", code: "P-NOTE", family: "Packaging", whatToShoot: "Graphic listing the scent notes." }
         ],
         "Open": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "02", name: "Hero Front", code: "H-FR" },
-          { seq: "03", name: "Hero Close Up", code: "D-CU" },
-          { seq: "04", name: "Product Dimension", code: "M-DIM" },
-          { seq: "05", name: "Product with Packaging", code: "P-BOX" },
-          { seq: "06", name: "Fragrance Notes", code: "P-NOTE" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+          { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+          { seq: "05", name: "Product with Packaging", code: "P-BOX", family: "Packaging", whatToShoot: "Product shown with its retail box." },
+          { seq: "06", name: "Fragrance Notes", code: "P-NOTE", family: "Packaging", whatToShoot: "Graphic listing the scent notes." }
         ]
       }
     },
@@ -372,92 +372,92 @@ window.NAMING_DATA = {
       name: "Diffusers",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" },
-        { seq: "05", name: "Product with Packaging", code: "P-BOX" },
-        { seq: "06", name: "Fragrance Notes", code: "P-NOTE" },
-        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "05", name: "Product with Packaging", code: "P-BOX", family: "Packaging", whatToShoot: "Product shown with its retail box." },
+        { seq: "06", name: "Fragrance Notes", code: "P-NOTE", family: "Packaging", whatToShoot: "Graphic listing the scent notes." },
+        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Aroma Oils",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Front - Lid Open (If Dropper)", code: "H-FR-OPEN" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" },
-        { seq: "05", name: "Product with Packaging", code: "P-BOX" },
-        { seq: "06", name: "Fragrance Notes", code: "P-NOTE" },
-        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Front - Lid Open (If Dropper)", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the lid open.  Only if the product has a dropper." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "05", name: "Product with Packaging", code: "P-BOX", family: "Packaging", whatToShoot: "Product shown with its retail box." },
+        { seq: "06", name: "Fragrance Notes", code: "P-NOTE", family: "Packaging", whatToShoot: "Graphic listing the scent notes." },
+        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Room & Car Spray",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Close Up - Nozzle", code: "D-CU-NOZ" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" },
-        { seq: "05", name: "Product with Packaging", code: "P-BOX" },
-        { seq: "06", name: "Fragrance Notes", code: "P-NOTE" },
-        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Close Up - Nozzle", code: "D-CU-NOZ", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the nozzle." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "05", name: "Product with Packaging", code: "P-BOX", family: "Packaging", whatToShoot: "Product shown with its retail box." },
+        { seq: "06", name: "Fragrance Notes", code: "P-NOTE", family: "Packaging", whatToShoot: "Graphic listing the scent notes." },
+        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Artificial Plants & Flowers",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" },
-        { seq: "05", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "05", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Stems",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Close Up - Flower Bunch", code: "D-CU-FLOWER" },
-        { seq: "04", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "05", name: "Hero Close Up - Single Flower", code: "D-CU-SINGLE" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Close Up - Flower Bunch", code: "D-CU-FLOWER", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Show a bunch of flowers rather than a single stem." },
+        { seq: "04", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "05", name: "Hero Close Up - Single Flower", code: "D-CU-SINGLE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Show a single stem on its own." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Pots",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" },
-        { seq: "05", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "05", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Planters",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "04", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "04", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
@@ -465,22 +465,22 @@ window.NAMING_DATA = {
       category: "Decor",
       variants: {
         "Stand Only": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "02", name: "Hero Front", code: "H-FR" },
-          { seq: "03", name: "Hero Side", code: "H-SD" },
-          { seq: "04", name: "Hero Close Up", code: "D-CU" },
-          { seq: "05", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "03", name: "Hero Side", code: "H-SD", family: "Product Shot", whatToShoot: "Product from the side, plain background." },
+          { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+          { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ],
         "With Pot": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "02", name: "Hero Front", code: "H-FR" },
-          { seq: "03", name: "Hero Front - Pot Removed", code: "H-FR-NOPOT" },
-          { seq: "04", name: "Hero Close Up - Pot", code: "D-CU-POT" },
-          { seq: "05", name: "Hero Close Up - Stand", code: "D-CU-STAND" },
-          { seq: "06", name: "Hero Close Up - Material", code: "D-CU-MATL" },
-          { seq: "07", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "03", name: "Hero Front - Pot Removed", code: "H-FR-NOPOT", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Focus on the pot removed." },
+          { seq: "04", name: "Hero Close Up - Pot", code: "D-CU-POT", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the pot." },
+          { seq: "05", name: "Hero Close Up - Stand", code: "D-CU-STAND", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the stand." },
+          { seq: "06", name: "Hero Close Up - Material", code: "D-CU-MATL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the material." },
+          { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ]
       }
     },
@@ -488,489 +488,489 @@ window.NAMING_DATA = {
       name: "Hanging Planter",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Close Up - Planter", code: "D-CU-PLNTR" },
-        { seq: "04", name: "Hero Close Up - Material", code: "D-CU-MATL" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Close Up - Planter", code: "D-CU-PLNTR", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the planter." },
+        { seq: "04", name: "Hero Close Up - Material", code: "D-CU-MATL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the material." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Fountain",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Side/ Angle", code: "H-SDAN" },
-        { seq: "04", name: "Hero - Detachable Parts (Optional)", code: "H-PROD-PARTS" },
-        { seq: "05", name: "Hero Close Up - Switch & Wire", code: "D-CU-WIRE" },
-        { seq: "06", name: "Product Dimension - Human Scale Reference", code: "M-DIM-HSR" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Side/ Angle", code: "H-SDAN", family: "Product Shot", whatToShoot: "Product from the side or at a three-quarter angle." },
+        { seq: "04", name: "Hero - Detachable Parts (Optional)", code: "H-PROD-PARTS", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the detachable parts.  Optional." },
+        { seq: "05", name: "Hero Close Up - Switch & Wire", code: "D-CU-WIRE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the switch & wire." },
+        { seq: "06", name: "Product Dimension - Human Scale Reference", code: "M-DIM-HSR", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on. Show a person standing beside it, to show how big it is." }
       ]
     },
     {
       name: "Wax Tablets",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Side", code: "H-SD" },
-        { seq: "04", name: "Product with Packaging", code: "P-BOX" },
-        { seq: "05", name: "Fragrance Notes", code: "P-NOTE" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Side", code: "H-SD", family: "Product Shot", whatToShoot: "Product from the side, plain background." },
+        { seq: "04", name: "Product with Packaging", code: "P-BOX", family: "Packaging", whatToShoot: "Product shown with its retail box." },
+        { seq: "05", name: "Fragrance Notes", code: "P-NOTE", family: "Packaging", whatToShoot: "Graphic listing the scent notes." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Paper Sachet",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Back", code: "H-BK" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" },
-        { seq: "05", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "05", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Artificial Plants (Potted Flower/Greens)",
       category: "Decor",
       shots: [
-        { seq: "00", name: "Hero 3/4 Angle - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero 3/4 Angle", code: "H-AN" },
-        { seq: "03", name: "Hero Close Up (Top)", code: "D-CU-TOP" },
-        { seq: "04", name: "Hero Close Up (Base)", code: "D-CU-BASE" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero 3/4 Angle - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero 3/4 Angle below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero 3/4 Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "03", name: "Hero Close Up (Top)", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop on top. Focus on that detail." },
+        { seq: "04", name: "Hero Close Up (Base)", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Double Bedsheet",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot - Front/ Angle Full View", code: "L-CTX-FULLVW" },
-        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE" },
-        { seq: "03", name: "Hero Close Up - Pillow & Bed Sheet", code: "D-CU-PILLOW" },
-        { seq: "04", name: "Hero Product - Folded", code: "H-PROD-FOLD" },
-        { seq: "05", name: "Hero Product - Folded Set", code: "H-PROD-FOLDSET" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Product - Folded below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot - Front/ Angle Full View", code: "L-CTX-FULLVW", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the front/ angle full view." },
+        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the close up." },
+        { seq: "03", name: "Hero Close Up - Pillow & Bed Sheet", code: "D-CU-PILLOW", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the pillow & bed sheet." },
+        { seq: "04", name: "Hero Product - Folded", code: "H-PROD-FOLD", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product folded as it ships." },
+        { seq: "05", name: "Hero Product - Folded Set", code: "H-PROD-FOLDSET", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the folded set." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Fitted Bedsheet",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Product - Back Side - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot - Front/ Angle Full View", code: "L-CTX-FULLVW" },
-        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE" },
-        { seq: "03", name: "Hero Close Up - Pillow & Bed Sheet", code: "D-CU-PILLOW" },
-        { seq: "04", name: "Lifestyle Shot - Hand Reference", code: "L-CTX-HAND" },
-        { seq: "05", name: "Hero Product - Back Side", code: "H-PROD-BACK" },
-        { seq: "06", name: "Hero Product - Folded", code: "H-PROD-FOLD" },
-        { seq: "07", name: "Hero Product - Folded Set", code: "H-PROD-FOLDSET" },
-        { seq: "08", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Product - Back Side - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Product - Back Side below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot - Front/ Angle Full View", code: "L-CTX-FULLVW", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the front/ angle full view." },
+        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the close up." },
+        { seq: "03", name: "Hero Close Up - Pillow & Bed Sheet", code: "D-CU-PILLOW", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the pillow & bed sheet." },
+        { seq: "04", name: "Lifestyle Shot - Hand Reference", code: "L-CTX-HAND", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a hand holding or using it, to show scale and how it works." },
+        { seq: "05", name: "Hero Product - Back Side", code: "H-PROD-BACK", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the back side." },
+        { seq: "06", name: "Hero Product - Folded", code: "H-PROD-FOLD", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product folded as it ships." },
+        { seq: "07", name: "Hero Product - Folded Set", code: "H-PROD-FOLDSET", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the folded set." },
+        { seq: "08", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Single Bedsheet",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot - Front/ Angle Full View", code: "L-CTX-FULLVW" },
-        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE" },
-        { seq: "03", name: "Hero Close Up - Pillow & Bed Sheet", code: "D-CU-PILLOW" },
-        { seq: "04", name: "Hero Product - Folded", code: "H-PROD-FOLD" },
-        { seq: "05", name: "Hero Product - Folded Set", code: "H-PROD-FOLDSET" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Product - Folded below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot - Front/ Angle Full View", code: "L-CTX-FULLVW", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the front/ angle full view." },
+        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the close up." },
+        { seq: "03", name: "Hero Close Up - Pillow & Bed Sheet", code: "D-CU-PILLOW", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the pillow & bed sheet." },
+        { seq: "04", name: "Hero Product - Folded", code: "H-PROD-FOLD", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product folded as it ships." },
+        { seq: "05", name: "Hero Product - Folded Set", code: "H-PROD-FOLDSET", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the folded set." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Bedding Sets",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot - Front/ Angle Full View", code: "L-CTX-FULLVW" },
-        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE" },
-        { seq: "03", name: "Lifestyle Shot - Side", code: "L-CTX-SIDE" },
-        { seq: "04", name: "Hero Close Up - Pillow & Bed Sheet", code: "D-CU-PILLOW" },
-        { seq: "05", name: "Hero Product - Folded", code: "H-PROD-FOLD" },
-        { seq: "06", name: "Hero Product - Folded Set", code: "H-PROD-FOLDSET" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Product - Folded below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot - Front/ Angle Full View", code: "L-CTX-FULLVW", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the front/ angle full view." },
+        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the close up." },
+        { seq: "03", name: "Lifestyle Shot - Side", code: "L-CTX-SIDE", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the side." },
+        { seq: "04", name: "Hero Close Up - Pillow & Bed Sheet", code: "D-CU-PILLOW", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the pillow & bed sheet." },
+        { seq: "05", name: "Hero Product - Folded", code: "H-PROD-FOLD", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product folded as it ships." },
+        { seq: "06", name: "Hero Product - Folded Set", code: "H-PROD-FOLDSET", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the folded set." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Blankets and Quilts",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW" },
-        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE" },
-        { seq: "03", name: "Lifestyle Shot - Side", code: "L-CTX-SIDE" },
-        { seq: "04", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "05", name: "Hero Product - Folded", code: "H-PROD-FOLD" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" },
-        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Product - Folded below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the front/ side full view." },
+        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the close up." },
+        { seq: "03", name: "Lifestyle Shot - Side", code: "L-CTX-SIDE", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the side." },
+        { seq: "04", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "05", name: "Hero Product - Folded", code: "H-PROD-FOLD", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product folded as it ships." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Comforters",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW" },
-        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE" },
-        { seq: "03", name: "Lifestyle Shot - Flat Lay", code: "L-CTX-FLAT" },
-        { seq: "04", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "05", name: "Hero Product - Folded", code: "H-PROD-FOLD" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" },
-        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Product - Folded below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the front/ side full view." },
+        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the close up." },
+        { seq: "03", name: "Lifestyle Shot - Flat Lay", code: "L-CTX-FLAT", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the flat lay." },
+        { seq: "04", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "05", name: "Hero Product - Folded", code: "H-PROD-FOLD", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product folded as it ships." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Throws",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "03", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "04", name: "Hero Product - Folded", code: "H-PROD-FOLD" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "03", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "04", name: "Hero Product - Folded", code: "H-PROD-FOLD", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product folded as it ships." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Duvet",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW" },
-        { seq: "02", name: "Lifestyle Shot - Flat Lay", code: "L-CTX-FLAT" },
-        { seq: "03", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "04", name: "Hero Product - Folded", code: "H-PROD-FOLD" },
-        { seq: "05", name: "USP Shot", code: "F-USP" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Product - Folded below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the front/ side full view." },
+        { seq: "02", name: "Lifestyle Shot - Flat Lay", code: "L-CTX-FLAT", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the flat lay." },
+        { seq: "03", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "04", name: "Hero Product - Folded", code: "H-PROD-FOLD", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product folded as it ships." },
+        { seq: "05", name: "USP Shot", code: "F-USP", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Duvet Covers",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW" },
-        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE" },
-        { seq: "03", name: "Lifestyle Shot - Flat Lay", code: "L-CTX-FLAT" },
-        { seq: "04", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "05", name: "Hero Close Up - Zip/ Button", code: "D-CU-ZIP" },
-        { seq: "06", name: "Hero Product - Folded", code: "H-PROD-FOLD" },
-        { seq: "07", name: "Hero Product - Folded Set (If Supplied with Pillows)", code: "H-PROD-FOLDSET" },
-        { seq: "08", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Product - Folded below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the front/ side full view." },
+        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the close up." },
+        { seq: "03", name: "Lifestyle Shot - Flat Lay", code: "L-CTX-FLAT", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the flat lay." },
+        { seq: "04", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "05", name: "Hero Close Up - Zip/ Button", code: "D-CU-ZIP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the zip/ button." },
+        { seq: "06", name: "Hero Product - Folded", code: "H-PROD-FOLD", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product folded as it ships." },
+        { seq: "07", name: "Hero Product - Folded Set (If Supplied with Pillows)", code: "H-PROD-FOLDSET", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the folded set.  Only if the product ships with pillows." },
+        { seq: "08", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Dohar",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW" },
-        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE" },
-        { seq: "03", name: "Lifestyle Shot - Flat Lay", code: "L-CTX-FLAT" },
-        { seq: "04", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "05", name: "Hero Product - Folded", code: "H-PROD-FOLD" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" },
-        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Product - Folded below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the front/ side full view." },
+        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the close up." },
+        { seq: "03", name: "Lifestyle Shot - Flat Lay", code: "L-CTX-FLAT", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the flat lay." },
+        { seq: "04", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "05", name: "Hero Product - Folded", code: "H-PROD-FOLD", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product folded as it ships." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Bed Cover",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW" },
-        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE" },
-        { seq: "03", name: "Lifestyle Shot - Flat Lay", code: "L-CTX-FLAT" },
-        { seq: "04", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "05", name: "Hero Product - Folded", code: "H-PROD-FOLD" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Product - Folded - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Product - Folded below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the front/ side full view." },
+        { seq: "02", name: "Lifestyle Shot - Close Up", code: "L-CTX-CLOSE", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the close up." },
+        { seq: "03", name: "Lifestyle Shot - Flat Lay", code: "L-CTX-FLAT", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the flat lay." },
+        { seq: "04", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "05", name: "Hero Product - Folded", code: "H-PROD-FOLD", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product folded as it ships." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Pillow Cover",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot - With Bed", code: "L-CTX-BED" },
-        { seq: "03", name: "Hero Front", code: "H-FR" },
-        { seq: "04", name: "Hero Close Up - Closure", code: "D-CU-ZIP" },
-        { seq: "05", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot - With Bed", code: "L-CTX-BED", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the product on a made-up bed." },
+        { seq: "03", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "04", name: "Hero Close Up - Closure", code: "D-CU-ZIP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the closure." },
+        { seq: "05", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Pillow",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot - With Bed", code: "L-CTX-BED" },
-        { seq: "03", name: "Hero Front", code: "H-FR" },
-        { seq: "04", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot - With Bed", code: "L-CTX-BED", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the product on a made-up bed." },
+        { seq: "03", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "04", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Speciality Pillow",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Lifestyle Shot - Comfort", code: "L-CTX-COMFT" },
-        { seq: "05", name: "USP Shot", code: "F-USP" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Lifestyle Shot - Comfort", code: "L-CTX-COMFT", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show someone showing how comfortable it is." },
+        { seq: "05", name: "USP Shot", code: "F-USP", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Neck Pillow",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW" },
-        { seq: "03", name: "Hero Side", code: "H-SD" },
-        { seq: "04", name: "Hero Close Up - Zipper", code: "D-CU-ZIP" },
-        { seq: "05", name: "Hero Close Up", code: "D-CU" },
-        { seq: "06", name: "USP Shot", code: "F-USP" },
-        { seq: "07", name: "Lifestyle Shot - Hand Reference", code: "L-CTX-HAND" },
-        { seq: "08", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the front/ side full view." },
+        { seq: "03", name: "Hero Side", code: "H-SD", family: "Product Shot", whatToShoot: "Product from the side, plain background." },
+        { seq: "04", name: "Hero Close Up - Zipper", code: "D-CU-ZIP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the zipper." },
+        { seq: "05", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "06", name: "USP Shot", code: "F-USP", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature." },
+        { seq: "07", name: "Lifestyle Shot - Hand Reference", code: "L-CTX-HAND", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a hand holding or using it, to show scale and how it works." },
+        { seq: "08", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Memory Foam Lower Back Pillow",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot - Front/ Side Full View (With Model)", code: "L-CTX-MODEL" },
-        { seq: "03", name: "Hero Back", code: "H-BK" },
-        { seq: "04", name: "Hero Close Up - Buckle", code: "D-CU-BUCKLE" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot - Front/ Side Full View (With Model)", code: "L-CTX-MODEL", family: "Lifestyle", whatToShoot: "Product in use with a human model, front or side full view, showing how it supports the body and how it looks in real life." },
+        { seq: "03", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "04", name: "Hero Close Up - Buckle", code: "D-CU-BUCKLE", family: "Close-Up", whatToShoot: "Tight crop on the buckle. Focus on that detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Wedge Pillow",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot - Front/ Side Full View (With Model)", code: "L-CTX-MODEL" },
-        { seq: "03", name: "Hero Close Up - Zip Closure", code: "D-CU-ZIP" },
-        { seq: "04", name: "USP Shot - Memory Foam", code: "F-USP-MEMFOAM" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot - Front/ Side Full View (With Model)", code: "L-CTX-MODEL", family: "Lifestyle", whatToShoot: "Product in use with a human model, front or side full view, showing how it supports the body and how it looks in real life." },
+        { seq: "03", name: "Hero Close Up - Zip Closure", code: "D-CU-ZIP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the zip closure." },
+        { seq: "04", name: "USP Shot - Memory Foam", code: "F-USP-MEMFOAM", family: "Feature / RTB", whatToShoot: "Composite that calls out the memory-foam benefit (support, pressure relief, shape recovery) with a short callout, on a clean background." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Memory Foam Back Cushion",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Back", code: "H-BK" },
-        { seq: "04", name: "Hero Close Up - Clasp", code: "D-CU-CLASP" },
-        { seq: "05", name: "USP Shot - Memory Foam", code: "F-USP-MEMFOAM" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "04", name: "Hero Close Up - Clasp", code: "D-CU-CLASP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the clasp." },
+        { seq: "05", name: "USP Shot - Memory Foam", code: "F-USP-MEMFOAM", family: "Feature / RTB", whatToShoot: "Composite that calls out the memory-foam benefit (support, pressure relief, shape recovery) with a short callout, on a clean background." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Tailbone Pillow",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW" },
-        { seq: "03", name: "Hero Close Up - Zip Closure", code: "D-CU-ZIP" },
-        { seq: "04", name: "USP Shot", code: "F-USP" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the front/ side full view." },
+        { seq: "03", name: "Hero Close Up - Zip Closure", code: "D-CU-ZIP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the zip closure." },
+        { seq: "04", name: "USP Shot", code: "F-USP", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Cushion Covers",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Side Angle", code: "H-AN" },
-        { seq: "04", name: "Hero Close Up - Corner", code: "D-CU-CRNR" },
-        { seq: "05", name: "Hero Close Up - Zip Closure", code: "D-CU-ZIP" },
-        { seq: "06", name: "Hero Back", code: "H-BK" },
-        { seq: "07", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "08", name: "Product Dimension", code: "M-DIM" },
-        { seq: "09", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Side Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a side three-quarter angle." },
+        { seq: "04", name: "Hero Close Up - Corner", code: "D-CU-CRNR", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the corner." },
+        { seq: "05", name: "Hero Close Up - Zip Closure", code: "D-CU-ZIP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the zip closure." },
+        { seq: "06", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "07", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "08", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "09", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Filled Cushions",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - Single - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay - Set (If Applicable)", code: "H-FL-SET" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Flat Lay - Single", code: "H-FL-SGL" },
-        { seq: "04", name: "Hero Side Angle", code: "H-AN" },
-        { seq: "05", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" },
-        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Flat Lay - Single - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay - Single below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay - Set (If Applicable)", code: "H-FL-SET", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Show all the pieces together.  Only shoot this if the product actually has it." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Flat Lay - Single", code: "H-FL-SGL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Show one piece on its own." },
+        { seq: "04", name: "Hero Side Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a side three-quarter angle." },
+        { seq: "05", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Cushion Fillers",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay - Set", code: "H-FL-SET" },
-        { seq: "02", name: "Lifestyle Shot (If Applicable)", code: "L-CTX" },
-        { seq: "03", name: "Hero Flat Lay - Single", code: "H-FL-SGL" },
-        { seq: "04", name: "Hero Side Angle", code: "H-AN" },
-        { seq: "05", name: "Hero Close Up", code: "D-CU" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay - Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay - Set", code: "H-FL-SET", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Show all the pieces together." },
+        { seq: "02", name: "Lifestyle Shot (If Applicable)", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use.  Only shoot this if the product actually has it." },
+        { seq: "03", name: "Hero Flat Lay - Single", code: "H-FL-SGL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Show one piece on its own." },
+        { seq: "04", name: "Hero Side Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a side three-quarter angle." },
+        { seq: "05", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Floor Cushions",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Side Angle", code: "H-AN" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Side Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a side three-quarter angle." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Door & Window Curtain",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Back - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "03", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "04", name: "Hero Back", code: "H-BK" },
-        { seq: "05", name: "Product Dimension - Human Scale Reference", code: "M-DIM-HSR" }
+        { seq: "00", name: "Hero Back - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Back below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "03", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "04", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "05", name: "Product Dimension - Human Scale Reference", code: "M-DIM-HSR", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on. Show a person standing beside it, to show how big it is." }
       ]
     },
     {
       name: "Bags",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Zipper", code: "D-CU-ZIP" },
-        { seq: "04", name: "Hero Close Up - Material", code: "D-CU-MATL" },
-        { seq: "05", name: "Hero Close Up - Print", code: "D-CU-PRINT" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Zipper", code: "D-CU-ZIP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the zipper." },
+        { seq: "04", name: "Hero Close Up - Material", code: "D-CU-MATL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the material." },
+        { seq: "05", name: "Hero Close Up - Print", code: "D-CU-PRINT", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the print." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Chair Pads and Mats",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Zip Closure", code: "D-CU-ZIP" },
-        { seq: "04", name: "Hero Close Up - Tie Detail", code: "D-CU-TIE" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Zip Closure", code: "D-CU-ZIP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the zip closure." },
+        { seq: "04", name: "Hero Close Up - Tie Detail", code: "D-CU-TIE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the tie detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Sofa Covers",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Hero Side", code: "H-SD" },
-        { seq: "04", name: "Hero Close Up - Removable Cover", code: "D-CU-COVER" },
-        { seq: "05", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "06", name: "USP Shot", code: "F-USP" },
-        { seq: "07", name: "Product Dimension - Size Guide", code: "M-DIM-GUIDE" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Hero Side", code: "H-SD", family: "Product Shot", whatToShoot: "Product from the side, plain background." },
+        { seq: "04", name: "Hero Close Up - Removable Cover", code: "D-CU-COVER", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the removable cover." },
+        { seq: "05", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "06", name: "USP Shot", code: "F-USP", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature." },
+        { seq: "07", name: "Product Dimension - Size Guide", code: "M-DIM-GUIDE", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on. Show a sizing chart." }
       ]
     },
     {
       name: "Carpets and Rugs",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Hero Back", code: "H-BK" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the front/ side full view." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Dhurries",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "04", name: "Hero Back", code: "H-BK" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "04", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Doormats",
       category: "Soft Furnishing",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Hero Back", code: "H-BK" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot - Front/ Side Full View", code: "L-CTX-FULLVW", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the front/ side full view." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Robes",
       category: "Bath",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - Folded - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay - Folded", code: "H-FL-FOLD" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Lifestyle Shot - With Model", code: "L-CTX-MODEL" },
-        { seq: "04", name: "Hero Close Up - Belt Tied", code: "D-CU-BELTIE" },
-        { seq: "05", name: "Hero Close Up - Belt", code: "D-CU-BELT" },
-        { seq: "06", name: "Hero Close Up - Pocket", code: "D-CU-PCKT" },
-        { seq: "07", name: "Hero Close Up - Sleeve", code: "D-CU-SLV" },
-        { seq: "08", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - Folded - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay - Folded below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay - Folded", code: "H-FL-FOLD", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Show the product folded as it ships." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Lifestyle Shot - With Model", code: "L-CTX-MODEL", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a person wearing or using it." },
+        { seq: "04", name: "Hero Close Up - Belt Tied", code: "D-CU-BELTIE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the belt tied." },
+        { seq: "05", name: "Hero Close Up - Belt", code: "D-CU-BELT", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the belt." },
+        { seq: "06", name: "Hero Close Up - Pocket", code: "D-CU-PCKT", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the pocket." },
+        { seq: "07", name: "Hero Close Up - Sleeve", code: "D-CU-SLV", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the sleeve." },
+        { seq: "08", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Bath Mats",
       category: "Bath",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "04", name: "Hero Back", code: "H-BK" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "04", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
@@ -978,23 +978,23 @@ window.NAMING_DATA = {
       category: "Bath",
       variants: {
         "Single": [
-          { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Shot - Open", code: "H-PROD-OPEN" },
-          { seq: "04", name: "Hero Close Up - Material", code: "D-CU-MATL" },
-          { seq: "05", name: "Hero Shot - Hanging", code: "H-PROD-HANG" },
-          { seq: "06", name: "Product Dimension - Human Scale Reference", code: "M-DIM-HSR" },
-          { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET" }
+          { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Shot - Open", code: "H-PROD-OPEN", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product open." },
+          { seq: "04", name: "Hero Close Up - Material", code: "D-CU-MATL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the material." },
+          { seq: "05", name: "Hero Shot - Hanging", code: "H-PROD-HANG", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product hanging as it would be used or stored." },
+          { seq: "06", name: "Product Dimension - Human Scale Reference", code: "M-DIM-HSR", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on. Show a person standing beside it, to show how big it is." },
+          { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
         ],
         "Set": [
-          { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front - Set", code: "H-FR-SET" },
-          { seq: "02", name: "Lifestyle Shot - Full Set", code: "L-CTX-SET" },
-          { seq: "03", name: "Hero Flat Lay", code: "H-FL" },
-          { seq: "04", name: "Hero Close Up - Material", code: "D-CU-MATL" },
-          { seq: "05", name: "Hero Shot - Hanging", code: "H-PROD-HANG" },
-          { seq: "06", name: "Product Dimension - Human Scale Reference", code: "M-DIM-HSR" }
+          { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front - Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front - Set", code: "H-FR-SET", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show all the pieces together." },
+          { seq: "02", name: "Lifestyle Shot - Full Set", code: "L-CTX-SET", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show every piece in the set." },
+          { seq: "03", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+          { seq: "04", name: "Hero Close Up - Material", code: "D-CU-MATL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the material." },
+          { seq: "05", name: "Hero Shot - Hanging", code: "H-PROD-HANG", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product hanging as it would be used or stored." },
+          { seq: "06", name: "Product Dimension - Human Scale Reference", code: "M-DIM-HSR", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on. Show a person standing beside it, to show how big it is." }
         ]
       }
     },
@@ -1003,23 +1003,23 @@ window.NAMING_DATA = {
       category: "Bath",
       variants: {
         "Standard": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Close Up - Dispenser", code: "D-CU-DISPNS" },
-          { seq: "04", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-          { seq: "05", name: "Product Dimension", code: "M-DIM" },
-          { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Close Up - Dispenser", code: "D-CU-DISPNS", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the dispenser." },
+          { seq: "04", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+          { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+          { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
         ],
         "Pump/ Nozzle": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-          { seq: "04", name: "Hero Back", code: "H-BK" },
-          { seq: "05", name: "Hero Close Up - Dispenser", code: "D-CU-DISPNS" },
-          { seq: "06", name: "Product Dimension", code: "M-DIM" },
-          { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+          { seq: "04", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+          { seq: "05", name: "Hero Close Up - Dispenser", code: "D-CU-DISPNS", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the dispenser." },
+          { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+          { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
         ]
       }
     },
@@ -1028,21 +1028,21 @@ window.NAMING_DATA = {
       category: "Bath",
       variants: {
         "Open": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Close Up - Edge", code: "D-CU-EDGE" },
-          { seq: "04", name: "Product Dimension", code: "M-DIM" },
-          { seq: "05", name: "Product Set/ Collection Shot", code: "C-SET" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Close Up - Edge", code: "D-CU-EDGE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the edge." },
+          { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+          { seq: "05", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
         ],
         "With Lid": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN" },
-          { seq: "04", name: "Hero Close Up", code: "D-CU" },
-          { seq: "05", name: "Product Dimension", code: "M-DIM" },
-          { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN", family: "Product Shot", whatToShoot: "Product on a plain background. Show the lid open." },
+          { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+          { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+          { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
         ]
       }
     },
@@ -1051,22 +1051,22 @@ window.NAMING_DATA = {
       category: "Bath",
       variants: {
         "Standard": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-          { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-          { seq: "05", name: "Product Dimension", code: "M-DIM" },
-          { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+          { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+          { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+          { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
         ],
         "Kids": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Back", code: "H-BK" },
-          { seq: "04", name: "Hero Close Up", code: "D-CU" },
-          { seq: "05", name: "Product Dimension", code: "M-DIM" },
-          { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+          { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+          { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+          { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
         ]
       }
     },
@@ -1074,169 +1074,169 @@ window.NAMING_DATA = {
       name: "Accessories Plastic",
       category: "Bath",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Hero Back", code: "H-BK" },
-        { seq: "05", name: "Hero - All Removable Parts (If Applicable)", code: "H-PROD-PARTS" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "05", name: "Hero - All Removable Parts (If Applicable)", code: "H-PROD-PARTS", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the all removable parts.  Only shoot this if the product actually has it." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Accessories Metal",
       category: "Bath",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1" },
-        { seq: "04", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 1." },
+        { seq: "04", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 2." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Bathroom Tray",
       category: "Bath",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Hero 3/4 Angle", code: "H-AN" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Product Set/ Collection Shot", code: "C-SET" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Hero 3/4 Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Bathroom Sets",
       category: "Bath",
       shots: [
-        { seq: "00", name: "Hero Shot (Dispenser) - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Product Set/ Collection Shot", code: "C-SET" },
-        { seq: "02", name: "Hero Shot (Dispenser)", code: "H-FR-DISPNS" },
-        { seq: "03", name: "Hero Close Up (Nozzle)", code: "D-CU-NOZ" },
-        { seq: "04", name: "Product Dimension (Dispenser)", code: "M-DIM-DISPNS" },
-        { seq: "05", name: "Hero Shot (Holder)", code: "H-FR-HLDR" },
-        { seq: "06", name: "Hero Close Up (Top)", code: "D-CU-TOP" },
-        { seq: "07", name: "Hero Close Up (Base)", code: "D-CU-BASE" },
-        { seq: "08", name: "Product Dimension (Holder)", code: "M-DIM-HLDR" },
-        { seq: "09", name: "Hero Shot (Dish)", code: "H-FR-DISH" },
-        { seq: "10", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "11", name: "Hero Close Up (Edge)", code: "D-CU-EDGE" },
-        { seq: "12", name: "Product Dimension (Dish)", code: "M-DIM-DISH" }
+        { seq: "00", name: "Hero Shot (Dispenser) - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Shot (Dispenser) below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." },
+        { seq: "02", name: "Hero Shot (Dispenser)", code: "H-FR-DISPNS", family: "Product Shot", whatToShoot: "Product shot emphasizing dispenser, on a plain background." },
+        { seq: "03", name: "Hero Close Up (Nozzle)", code: "D-CU-NOZ", family: "Close-Up", whatToShoot: "Tight crop on nozzle. Focus on that detail." },
+        { seq: "04", name: "Product Dimension (Dispenser)", code: "M-DIM-DISPNS", family: "Size", whatToShoot: "Product with measurement callouts (length x width x height, in cm and inches)." },
+        { seq: "05", name: "Hero Shot (Holder)", code: "H-FR-HLDR", family: "Product Shot", whatToShoot: "Product shot emphasizing holder, on a plain background." },
+        { seq: "06", name: "Hero Close Up (Top)", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop on top. Focus on that detail." },
+        { seq: "07", name: "Hero Close Up (Base)", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "08", name: "Product Dimension (Holder)", code: "M-DIM-HLDR", family: "Size", whatToShoot: "Product with measurement callouts (length x width x height, in cm and inches)." },
+        { seq: "09", name: "Hero Shot (Dish)", code: "H-FR-DISH", family: "Product Shot", whatToShoot: "Product shot emphasizing dish, on a plain background." },
+        { seq: "10", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "11", name: "Hero Close Up (Edge)", code: "D-CU-EDGE", family: "Close-Up", whatToShoot: "Tight crop on edge. Focus on that detail." },
+        { seq: "12", name: "Product Dimension (Dish)", code: "M-DIM-DISH", family: "Size", whatToShoot: "Product with measurement callouts (length x width x height, in cm and inches)." }
       ]
     },
     {
       name: "Laundry Storage with Lid",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Hero Angle", code: "H-AN" },
-        { seq: "03", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN" },
-        { seq: "04", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "05", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "06", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Hero Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "03", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN", family: "Product Shot", whatToShoot: "Product on a plain background. Show the lid open." },
+        { seq: "04", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "05", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "06", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Laundry Storage Open",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Hero Back", code: "H-BK" },
-        { seq: "03", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "05", name: "Hero Close Up - Edge", code: "D-CU-EDGE" },
-        { seq: "06", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "03", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "05", name: "Hero Close Up - Edge", code: "D-CU-EDGE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the edge." },
+        { seq: "06", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Laundry Storage Foldable",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Hero Angle", code: "H-AN" },
-        { seq: "03", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "04", name: "Hero Close Up - Open", code: "D-CU-OPEN" },
-        { seq: "05", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "06", name: "Hero Product - Folded", code: "H-PROD-FOLD" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Hero Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "03", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "04", name: "Hero Close Up - Open", code: "D-CU-OPEN", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Show the product open." },
+        { seq: "05", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "06", name: "Hero Product - Folded", code: "H-PROD-FOLD", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product folded as it ships." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Clothes Storage Box Open",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Angle - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Angle", code: "H-AN" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front", code: "H-FR" },
-        { seq: "04", name: "Hero Top/ Flat Lay", code: "H-TOP" },
-        { seq: "05", name: "Hero Back/ Bottom", code: "H-BKBT" },
-        { seq: "06", name: "Hero Close Up", code: "D-CU" },
-        { seq: "07", name: "Hero Product - Folded", code: "H-PROD-FOLD" },
-        { seq: "08", name: "Product Dimension", code: "M-DIM" },
-        { seq: "09", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Angle - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Angle below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "04", name: "Hero Top/ Flat Lay", code: "H-TOP", family: "Product Shot", whatToShoot: "From directly above." },
+        { seq: "05", name: "Hero Back/ Bottom", code: "H-BKBT", family: "Product Shot", whatToShoot: "From behind, or underneath." },
+        { seq: "06", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "07", name: "Hero Product - Folded", code: "H-PROD-FOLD", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product folded as it ships." },
+        { seq: "08", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "09", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Clothes Storage Box with Lid",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Angle - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Angle", code: "H-AN" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN" },
-        { seq: "04", name: "Hero Top/ Flat Lay", code: "H-TOP" },
-        { seq: "05", name: "Hero Back/ Bottom", code: "H-BKBT" },
-        { seq: "06", name: "Hero Close Up", code: "D-CU" },
-        { seq: "07", name: "Hero Close Up - Handle (If Applicable)", code: "D-CU-HDL" },
-        { seq: "08", name: "Hero Product - Folded", code: "H-PROD-FOLD" },
-        { seq: "09", name: "Product Dimension", code: "M-DIM" },
-        { seq: "10", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Angle - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Angle below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the lid open." },
+        { seq: "04", name: "Hero Top/ Flat Lay", code: "H-TOP", family: "Product Shot", whatToShoot: "From directly above." },
+        { seq: "05", name: "Hero Back/ Bottom", code: "H-BKBT", family: "Product Shot", whatToShoot: "From behind, or underneath." },
+        { seq: "06", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "07", name: "Hero Close Up - Handle (If Applicable)", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle.  Only shoot this if the product actually has it." },
+        { seq: "08", name: "Hero Product - Folded", code: "H-PROD-FOLD", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product folded as it ships." },
+        { seq: "09", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "10", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Hangers and Hooks",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Feature 1", code: "D-CU-FEAT1" },
-        { seq: "04", name: "Hero Close Up - Feature 2", code: "D-CU-FEAT2" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Feature 1", code: "D-CU-FEAT1", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the feature 1." },
+        { seq: "04", name: "Hero Close Up - Feature 2", code: "D-CU-FEAT2", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the feature 2." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Dustbins",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Angle - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Angle", code: "H-AN" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front - Open with Internal Bin", code: "H-FR-BIN" },
-        { seq: "04", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "05", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Angle - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Angle below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front - Open with Internal Bin", code: "H-FR-BIN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Focus on the open with internal bin." },
+        { seq: "04", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "05", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Bath Stools",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Bottom", code: "D-CU-BTM" },
-        { seq: "04", name: "Hero Close Up - Texture", code: "D-CU-TXTR" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Bottom", code: "D-CU-BTM", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the bottom." },
+        { seq: "04", name: "Hero Close Up - Texture", code: "D-CU-TXTR", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the texture." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
@@ -1244,21 +1244,21 @@ window.NAMING_DATA = {
       category: "Laundry",
       variants: {
         "Single": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Close Up - Side", code: "D-CU-SIDE" },
-          { seq: "04", name: "Hero Close Up - Edge", code: "D-CU-EDGE" },
-          { seq: "05", name: "USP Shot", code: "F-USP" },
-          { seq: "06", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Close Up - Side", code: "D-CU-SIDE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the side." },
+          { seq: "04", name: "Hero Close Up - Edge", code: "D-CU-EDGE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the edge." },
+          { seq: "05", name: "USP Shot", code: "F-USP", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature." },
+          { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ],
         "Multi-Compartment": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Close Up", code: "D-CU" },
-          { seq: "04", name: "USP Shot", code: "F-USP" },
-          { seq: "05", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+          { seq: "04", name: "USP Shot", code: "F-USP", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature." },
+          { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ]
       }
     },
@@ -1266,149 +1266,149 @@ window.NAMING_DATA = {
       name: "Organizer Boxes (Watches)",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Shot - Open", code: "H-PROD-OPEN" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Hero Close Up - Clasp", code: "D-CU-CLASP" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Shot - Open", code: "H-PROD-OPEN", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product open." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Hero Close Up - Clasp", code: "D-CU-CLASP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the clasp." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Organizer Boxes (Jewellery)",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "USP Shot - Dismantled", code: "F-USP-DISMTL" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" },
-        { seq: "05", name: "Lifestyle Shot - Hand Reference", code: "L-CTX-HAND" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "USP Shot - Dismantled", code: "F-USP-DISMTL", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature. Show the product taken apart." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "05", name: "Lifestyle Shot - Hand Reference", code: "L-CTX-HAND", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a hand holding or using it, to show scale and how it works." }
       ]
     },
     {
       name: "Organizer Boxes (Pouches)",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "USP Shot - Material", code: "F-USP-MATL" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "USP Shot - Material", code: "F-USP-MATL", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature. Focus on the material." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Organizer Boxes (Key Box)",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front - Open", code: "H-FR-OPEN" },
-        { seq: "04", name: "Hero Back", code: "H-BK" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front - Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the product open." },
+        { seq: "04", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Ironing Board",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Lifestyle Shot - Folded", code: "L-CTX-FOLD" },
-        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "05", name: "Hero Close Up - Lock", code: "D-CU-LOCK" },
-        { seq: "06", name: "Hero Close Up - Stand", code: "D-CU-STAND" },
-        { seq: "07", name: "Hero Close Up - Iron Rest", code: "D-CU-IRON" },
-        { seq: "08", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Lifestyle Shot - Folded", code: "L-CTX-FOLD", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the product folded as it ships." },
+        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "05", name: "Hero Close Up - Lock", code: "D-CU-LOCK", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the lock." },
+        { seq: "06", name: "Hero Close Up - Stand", code: "D-CU-STAND", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the stand." },
+        { seq: "07", name: "Hero Close Up - Iron Rest", code: "D-CU-IRON", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the iron rest." },
+        { seq: "08", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Ladders",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot - Product in Use (With Model)", code: "L-CTX-USEMODEL" },
-        { seq: "03", name: "Lifestyle Shot - Product Folded", code: "L-CTX-FOLD" },
-        { seq: "04", name: "USP Shot", code: "F-USP" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot - Product in Use (With Model)", code: "L-CTX-USEMODEL", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a person using the product." },
+        { seq: "03", name: "Lifestyle Shot - Product Folded", code: "L-CTX-FOLD", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the product folded." },
+        { seq: "04", name: "USP Shot", code: "F-USP", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Drying Rack",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot - Product in Use", code: "L-CTX-USE" },
-        { seq: "03", name: "Lifestyle Shot - Product Folded", code: "L-CTX-FOLD" },
-        { seq: "04", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1" },
-        { seq: "05", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2" },
-        { seq: "06", name: "Hero Close Up - Anti-Skid", code: "D-CU-SKID" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot - Product in Use", code: "L-CTX-USE", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the product actually being used." },
+        { seq: "03", name: "Lifestyle Shot - Product Folded", code: "L-CTX-FOLD", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the product folded." },
+        { seq: "04", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 1." },
+        { seq: "05", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 2." },
+        { seq: "06", name: "Hero Close Up - Anti-Skid", code: "D-CU-SKID", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the anti-skid." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Piggy Bank",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN" },
-        { seq: "04", name: "Hero Back", code: "H-BK" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "04", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Magnets",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Product Set/ Collection Shot", code: "C-SET" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Name Tag",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front & Back", code: "H-FRBK" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front & Back", code: "H-FRBK", family: "Product Shot", whatToShoot: "Front and back shown together in one image." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Notepad",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN" },
-        { seq: "04", name: "Hero Front - Open", code: "H-FR-OPEN" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "04", name: "Hero Front - Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the product open." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Clothes Storage Boxes with Clasp",
       category: "Laundry",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN" },
-        { seq: "04", name: "Hero Side", code: "H-SD" },
-        { seq: "05", name: "Hero Close Up - Clasp", code: "D-CU-CLASP" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "04", name: "Hero Side", code: "H-SD", family: "Product Shot", whatToShoot: "Product from the side, plain background." },
+        { seq: "05", name: "Hero Close Up - Clasp", code: "D-CU-CLASP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the clasp." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
@@ -1416,25 +1416,25 @@ window.NAMING_DATA = {
       category: "Kitchen",
       variants: {
         "Single": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Lifestyle Shot - Set", code: "L-CTX-SET" },
-          { seq: "04", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN" },
-          { seq: "05", name: "Hero Close Up - Lid Silicone", code: "D-CU-LIDSIL" },
-          { seq: "06", name: "USP Shot", code: "F-USP" },
-          { seq: "07", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Lifestyle Shot - Set", code: "L-CTX-SET", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show all the pieces together." },
+          { seq: "04", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN", family: "Product Shot", whatToShoot: "Product on a plain background. Show the lid open." },
+          { seq: "05", name: "Hero Close Up - Lid Silicone", code: "D-CU-LIDSIL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the lid silicone." },
+          { seq: "06", name: "USP Shot", code: "F-USP", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature." },
+          { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ],
         "Set": [
-          { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front - Set", code: "H-FR-SET" },
-          { seq: "02", name: "Lifestyle Shot - Food Storage Capacity", code: "L-CTX-CAPCTY" },
-          { seq: "03", name: "Lifestyle Shot - Refrigerator/ Cabinet", code: "L-CTX-FRIDGE" },
-          { seq: "04", name: "Hero Shot - Individual Container", code: "H-PROD-INDIV" },
-          { seq: "05", name: "Hero Close Up - Lid", code: "D-CU-LID" },
-          { seq: "06", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN" },
-          { seq: "07", name: "Hero Close Up - Lid Silicone", code: "D-CU-LIDSIL" },
-          { seq: "08", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front - Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front - Set", code: "H-FR-SET", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show all the pieces together." },
+          { seq: "02", name: "Lifestyle Shot - Food Storage Capacity", code: "L-CTX-CAPCTY", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the food storage capacity." },
+          { seq: "03", name: "Lifestyle Shot - Refrigerator/ Cabinet", code: "L-CTX-FRIDGE", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the refrigerator/ cabinet." },
+          { seq: "04", name: "Hero Shot - Individual Container", code: "H-PROD-INDIV", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the individual container." },
+          { seq: "05", name: "Hero Close Up - Lid", code: "D-CU-LID", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the lid." },
+          { seq: "06", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN", family: "Product Shot", whatToShoot: "Product on a plain background. Show the lid open." },
+          { seq: "07", name: "Hero Close Up - Lid Silicone", code: "D-CU-LIDSIL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the lid silicone." },
+          { seq: "08", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ]
       }
     },
@@ -1443,21 +1443,21 @@ window.NAMING_DATA = {
       category: "Kitchen",
       variants: {
         "Single": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Close Up - Lid Open", code: "D-CU-OPEN" },
-          { seq: "04", name: "Hero Close Up - Lid", code: "D-CU-LID" },
-          { seq: "05", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Close Up - Lid Open", code: "D-CU-OPEN", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Show the lid open." },
+          { seq: "04", name: "Hero Close Up - Lid", code: "D-CU-LID", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the lid." },
+          { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ],
         "Set": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Product Set/ Collection Shot", code: "C-SET" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Front", code: "H-FR" },
-          { seq: "04", name: "Hero Close Up - Lid", code: "D-CU-LID" },
-          { seq: "05", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN" },
-          { seq: "06", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "04", name: "Hero Close Up - Lid", code: "D-CU-LID", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the lid." },
+          { seq: "05", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN", family: "Product Shot", whatToShoot: "Product on a plain background. Show the lid open." },
+          { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ]
       }
     },
@@ -1465,43 +1465,43 @@ window.NAMING_DATA = {
       name: "Spice Jars with Tray",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "05", name: "Hero Shot - Spice Jar", code: "H-FR-SPICEJR" },
-        { seq: "06", name: "Hero Front - Lid Open", code: "H-FR-OPEN" },
-        { seq: "07", name: "Hero Shot - Lid Removed", code: "H-FR-REMLID" },
-        { seq: "08", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "09", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "05", name: "Hero Shot - Spice Jar", code: "H-FR-SPICEJR", family: "Product Shot", whatToShoot: "Product shot showing spice jar, on a plain background." },
+        { seq: "06", name: "Hero Front - Lid Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the lid open." },
+        { seq: "07", name: "Hero Shot - Lid Removed", code: "H-FR-REMLID", family: "Product Shot", whatToShoot: "Product shot showing lid removed, on a plain background." },
+        { seq: "08", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "09", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Spice Jar Set with Tray",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Hero Shot - Spice Jar", code: "H-FR-SPICEJR" },
-        { seq: "03", name: "Hero Close Up - Lid", code: "D-CU-LID" },
-        { seq: "04", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "05", name: "Hero Close Up - Tray", code: "D-CU-TRAY" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Hero Shot - Spice Jar", code: "H-FR-SPICEJR", family: "Product Shot", whatToShoot: "Product shot showing spice jar, on a plain background." },
+        { seq: "03", name: "Hero Close Up - Lid", code: "D-CU-LID", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the lid." },
+        { seq: "04", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "05", name: "Hero Close Up - Tray", code: "D-CU-TRAY", family: "Close-Up", whatToShoot: "Tight crop on tray. Focus on that detail." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Spice Jar Set with Stand",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN" },
-        { seq: "04", name: "Hero Shot - Spice Jar", code: "H-FR-SPICEJR" },
-        { seq: "05", name: "Hero Close Up - Stand", code: "D-CU-STAND" },
-        { seq: "06", name: "Hero Close Up - Spice Jar", code: "D-CU-SPICEJR" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "04", name: "Hero Shot - Spice Jar", code: "H-FR-SPICEJR", family: "Product Shot", whatToShoot: "Product shot showing spice jar, on a plain background." },
+        { seq: "05", name: "Hero Close Up - Stand", code: "D-CU-STAND", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the stand." },
+        { seq: "06", name: "Hero Close Up - Spice Jar", code: "D-CU-SPICEJR", family: "Close-Up", whatToShoot: "Tight crop on spice jar. Focus on that detail." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
@@ -1509,34 +1509,34 @@ window.NAMING_DATA = {
       category: "Kitchen",
       variants: {
         "Basic": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN" },
-          { seq: "04", name: "Hero Close Up - Tray", code: "D-CU-TRAY" },
-          { seq: "05", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the lid open." },
+          { seq: "04", name: "Hero Close Up - Tray", code: "D-CU-TRAY", family: "Close-Up", whatToShoot: "Tight crop on tray. Focus on that detail." },
+          { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ],
         "With Metal Stand": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Shot - Condiment Jar", code: "H-FR-CONDJR" },
-          { seq: "04", name: "Hero Shot - Stand", code: "H-FR-STAND" },
-          { seq: "05", name: "Hero Close Up - Condiment Jar", code: "D-CU-CONDJR" },
-          { seq: "06", name: "Hero Close Up - Stand", code: "D-CU-STAND" },
-          { seq: "07", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-          { seq: "08", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Shot - Condiment Jar", code: "H-FR-CONDJR", family: "Product Shot", whatToShoot: "Product shot showing condiment jar, on a plain background." },
+          { seq: "04", name: "Hero Shot - Stand", code: "H-FR-STAND", family: "Product Shot", whatToShoot: "Product shot showing stand, on a plain background." },
+          { seq: "05", name: "Hero Close Up - Condiment Jar", code: "D-CU-CONDJR", family: "Close-Up", whatToShoot: "Tight crop on condiment jar. Focus on that detail." },
+          { seq: "06", name: "Hero Close Up - Stand", code: "D-CU-STAND", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the stand." },
+          { seq: "07", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+          { seq: "08", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ],
         "With Metal Tray": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Shot - Components", code: "H-FR-COMPS" },
-          { seq: "04", name: "Hero Shot - Condiment Jar", code: "H-FR-CONDJR" },
-          { seq: "05", name: "Hero Shot - Tray", code: "H-FR-TRAY" },
-          { seq: "06", name: "Hero Close Up - Condiment Jar", code: "D-CU-CONDJR" },
-          { seq: "07", name: "Hero Close Up - Stand", code: "D-CU-STAND" },
-          { seq: "08", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Shot - Components", code: "H-FR-COMPS", family: "Product Shot", whatToShoot: "Product shot showing components, on a plain background." },
+          { seq: "04", name: "Hero Shot - Condiment Jar", code: "H-FR-CONDJR", family: "Product Shot", whatToShoot: "Product shot showing condiment jar, on a plain background." },
+          { seq: "05", name: "Hero Shot - Tray", code: "H-FR-TRAY", family: "Product Shot", whatToShoot: "Product shot showing tray, on a plain background." },
+          { seq: "06", name: "Hero Close Up - Condiment Jar", code: "D-CU-CONDJR", family: "Close-Up", whatToShoot: "Tight crop on condiment jar. Focus on that detail." },
+          { seq: "07", name: "Hero Close Up - Stand", code: "D-CU-STAND", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the stand." },
+          { seq: "08", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ]
       }
     },
@@ -1544,27 +1544,27 @@ window.NAMING_DATA = {
       name: "Spice Jar",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Hero Front - Lid Open", code: "H-FR-OPEN" },
-        { seq: "03", name: "Hero Shot - Lid Removed", code: "H-FR-REMLID" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Hero Front - Lid Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the lid open." },
+        { seq: "03", name: "Hero Shot - Lid Removed", code: "H-FR-REMLID", family: "Product Shot", whatToShoot: "Product shot showing lid removed, on a plain background." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Borosilicate Canister/Container",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Product Set/ Collection Shot", code: "C-SET" },
-        { seq: "04", name: "Hero Front - Lid Open", code: "H-FR-OPEN" },
-        { seq: "05", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "06", name: "Hero Close Up - Lid", code: "D-CU-LID" },
-        { seq: "07", name: "Hero Close Up - Glass", code: "D-CU-GLASS" },
-        { seq: "08", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." },
+        { seq: "04", name: "Hero Front - Lid Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the lid open." },
+        { seq: "05", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "06", name: "Hero Close Up - Lid", code: "D-CU-LID", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the lid." },
+        { seq: "07", name: "Hero Close Up - Glass", code: "D-CU-GLASS", family: "Close-Up", whatToShoot: "Tight crop on glass. Focus on that detail." },
+        { seq: "08", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
@@ -1572,21 +1572,21 @@ window.NAMING_DATA = {
       category: "Kitchen",
       variants: {
         "Insulated": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Shot - Handle", code: "H-PROD-HDL" },
-          { seq: "04", name: "Hero Close Up - Nozzle", code: "D-CU-NOZ" },
-          { seq: "05", name: "USP Shot - Insulation", code: "F-USP-INSUL" },
-          { seq: "06", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Shot - Handle", code: "H-PROD-HDL", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the handle." },
+          { seq: "04", name: "Hero Close Up - Nozzle", code: "D-CU-NOZ", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the nozzle." },
+          { seq: "05", name: "USP Shot - Insulation", code: "F-USP-INSUL", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature. Show how the insulation works." },
+          { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ],
         "Set": [
-          { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front - Set", code: "H-FR-SET" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN" },
-          { seq: "04", name: "Hero Close Up - Lid Open", code: "D-CU-OPEN" },
-          { seq: "05", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front - Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front - Set", code: "H-FR-SET", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show all the pieces together." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the lid open." },
+          { seq: "04", name: "Hero Close Up - Lid Open", code: "D-CU-OPEN", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Show the lid open." },
+          { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ]
       }
     },
@@ -1594,14 +1594,14 @@ window.NAMING_DATA = {
       name: "Bottles with Sleeves",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Hero Front - Bottle Out of Sleeve", code: "H-FR-OUTSLV" },
-        { seq: "03", name: "Hero Front - Sleeve Only", code: "H-FR-SLEEVE" },
-        { seq: "04", name: "Hero Close Up - Lid", code: "D-CU-LID" },
-        { seq: "05", name: "Hero Close Up - Lid Open", code: "D-CU-OPEN" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" },
-        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Hero Front - Bottle Out of Sleeve", code: "H-FR-OUTSLV", family: "Product Shot", whatToShoot: "The bottle slid out of its sleeve, front view, so the buyer sees both parts separately." },
+        { seq: "03", name: "Hero Front - Sleeve Only", code: "H-FR-SLEEVE", family: "Product Shot", whatToShoot: "The sleeve on its own, front view, showing its material, print and fit." },
+        { seq: "04", name: "Hero Close Up - Lid", code: "D-CU-LID", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the lid." },
+        { seq: "05", name: "Hero Close Up - Lid Open", code: "D-CU-OPEN", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Show the lid open." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
@@ -1609,13 +1609,13 @@ window.NAMING_DATA = {
       category: "Kitchen",
       variants: {
         "Set": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN" },
-          { seq: "04", name: "Hero Close Up", code: "D-CU" },
-          { seq: "05", name: "Hero Close Up - Lid", code: "D-CU-LID" },
-          { seq: "06", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the lid open." },
+          { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+          { seq: "05", name: "Hero Close Up - Lid", code: "D-CU-LID", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the lid." },
+          { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ]
       }
     },
@@ -1623,271 +1623,271 @@ window.NAMING_DATA = {
       name: "Flasks",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Nozzle", code: "D-CU-NOZ" },
-        { seq: "04", name: "USP Shot - Features", code: "F-USP-FEAT" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Nozzle", code: "D-CU-NOZ", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the nozzle." },
+        { seq: "04", name: "USP Shot - Features", code: "F-USP-FEAT", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature. Focus on the features." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Lunch Boxes",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN" },
-        { seq: "04", name: "Hero Close Up - Clip", code: "D-CU-CLIP" },
-        { seq: "05", name: "USP Shot - Microwave/ Oven Safe (If Applicable)", code: "F-USP-MWSAFE" },
-        { seq: "06", name: "USP Shot - Silicone Ring/ Leak Proof", code: "F-USP-LEAK" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" },
-        { seq: "08", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the lid open." },
+        { seq: "04", name: "Hero Close Up - Clip", code: "D-CU-CLIP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the clip." },
+        { seq: "05", name: "USP Shot - Microwave/ Oven Safe (If Applicable)", code: "F-USP-MWSAFE", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature. Focus on the microwave/ oven safe.  Only shoot this if the product actually has it." },
+        { seq: "06", name: "USP Shot - Silicone Ring/ Leak Proof", code: "F-USP-LEAK", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature. Focus on the silicone ring/ leak proof." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "08", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Kitchen Organizer - Caddy",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Side", code: "H-SD" },
-        { seq: "04", name: "Hero Back", code: "H-BK" },
-        { seq: "05", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Side", code: "H-SD", family: "Product Shot", whatToShoot: "Product from the side, plain background." },
+        { seq: "04", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "05", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Vegetable Holder",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Angle - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Angle", code: "H-AN" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front", code: "H-FR" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Angle - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Angle below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Egg Organizer",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot - Full View", code: "L-CTX-FULLVW" },
-        { seq: "03", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot - Full View", code: "L-CTX-FULLVW", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the full view.(only image with egg)" },
+        { seq: "03", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN", family: "Product Shot", whatToShoot: "Product on a plain background. Show the lid open/tray open" },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Ice Trays",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot - Full View", code: "L-CTX-FULLVW" },
-        { seq: "03", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot - Full View", code: "L-CTX-FULLVW", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the full view." },
+        { seq: "03", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN", family: "Product Shot", whatToShoot: "Product on a plain background. Show the lid open." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Silicone Pouch",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot - Various Food Types Stored", code: "L-CTX-FOOD" },
-        { seq: "03", name: "Hero Close Up - Zipper", code: "D-CU-ZIP" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" },
-        { seq: "05", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot - Various Food Types Stored", code: "L-CTX-FOOD", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Focus on the various food types stored." },
+        { seq: "03", name: "Hero Close Up - Zipper", code: "D-CU-ZIP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the zipper." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "05", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Cast Iron Set",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Shot - Individual Product - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Product Set/ Collection Shot", code: "C-SET" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Shot - Individual Product", code: "H-PROD-INDIV" },
-        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Shot - Individual Product - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Shot - Individual Product below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Shot - Individual Product", code: "H-PROD-INDIV", family: "Product Shot", whatToShoot: "Product on a plain background. Show one piece from the set on its own." },
+        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Steel Set",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front - Set", code: "H-FR-SET" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front - Individual Product", code: "H-FR-INDIV" },
-        { seq: "04", name: "Hero Close Up - Vessel", code: "D-CU-VESSL" },
-        { seq: "05", name: "Hero Close Up - Lid", code: "D-CU-LID" },
-        { seq: "06", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "07", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "08", name: "USP Shot - Layer", code: "F-USP-LAYER" },
-        { seq: "09", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front - Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front - Set", code: "H-FR-SET", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show all the pieces together." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front - Individual Product", code: "H-FR-INDIV", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show one piece from the set on its own." },
+        { seq: "04", name: "Hero Close Up - Vessel", code: "D-CU-VESSL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the vessel." },
+        { seq: "05", name: "Hero Close Up - Lid", code: "D-CU-LID", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the lid." },
+        { seq: "06", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "07", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "08", name: "USP Shot - Layer", code: "F-USP-LAYER", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature. Focus on the layer." },
+        { seq: "09", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Non Stick Forged Set",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front - Set", code: "H-FR-SET" },
-        { seq: "02", name: "Lifestyle Shot - Set", code: "L-CTX-SET" },
-        { seq: "03", name: "Hero Front - Individual Product", code: "H-FR-INDIV" },
-        { seq: "04", name: "Hero Close Up - Back", code: "D-CU-BACK" },
-        { seq: "05", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front - Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front - Set", code: "H-FR-SET", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show all the pieces together." },
+        { seq: "02", name: "Lifestyle Shot - Set", code: "L-CTX-SET", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show all the pieces together." },
+        { seq: "03", name: "Hero Front - Individual Product", code: "H-FR-INDIV", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show one piece from the set on its own." },
+        { seq: "04", name: "Hero Close Up - Back", code: "D-CU-BACK", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the back." },
+        { seq: "05", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Tawas",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Surface", code: "D-CU-SURF" },
-        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "05", name: "USP Shot", code: "F-USP" },
-        { seq: "06", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Surface", code: "D-CU-SURF", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the surface." },
+        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "05", name: "USP Shot", code: "F-USP", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature." },
+        { seq: "06", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Frying Pans",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Surface/ Edge", code: "D-CU-SURF" },
-        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "06", name: "USP Shot", code: "F-USP" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Surface/ Edge", code: "D-CU-SURF", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the surface/ edge." },
+        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "06", name: "USP Shot", code: "F-USP", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Kadai and Woks",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Shot - Open", code: "H-PROD-OPEN" },
-        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "05", name: "Hero Close Up - Lid", code: "D-CU-LID" },
-        { seq: "06", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Shot - Open", code: "H-PROD-OPEN", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product open." },
+        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "05", name: "Hero Close Up - Lid", code: "D-CU-LID", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the lid." },
+        { seq: "06", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Milk Pan",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Surface/ Edge", code: "D-CU-SURF" },
-        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Surface/ Edge", code: "D-CU-SURF", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the surface/ edge." },
+        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Tadka Pan",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Surface/ Edge", code: "D-CU-SURF" },
-        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Surface/ Edge", code: "D-CU-SURF", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the surface/ edge." },
+        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Paniyarakal",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "04", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "04", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Ghee Pot",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the lid open." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Insulated Casseroles/ Roti Box",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN" },
-        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN", family: "Product Shot", whatToShoot: "Product on a plain background. Show the lid open." },
+        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Biriyani Pot with Lid",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN" },
-        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the lid open." },
+        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Kitchen Trolleys",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Angle", code: "H-AN" },
-        { seq: "04", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "04", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Cylinder Trolley",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Hero Front - Different Angle", code: "H-FR-ANGLE2" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Hero Front - Different Angle", code: "H-FR-ANGLE2", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Focus on the different angle." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
@@ -1895,22 +1895,22 @@ window.NAMING_DATA = {
       category: "Kitchen",
       variants: {
         "Individual": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot / Hand Reference", code: "L-CTX-HAND" },
-          { seq: "03", name: "Hero Flat Lay", code: "H-FL" },
-          { seq: "04", name: "Hero Close Up - Blade", code: "D-CU-BLADE" },
-          { seq: "05", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-          { seq: "06", name: "Infographic - Product Information", code: "F-INFO-SPEC" },
-          { seq: "07", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot / Hand Reference", code: "L-CTX-HAND", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a hand holding or using it, to show scale and how it works." },
+          { seq: "03", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+          { seq: "04", name: "Hero Close Up - Blade", code: "D-CU-BLADE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the blade." },
+          { seq: "05", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+          { seq: "06", name: "Infographic - Product Information", code: "F-INFO-SPEC", family: "Feature / RTB", whatToShoot: "Graphic that explains a feature in words and icons. Focus on the product information." },
+          { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ],
         "Set": [
-          { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Lifestyle Shot - Set", code: "L-CTX-SET" },
-          { seq: "02", name: "Hero Front - Set", code: "H-FR-SET" },
-          { seq: "03", name: "Lifestyle Shot / Hand Reference", code: "L-CTX-HAND" },
-          { seq: "04", name: "Infographic - Usage Types", code: "F-INFO-USAGE" },
-          { seq: "05", name: "Product Dimension - Lifestyle", code: "M-DIM-CTX" }
+          { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front - Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Lifestyle Shot - Set", code: "L-CTX-SET", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show all the pieces together." },
+          { seq: "02", name: "Hero Front - Set", code: "H-FR-SET", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show all the pieces together." },
+          { seq: "03", name: "Lifestyle Shot / Hand Reference", code: "L-CTX-HAND", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a hand holding or using it, to show scale and how it works." },
+          { seq: "04", name: "Infographic - Usage Types", code: "F-INFO-USAGE", family: "Feature / RTB", whatToShoot: "Graphic that explains a feature in words and icons. Focus on the usage types." },
+          { seq: "05", name: "Product Dimension - Lifestyle", code: "M-DIM-CTX", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on. Focus on the lifestyle." }
         ]
       }
     },
@@ -1919,21 +1919,21 @@ window.NAMING_DATA = {
       category: "Kitchen",
       variants: {
         "Single": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Close Up", code: "D-CU" },
-          { seq: "04", name: "Lifestyle Shot - Lid Open", code: "L-CTX-OPEN" },
-          { seq: "05", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+          { seq: "04", name: "Lifestyle Shot - Lid Open", code: "L-CTX-OPEN", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the lid open." },
+          { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ],
         "With Stand": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Shot - Stand Only", code: "H-PROD-STAND" },
-          { seq: "04", name: "Hero Side Angle", code: "H-AN" },
-          { seq: "05", name: "Hero Close Up - Lid", code: "D-CU-LID" },
-          { seq: "06", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Shot - Stand Only", code: "H-PROD-STAND", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the stand only." },
+          { seq: "04", name: "Hero Side Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a side three-quarter angle." },
+          { seq: "05", name: "Hero Close Up - Lid", code: "D-CU-LID", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the lid." },
+          { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ]
       }
     },
@@ -1941,381 +1941,381 @@ window.NAMING_DATA = {
       name: "Utensil Holders",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Chopping Board",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Side Angle", code: "H-AN" },
-        { seq: "04", name: "Hero Close Up - Detail", code: "D-CU-DTL" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Side Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a side three-quarter angle." },
+        { seq: "04", name: "Hero Close Up - Detail", code: "D-CU-DTL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Dish Racks",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1" },
-        { seq: "04", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 1." },
+        { seq: "04", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 2." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Tumbler Holder",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN" },
-        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Serving Tray",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN" },
-        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Lazy Susan",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Hero Close Up - Rotating Mechanism", code: "D-CU-ROTATE" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Hero Close Up - Rotating Mechanism", code: "D-CU-ROTATE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the rotating mechanism." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Coffee Set Stand",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN" },
-        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Mug Tree",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Roll Holder",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+        { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Storage Basket",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Fruit Basket",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Side (Rectangular/ Square/ Two-Tier Only)", code: "H-SD" },
-        { seq: "04", name: "Hero Close Up - Bottom", code: "D-CU-BTM" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Side (Rectangular/ Square/ Two-Tier Only)", code: "H-SD", family: "Product Shot", whatToShoot: "Product from the side, plain background.  Only for rectangular/ square/ two-tier shapes." },
+        { seq: "04", name: "Hero Close Up - Bottom", code: "D-CU-BTM", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the bottom." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Strainers",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Hero Back", code: "H-BK" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Colanders",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Tongs",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Side", code: "H-SD" },
-        { seq: "04", name: "Hero 3/4 Angle", code: "H-AN" },
-        { seq: "05", name: "Hero Close Up", code: "D-CU" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Side", code: "H-SD", family: "Product Shot", whatToShoot: "Product from the side, plain background." },
+        { seq: "04", name: "Hero 3/4 Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "05", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Rolling Pin",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Ice Cream Scoop",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Back", code: "H-BK" },
-        { seq: "04", name: "Hero 3/4 Angle", code: "H-AN" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "04", name: "Hero 3/4 Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Dosa Ladle",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN" },
-        { seq: "04", name: "Hero Back", code: "H-BK" },
-        { seq: "05", name: "Hero Close Up", code: "D-CU" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "04", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "05", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Steel Hand Blender",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Side", code: "H-SD" },
-        { seq: "04", name: "Hero Back", code: "H-BK" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Side", code: "H-SD", family: "Product Shot", whatToShoot: "Product from the side, plain background." },
+        { seq: "04", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Doctor Holder",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Back", code: "H-BK" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Spoon Rest",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN" },
-        { seq: "04", name: "Hero Back", code: "H-BK" },
-        { seq: "05", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero 3/4 Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "04", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "05", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Utensil Set",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot - In Holder", code: "L-CTX-INHLDR" },
-        { seq: "03", name: "Hero Shot - Holder", code: "H-FR-HLDR" },
-        { seq: "04", name: "Hero Close Up - Ladles", code: "D-CU-LADLES" },
-        { seq: "05", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot - In Holder", code: "L-CTX-INHLDR", family: "Lifestyle", whatToShoot: "Product arranged in its intended holder or organizer, in a real kitchen setting." },
+        { seq: "03", name: "Hero Shot - Holder", code: "H-FR-HLDR", family: "Product Shot", whatToShoot: "Product shot showing holder, on a plain background." },
+        { seq: "04", name: "Hero Close Up - Ladles", code: "D-CU-LADLES", family: "Close-Up", whatToShoot: "Tight crop on ladles. Focus on that detail." },
+        { seq: "05", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Bamboo Mobile Holder",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Side", code: "H-SD" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Side", code: "H-SD", family: "Product Shot", whatToShoot: "Product from the side, plain background." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Sink Basket",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Side", code: "H-SD" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Side", code: "H-SD", family: "Product Shot", whatToShoot: "Product from the side, plain background." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Tea Strainer",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Side", code: "H-SD" },
-        { seq: "04", name: "Hero Close Up - Strainer", code: "D-CU-STRNR" },
-        { seq: "05", name: "Hero Close Up - Mesh", code: "D-CU-MESH" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Side", code: "H-SD", family: "Product Shot", whatToShoot: "Product from the side, plain background." },
+        { seq: "04", name: "Hero Close Up - Strainer", code: "D-CU-STRNR", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the strainer." },
+        { seq: "05", name: "Hero Close Up - Mesh", code: "D-CU-MESH", family: "Close-Up", whatToShoot: "Tight crop on mesh. Focus on that detail." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Dish Cover",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Side", code: "H-SD" },
-        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Side", code: "H-SD", family: "Product Shot", whatToShoot: "Product from the side, plain background." },
+        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Sink Trapper",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Side", code: "H-SD" },
-        { seq: "04", name: "Hero Back", code: "H-BK" },
-        { seq: "05", name: "Hero Close Up", code: "D-CU" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Side", code: "H-SD", family: "Product Shot", whatToShoot: "Product from the side, plain background." },
+        { seq: "04", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "05", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Milk Cover",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Side", code: "H-SD" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Side", code: "H-SD", family: "Product Shot", whatToShoot: "Product from the side, plain background." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Multi Utility Basket",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the lid open." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Potato Masher",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Side", code: "H-SD" },
-        { seq: "04", name: "Hero Close Up - Masher", code: "D-CU-MASHER" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Side", code: "H-SD", family: "Product Shot", whatToShoot: "Product from the side, plain background." },
+        { seq: "04", name: "Hero Close Up - Masher", code: "D-CU-MASHER", family: "Close-Up", whatToShoot: "Tight crop on masher. Focus on that detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Coriander Box",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front - Lid Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the lid open." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Gas Lighter",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "04", name: "Hero Close Up - Lighter", code: "D-CU-LIGHTER" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "04", name: "Hero Close Up - Lighter", code: "D-CU-LIGHTER", family: "Close-Up", whatToShoot: "Tight crop on lighter. Focus on that detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
@@ -2323,12 +2323,12 @@ window.NAMING_DATA = {
       category: "Kitchen",
       variants: {
         "Non-Bladed": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1" },
-          { seq: "04", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2" },
-          { seq: "05", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 1." },
+          { seq: "04", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 2." },
+          { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ]
       }
     },
@@ -2336,195 +2336,195 @@ window.NAMING_DATA = {
       name: "Vegetable Chopper",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot / Hand Reference", code: "L-CTX-HAND" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Hero Close Up - Blades", code: "D-CU-BLADE" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot / Hand Reference", code: "L-CTX-HAND", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a hand holding or using it, to show scale and how it works." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Hero Close Up - Blades", code: "D-CU-BLADE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the blades." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Grater",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1" },
-        { seq: "04", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 1." },
+        { seq: "04", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 2." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Milk Frother",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1" },
-        { seq: "04", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2" },
-        { seq: "05", name: "Hero Close Up - Detail 3", code: "D-CU-DTL3" },
-        { seq: "06", name: "Infographic - Product Information", code: "F-INFO-SPEC" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 1." },
+        { seq: "04", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 2." },
+        { seq: "05", name: "Hero Close Up - Detail 3", code: "D-CU-DTL3", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 3." },
+        { seq: "06", name: "Infographic - Product Information", code: "F-INFO-SPEC", family: "Feature / RTB", whatToShoot: "Graphic that explains a feature in words and icons. Focus on the product information." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Magnetic Clip",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot - Product in Use", code: "L-CTX-USE" },
-        { seq: "03", name: "USP Shot", code: "F-USP" },
-        { seq: "04", name: "Hero Close Up - Mounting Point", code: "D-CU-MOUNT" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot - Product in Use", code: "L-CTX-USE", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show the product actually being used." },
+        { seq: "03", name: "USP Shot", code: "F-USP", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature." },
+        { seq: "04", name: "Hero Close Up - Mounting Point", code: "D-CU-MOUNT", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the mounting point." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Bag Clip",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot - Hand Reference", code: "L-CTX-HAND" },
-        { seq: "03", name: "Hero Front", code: "H-FR" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Hero Shot - In Use", code: "H-PROD-USE" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot - Hand Reference", code: "L-CTX-HAND", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a hand holding or using it, to show scale and how it works." },
+        { seq: "03", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Hero Shot - In Use", code: "H-PROD-USE", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the in use." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Stainless Steel Straw",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Lemon Squeezer",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Back - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Back", code: "H-BK" },
-        { seq: "03", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1" },
-        { seq: "04", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2" },
-        { seq: "05", name: "Hero Close Up - Detail 3", code: "D-CU-DTL3" },
-        { seq: "06", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Back - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Back below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "03", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 1." },
+        { seq: "04", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 2." },
+        { seq: "05", name: "Hero Close Up - Detail 3", code: "D-CU-DTL3", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 3." },
+        { seq: "06", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Masala Box",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Shot - Product Open", code: "H-PROD-OPEN" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Shot - Product Open", code: "H-PROD-OPEN", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product opened up." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Mortar and Pestle",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Shot - Mortar", code: "H-PROD-MORTAR" },
-        { seq: "04", name: "Hero Shot - Pestle", code: "H-PROD-PESTLE" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Shot - Mortar", code: "H-PROD-MORTAR", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the mortar." },
+        { seq: "04", name: "Hero Shot - Pestle", code: "H-PROD-PESTLE", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the pestle." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Pizza Cutter",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Jugs and Dispenser",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Nozzle", code: "D-CU-NOZ" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Nozzle", code: "D-CU-NOZ", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the nozzle." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Glass Dispenser with Stand",
       category: "Kitchen",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Hero Shot - Dispenser", code: "H-FR-DISPNS" },
-        { seq: "03", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "04", name: "Hero Close Up - Nozzle", code: "D-CU-NOZ" },
-        { seq: "05", name: "Hero Close Up", code: "D-CU" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Hero Shot - Dispenser", code: "H-FR-DISPNS", family: "Product Shot", whatToShoot: "Product shot showing dispenser, on a plain background." },
+        { seq: "03", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "04", name: "Hero Close Up - Nozzle", code: "D-CU-NOZ", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the nozzle." },
+        { seq: "05", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Springform/ Metal Pan",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot - Kitchen Setting", code: "L-CTX-KTCHN" },
-        { seq: "03", name: "Hand Reference", code: "L-HAND" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot - Kitchen Setting", code: "L-CTX-KTCHN", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a working kitchen." },
+        { seq: "03", name: "Hand Reference", code: "L-HAND", family: "Lifestyle", whatToShoot: "A hand shown holding or operating the product, to show scale and how it works." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Silicone Mould",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Lifestyle Shot - Kitchen Setting", code: "L-CTX-KTCHN" },
-        { seq: "04", name: "USP Shot - Peeling Off", code: "F-USP-PEEL" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Lifestyle Shot - Kitchen Setting", code: "L-CTX-KTCHN", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a working kitchen." },
+        { seq: "04", name: "USP Shot - Peeling Off", code: "F-USP-PEEL", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature. Show the food being peeled away from the mould." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Ceramic Baking Tray",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Shot - Kitchen Setting - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Shot - Kitchen Setting", code: "H-PROD-KTCHN" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front", code: "H-FR" },
-        { seq: "04", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Shot - Kitchen Setting - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Shot - Kitchen Setting below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Shot - Kitchen Setting", code: "H-PROD-KTCHN", family: "Product Shot", whatToShoot: "Product on a plain background. Show a working kitchen." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "04", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Cupcake and Bundt Tins",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Hero Back", code: "H-BK" },
-        { seq: "03", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "03", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
@@ -2532,14 +2532,14 @@ window.NAMING_DATA = {
       category: "Bakeware",
       variants: {
         "Set on Ring": [
-          { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front - Set", code: "H-FR-SET" },
-          { seq: "02", name: "Hero Shot - Separated", code: "H-PROD-SEPRTD" },
-          { seq: "03", name: "Lifestyle Shot - Kitchen Setting", code: "L-CTX-KTCHN" },
-          { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-          { seq: "05", name: "Hero Close Up - Hook", code: "D-CU-HOOK" },
-          { seq: "06", name: "Hero Close Up - Front", code: "D-CU-FRONT" },
-          { seq: "07", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front - Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front - Set", code: "H-FR-SET", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show all the pieces together." },
+          { seq: "02", name: "Hero Shot - Separated", code: "H-PROD-SEPRTD", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the separated." },
+          { seq: "03", name: "Lifestyle Shot - Kitchen Setting", code: "L-CTX-KTCHN", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a working kitchen." },
+          { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+          { seq: "05", name: "Hero Close Up - Hook", code: "D-CU-HOOK", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the hook." },
+          { seq: "06", name: "Hero Close Up - Front", code: "D-CU-FRONT", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Show the front of the product." },
+          { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ]
       }
     },
@@ -2548,15 +2548,15 @@ window.NAMING_DATA = {
       category: "Bakeware",
       variants: {
         "Stackable": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Shot - Stacked", code: "H-PROD-STACK" },
-          { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-          { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE" },
-          { seq: "06", name: "Hero Close Up - Ring and Handle", code: "D-CU-RING" },
-          { seq: "07", name: "Hero Shot - Hanging (If Applicable)", code: "H-PROD-HANG" },
-          { seq: "08", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Shot - Stacked", code: "H-PROD-STACK", family: "Product Shot", whatToShoot: "Product on a plain background. Show the pieces stacked." },
+          { seq: "04", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+          { seq: "05", name: "Hero Close Up - Base", code: "D-CU-BASE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the base." },
+          { seq: "06", name: "Hero Close Up - Ring and Handle", code: "D-CU-RING", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the ring and handle." },
+          { seq: "07", name: "Hero Shot - Hanging (If Applicable)", code: "H-PROD-HANG", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product hanging as it would be used or stored.  Only shoot this if the product actually has it." },
+          { seq: "08", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ]
       }
     },
@@ -2564,48 +2564,48 @@ window.NAMING_DATA = {
       name: "Measuring Jugs",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Mixing Bowls",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Shot - Lid Closed - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Shot - Lid Closed", code: "H-PROD-CLOSED" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN" },
-        { seq: "04", name: "Hero Close Up - Edge", code: "D-CU-EDGE" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Shot - Lid Closed - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Shot - Lid Closed below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Shot - Lid Closed", code: "H-PROD-CLOSED", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the lid closed." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN", family: "Product Shot", whatToShoot: "Product on a plain background. Show the lid open." },
+        { seq: "04", name: "Hero Close Up - Edge", code: "D-CU-EDGE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the edge." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Egg Yolk Separator",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Sifting Cup",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Strainer", code: "D-CU-STRNR" },
-        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Strainer", code: "D-CU-STRNR", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the strainer." },
+        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
@@ -2613,19 +2613,19 @@ window.NAMING_DATA = {
       category: "Bakeware",
       variants: {
         "Disposable": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Hero Shot - Spread Out", code: "H-PROD-SPREAD" },
-          { seq: "03", name: "Lifestyle Shot / Hand Reference", code: "L-CTX-HAND" },
-          { seq: "04", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Hero Shot - Spread Out", code: "H-PROD-SPREAD", family: "Product Shot", whatToShoot: "Product on a plain background. Show the product laid open flat." },
+          { seq: "03", name: "Lifestyle Shot / Hand Reference", code: "L-CTX-HAND", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a hand holding or using it, to show scale and how it works." },
+          { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ],
         "Reusable": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Close Up - Bag", code: "D-CU-BAG" },
-          { seq: "04", name: "Hero Close Up - Nozzles", code: "D-CU-NOZ" },
-          { seq: "05", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Close Up - Bag", code: "D-CU-BAG", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the bag." },
+          { seq: "04", name: "Hero Close Up - Nozzles", code: "D-CU-NOZ", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the nozzles." },
+          { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ]
       }
     },
@@ -2633,252 +2633,252 @@ window.NAMING_DATA = {
       name: "Piping Nozzles",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Product Dimension", code: "M-DIM" },
-        { seq: "04", name: "Infographic - Preparation", code: "F-INFO-PREP" },
-        { seq: "05", name: "Product with Packaging", code: "P-BOX" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "04", name: "Infographic - Preparation", code: "F-INFO-PREP", family: "Feature / RTB", whatToShoot: "Graphic that explains a feature in words and icons. Focus on the preparation." },
+        { seq: "05", name: "Product with Packaging", code: "P-BOX", family: "Packaging", whatToShoot: "Product shown with its retail box." }
       ]
     },
     {
       name: "Cookie Cutting Machine",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Shot - All Parts", code: "H-PROD-PARTS" },
-        { seq: "04", name: "USP Shot", code: "F-USP" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Shot - All Parts", code: "H-PROD-PARTS", family: "Product Shot", whatToShoot: "Product on a plain background. Show every component laid out." },
+        { seq: "04", name: "USP Shot", code: "F-USP", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Cookie Cutters",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Chocolate Moulds",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Back", code: "D-CU-BACK" },
-        { seq: "04", name: "Hero Close Up - Edge", code: "D-CU-EDGE" },
-        { seq: "05", name: "USP Shot - Pushing Out", code: "F-USP-PUSH" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Back", code: "D-CU-BACK", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the back." },
+        { seq: "04", name: "Hero Close Up - Edge", code: "D-CU-EDGE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the edge." },
+        { seq: "05", name: "USP Shot - Pushing Out", code: "F-USP-PUSH", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature. Show the contents being pushed out of the mould." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Silicone Spatula",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "04", name: "Hero Close Up - Spatula", code: "D-CU-SPAT" },
-        { seq: "05", name: "Hero Close Up - Detached", code: "D-CU-DETACH" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "04", name: "Hero Close Up - Spatula", code: "D-CU-SPAT", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the spatula." },
+        { seq: "05", name: "Hero Close Up - Detached", code: "D-CU-DETACH", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Show the parts separated." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Pastry Brush",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Brush", code: "D-CU-BRUSH" },
-        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "05", name: "Hero Close Up - Detached", code: "D-CU-DETACH" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Brush", code: "D-CU-BRUSH", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the brush." },
+        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "05", name: "Hero Close Up - Detached", code: "D-CU-DETACH", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Show the parts separated." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Icing Knife",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Knife", code: "D-CU-KNIFE" },
-        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Knife", code: "D-CU-KNIFE", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the knife." },
+        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Balloon Whisk",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Pastry Blender",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Top", code: "D-CU-TOP" },
-        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Top", code: "D-CU-TOP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the top." },
+        { seq: "04", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Baking Gloves (Mitts)",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Opening", code: "D-CU-OPNG" },
-        { seq: "04", name: "Hero Close Up - Detail", code: "D-CU-DTL" },
-        { seq: "05", name: "Hand Reference", code: "L-HAND" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" },
-        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Opening", code: "D-CU-OPNG", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the opening." },
+        { seq: "04", name: "Hero Close Up - Detail", code: "D-CU-DTL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail." },
+        { seq: "05", name: "Hand Reference", code: "L-HAND", family: "Lifestyle", whatToShoot: "A hand shown holding or operating the product, to show scale and how it works." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Baking Mat",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "USP Shot - Waterproof", code: "F-USP-WTRPRF" },
-        { seq: "05", name: "USP Shot - Hook", code: "F-USP-HOOK" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "USP Shot - Waterproof", code: "F-USP-WTRPRF", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature. Focus on the waterproof." },
+        { seq: "05", name: "USP Shot - Hook", code: "F-USP-HOOK", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature. Focus on the hook." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Air Fryer Liner (Silicone/ Paper)",
       category: "Bakeware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up", code: "D-CU" },
-        { seq: "04", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "04", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Trays & Platters",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Hero Side/ Angle", code: "H-SDAN" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Hero Side/ Angle", code: "H-SDAN", family: "Product Shot", whatToShoot: "Product from the side or at a three-quarter angle." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Salt and Pepper Shaker",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Sprinkler", code: "D-CU-SPRNK" },
-        { seq: "04", name: "Hero Front - Lid Open", code: "H-FR-OPEN" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Sprinkler", code: "D-CU-SPRNK", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the sprinkler." },
+        { seq: "04", name: "Hero Front - Lid Open", code: "H-FR-OPEN", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the lid open." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Chip and Dip Platter",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front Elevation - Thickness/ Height", code: "H-ELEV-HEIGHT" },
-        { seq: "04", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "05", name: "Hero Shot - Platter Only", code: "H-PROD-PLTR" },
-        { seq: "06", name: "Hero Shot - Bowl Only", code: "H-PROD-BOWL" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front Elevation - Thickness/ Height", code: "H-ELEV-HEIGHT", family: "Product Shot", whatToShoot: "Straight-on front view, no angle. Focus on the thickness/ height." },
+        { seq: "04", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "05", name: "Hero Shot - Platter Only", code: "H-PROD-PLTR", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the platter only." },
+        { seq: "06", name: "Hero Shot - Bowl Only", code: "H-PROD-BOWL", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the bowl only." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Tissue Box Holder",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Flat Lay - Tissue Box Open", code: "H-FL-OPEN" },
-        { seq: "04", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1" },
-        { seq: "05", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2" },
-        { seq: "06", name: "USP Shot - Fits Loose Tissue & Tissue Box", code: "F-USP-FITS" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Flat Lay - Tissue Box Open", code: "H-FL-OPEN", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Focus on the tissue box open." },
+        { seq: "04", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 1." },
+        { seq: "05", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 2." },
+        { seq: "06", name: "USP Shot - Fits Loose Tissue & Tissue Box", code: "F-USP-FITS", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature. Focus on the fits loose tissue & tissue box." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Napkin Holder",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Side Angle", code: "H-AN" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Side Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a side three-quarter angle." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Glasses & Jugs",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Angle - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Angle", code: "H-AN" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN" },
-        { seq: "04", name: "Hero Close Up - Nozzle", code: "D-CU-NOZ" },
-        { seq: "05", name: "Hero Close Up", code: "D-CU" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Angle - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Angle below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN", family: "Product Shot", whatToShoot: "Product on a plain background. Show the lid open." },
+        { seq: "04", name: "Hero Close Up - Nozzle", code: "D-CU-NOZ", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the nozzle." },
+        { seq: "05", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Bar Accessories",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front - Set", code: "H-FR-SET" },
-        { seq: "02", name: "Hero Front", code: "H-FR" },
-        { seq: "03", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front - Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front - Set", code: "H-FR-SET", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show all the pieces together." },
+        { seq: "02", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "03", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Bowls",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
@@ -2886,22 +2886,22 @@ window.NAMING_DATA = {
       category: "Tableware",
       variants: {
         "Single": [
-          { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Front", code: "H-FR" },
-          { seq: "04", name: "Hero Close Up", code: "D-CU" },
-          { seq: "05", name: "Product Dimension", code: "M-DIM" },
-          { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+          { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+          { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+          { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
         ],
         "Set": [
-          { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front - Set", code: "H-FR-SET" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Flat Lay - Single", code: "H-FL-SGL" },
-          { seq: "04", name: "Hero Front - Single", code: "H-FR-SGL" },
-          { seq: "05", name: "Hero Close Up", code: "D-CU" },
-          { seq: "06", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front - Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front - Set", code: "H-FR-SET", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show all the pieces together." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Flat Lay - Single", code: "H-FL-SGL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Show one piece on its own." },
+          { seq: "04", name: "Hero Front - Single", code: "H-FR-SGL", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show one piece on its own." },
+          { seq: "05", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+          { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ]
       }
     },
@@ -2909,13 +2909,13 @@ window.NAMING_DATA = {
       name: "Kids Plate",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front", code: "H-FR" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
@@ -2923,22 +2923,22 @@ window.NAMING_DATA = {
       category: "Tableware",
       variants: {
         "Single": [
-          { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front", code: "H-FR" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Close Up - Handle", code: "D-CU-HDL" },
-          { seq: "04", name: "Hero Flat Lay", code: "H-FL" },
-          { seq: "05", name: "Product Dimension", code: "M-DIM" },
-          { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+          { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Close Up - Handle", code: "D-CU-HDL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the handle." },
+          { seq: "04", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+          { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+          { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
         ],
         "Set": [
-          { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Front - Set", code: "H-FR-SET" },
-          { seq: "02", name: "Lifestyle Shot - Set", code: "L-CTX-SET" },
-          { seq: "03", name: "Hero Front - Single", code: "H-FR-SGL" },
-          { seq: "04", name: "Hero Close Up - Single", code: "D-CU-SGL" },
-          { seq: "05", name: "Hero Flat Lay - Single", code: "H-FL-SGL" },
-          { seq: "06", name: "Product Dimension", code: "M-DIM" }
+          { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front - Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Front - Set", code: "H-FR-SET", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show all the pieces together." },
+          { seq: "02", name: "Lifestyle Shot - Set", code: "L-CTX-SET", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show all the pieces together." },
+          { seq: "03", name: "Hero Front - Single", code: "H-FR-SGL", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show one piece on its own." },
+          { seq: "04", name: "Hero Close Up - Single", code: "D-CU-SGL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Show one piece on its own." },
+          { seq: "05", name: "Hero Flat Lay - Single", code: "H-FL-SGL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Show one piece on its own." },
+          { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
         ]
       }
     },
@@ -2946,175 +2946,175 @@ window.NAMING_DATA = {
       name: "Cups & Saucers",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front - Set", code: "H-FR-SET" },
-        { seq: "02", name: "Lifestyle Shot - Set", code: "L-CTX-SET" },
-        { seq: "03", name: "Hero Front - Single", code: "H-FR-SGL" },
-        { seq: "04", name: "Hero Flat Lay - Saucer Only", code: "H-FL-SAUCER" },
-        { seq: "05", name: "Hero Shot - Cup Only", code: "H-PROD-CUP" },
-        { seq: "06", name: "Hero Close Up - Cup", code: "D-CU-CUP" },
-        { seq: "07", name: "Hero Close Up - Saucer", code: "D-CU-SAUCER" },
-        { seq: "08", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front - Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front - Set", code: "H-FR-SET", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show all the pieces together." },
+        { seq: "02", name: "Lifestyle Shot - Set", code: "L-CTX-SET", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show all the pieces together." },
+        { seq: "03", name: "Hero Front - Single", code: "H-FR-SGL", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show one piece on its own." },
+        { seq: "04", name: "Hero Flat Lay - Saucer Only", code: "H-FL-SAUCER", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Focus on the saucer only." },
+        { seq: "05", name: "Hero Shot - Cup Only", code: "H-PROD-CUP", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the cup only." },
+        { seq: "06", name: "Hero Close Up - Cup", code: "D-CU-CUP", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the cup." },
+        { seq: "07", name: "Hero Close Up - Saucer", code: "D-CU-SAUCER", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the saucer." },
+        { seq: "08", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Pots & Kettles",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front Angle - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front Angle", code: "H-AN" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" },
-        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front Angle - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front Angle below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a front three-quarter angle." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Shot - Lid Open", code: "H-PROD-OPEN", family: "Product Shot", whatToShoot: "Product on a plain background. Show the lid open." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "06", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Dinner Sets",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front - Set", code: "H-FR-SET" },
-        { seq: "02", name: "Lifestyle Shot - Complete Set", code: "L-CTX-SET" },
-        { seq: "03", name: "Hero Shot - Individual Product", code: "H-PROD-INDIV" },
-        { seq: "04", name: "Hero Close Up - Individual Product", code: "D-CU-INDIV" },
-        { seq: "05", name: "Product Dimension - All Items & Sizes", code: "M-DIM-ALL" }
+        { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front - Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front - Set", code: "H-FR-SET", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show all the pieces together." },
+        { seq: "02", name: "Lifestyle Shot - Complete Set", code: "L-CTX-SET", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show every piece in the set." },
+        { seq: "03", name: "Hero Shot - Individual Product", code: "H-PROD-INDIV", family: "Product Shot", whatToShoot: "Product on a plain background. Show one piece from the set on its own." },
+        { seq: "04", name: "Hero Close Up - Individual Product", code: "D-CU-INDIV", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Show one piece from the set on its own." },
+        { seq: "05", name: "Product Dimension - All Items & Sizes", code: "M-DIM-ALL", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on. Focus on the all items & sizes." }
       ]
     },
     {
       name: "Trivets",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Side Angle", code: "H-AN" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Side Angle", code: "H-AN", family: "Product Shot", whatToShoot: "Product at a side three-quarter angle." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Coasters",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front - Stacked - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front - Stacked", code: "H-FR-STACK" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front - Laid Out", code: "H-FR-LAID" },
-        { seq: "04", name: "Hero Flat Lay - Single", code: "H-FL-SGL" },
-        { seq: "05", name: "Hero Close Up - Single", code: "D-CU-SGL" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - Stacked - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front - Stacked below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front - Stacked", code: "H-FR-STACK", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the pieces stacked." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front - Laid Out", code: "H-FR-LAID", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Focus on the laid out." },
+        { seq: "04", name: "Hero Flat Lay - Single", code: "H-FL-SGL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Show one piece on its own." },
+        { seq: "05", name: "Hero Close Up - Single", code: "D-CU-SGL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Show one piece on its own." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Tray Reversible",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Hero Front - Reverse Side", code: "H-FR-REV" },
-        { seq: "03", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "04", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "05", name: "Hero Flat Lay - Reverse Side", code: "H-FL-REV" },
-        { seq: "06", name: "Hero Close Up", code: "D-CU" },
-        { seq: "07", name: "USP Shot", code: "F-USP" },
-        { seq: "08", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Hero Front - Reverse Side", code: "H-FR-REV", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the other side of the product." },
+        { seq: "03", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "04", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "05", name: "Hero Flat Lay - Reverse Side", code: "H-FL-REV", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Show the other side of the product." },
+        { seq: "06", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "07", name: "USP Shot", code: "F-USP", family: "Feature / RTB", whatToShoot: "Shot or graphic that points out a selling feature." },
+        { seq: "08", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Cake Stand",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Spoons",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front - Complete Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front - Complete Set", code: "H-FR-SET" },
-        { seq: "02", name: "Lifestyle Shot - Table Setup", code: "L-CTX-TABLE" },
-        { seq: "03", name: "Hero Shot - Single Piece", code: "H-PROD-INDIV" },
-        { seq: "04", name: "Hero Close Up - Head", code: "D-CU-HEAD" },
-        { seq: "05", name: "Hero Close Up - Tail", code: "D-CU-TAIL" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - Complete Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front - Complete Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front - Complete Set", code: "H-FR-SET", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show every piece in the set." },
+        { seq: "02", name: "Lifestyle Shot - Table Setup", code: "L-CTX-TABLE", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a laid dining table." },
+        { seq: "03", name: "Hero Shot - Single Piece", code: "H-PROD-INDIV", family: "Product Shot", whatToShoot: "Product on a plain background. Focus on the single piece." },
+        { seq: "04", name: "Hero Close Up - Head", code: "D-CU-HEAD", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the head." },
+        { seq: "05", name: "Hero Close Up - Tail", code: "D-CU-TAIL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the tail." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Cutlery Sets",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front - Set", code: "H-FR-SET" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front/ Flat Lay - Fork & Spoon Only", code: "H-FRFL-FORKSP" },
-        { seq: "04", name: "Hero Front - Stand Only", code: "H-FR-STAND" },
-        { seq: "05", name: "Hero Angle - Set", code: "H-AN-SET" },
-        { seq: "06", name: "Product Dimension - Stand", code: "M-DIM-STAND" },
-        { seq: "07", name: "Product Dimension - Cutlery", code: "M-DIM-CUTLRY" }
+        { seq: "00", name: "Hero Front - Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front - Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front - Set", code: "H-FR-SET", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show all the pieces together." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front/ Flat Lay - Fork & Spoon Only", code: "H-FRFL-FORKSP", family: "Product Shot", whatToShoot: "Front-on, or from directly above. Focus on the fork & spoon only." },
+        { seq: "04", name: "Hero Front - Stand Only", code: "H-FR-STAND", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Focus on the stand only." },
+        { seq: "05", name: "Hero Angle - Set", code: "H-AN-SET", family: "Product Shot", whatToShoot: "Product at a three-quarter angle, plain background. Show all the pieces together." },
+        { seq: "06", name: "Product Dimension - Stand", code: "M-DIM-STAND", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on. Focus on the stand." },
+        { seq: "07", name: "Product Dimension - Cutlery", code: "M-DIM-CUTLRY", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on. Focus on the cutlery." }
       ]
     },
     {
       name: "Placemats",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot - Table Setup", code: "L-CTX-TABLE" },
-        { seq: "03", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "04", name: "Hero Back", code: "H-BK" },
-        { seq: "05", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot - Table Setup", code: "L-CTX-TABLE", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a laid dining table." },
+        { seq: "03", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "04", name: "Hero Back", code: "H-BK", family: "Product Shot", whatToShoot: "Product from behind, plain background." },
+        { seq: "05", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Aprons",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Front", code: "H-FR" },
-        { seq: "02", name: "Lifestyle Shot - With Model", code: "L-CTX-MODEL" },
-        { seq: "03", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1" },
-        { seq: "04", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "05", name: "Hero Close Up - Pockets", code: "D-CU-PCKT" },
-        { seq: "06", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" },
-        { seq: "08", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Front - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Front", code: "H-FR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background." },
+        { seq: "02", name: "Lifestyle Shot - With Model", code: "L-CTX-MODEL", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a person wearing or using it." },
+        { seq: "03", name: "Hero Close Up - Detail 1", code: "D-CU-DTL1", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 1." },
+        { seq: "04", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "05", name: "Hero Close Up - Pockets", code: "D-CU-PCKT", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the pockets." },
+        { seq: "06", name: "Hero Close Up - Detail 2", code: "D-CU-DTL2", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail 2." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "08", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Pot Holders",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay - Set", code: "H-FL-SET" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Flat Lay - Individual", code: "H-FL-INDIV" },
-        { seq: "04", name: "Hero Close Up", code: "D-CU" },
-        { seq: "05", name: "Lifestyle Shot - Hand Reference", code: "L-CTX-HAND" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" },
-        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Flat Lay - Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay - Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay - Set", code: "H-FL-SET", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Show all the pieces together." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Flat Lay - Individual", code: "H-FL-INDIV", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Focus on the individual." },
+        { seq: "04", name: "Hero Close Up", code: "D-CU", family: "Close-Up", whatToShoot: "Tight crop showing the detail." },
+        { seq: "05", name: "Lifestyle Shot - Hand Reference", code: "L-CTX-HAND", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a hand holding or using it, to show scale and how it works." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
       name: "Mittens",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Close Up - Opening", code: "D-CU-OPNG" },
-        { seq: "04", name: "Hero Close Up - Detail", code: "D-CU-DTL" },
-        { seq: "05", name: "Lifestyle Shot - Hand Reference", code: "L-CTX-HAND" },
-        { seq: "06", name: "Product Dimension", code: "M-DIM" },
-        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET" }
+        { seq: "00", name: "Hero Flat Lay - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Close Up - Opening", code: "D-CU-OPNG", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the opening." },
+        { seq: "04", name: "Hero Close Up - Detail", code: "D-CU-DTL", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the detail." },
+        { seq: "05", name: "Lifestyle Shot - Hand Reference", code: "L-CTX-HAND", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use. Show a hand holding or using it, to show scale and how it works." },
+        { seq: "06", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." },
+        { seq: "07", name: "Product Set/ Collection Shot", code: "C-SET", family: "Set Shot", whatToShoot: "The whole range shot together, so shoppers see what matches." }
       ]
     },
     {
@@ -3122,14 +3122,14 @@ window.NAMING_DATA = {
       category: "Tableware",
       variants: {
         "Set": [
-          { seq: "00", name: "Hero Flat Lay - Set - White Background", code: "MAIN", note: "Marketplace MAIN" },
-          { seq: "01", name: "Hero Flat Lay - Set", code: "H-FL-SET" },
-          { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-          { seq: "03", name: "Hero Flat Lay - Mitten", code: "H-FL-MITT" },
-          { seq: "04", name: "Hero Flat Lay - Pot Holder", code: "H-FL-PTHLD" },
-          { seq: "05", name: "Hero Close Up - Mitten", code: "D-CU-MITT" },
-          { seq: "06", name: "Hero Close Up - Pot Holder", code: "D-CU-PTHLD" },
-          { seq: "07", name: "Product Dimension - Pot Holder & Mitten", code: "M-DIM-BOTH" }
+          { seq: "00", name: "Hero Flat Lay - Set - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay - Set below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+          { seq: "01", name: "Hero Flat Lay - Set", code: "H-FL-SET", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Show all the pieces together." },
+          { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+          { seq: "03", name: "Hero Flat Lay - Mitten", code: "H-FL-MITT", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Focus on the mitten." },
+          { seq: "04", name: "Hero Flat Lay - Pot Holder", code: "H-FL-PTHLD", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Focus on the pot holder." },
+          { seq: "05", name: "Hero Close Up - Mitten", code: "D-CU-MITT", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the mitten." },
+          { seq: "06", name: "Hero Close Up - Pot Holder", code: "D-CU-PTHLD", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the pot holder." },
+          { seq: "07", name: "Product Dimension - Pot Holder & Mitten", code: "M-DIM-BOTH", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on. Focus on the pot holder & mitten." }
         ]
       }
     },
@@ -3137,42 +3137,42 @@ window.NAMING_DATA = {
       name: "Kitchen Towels",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - Folded - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Hero Flat Lay - Folded", code: "H-FL-FOLD" },
-        { seq: "02", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "03", name: "Hero Front - Folded", code: "H-FR-FOLD" },
-        { seq: "04", name: "Hero Flat Lay - Open (Single)", code: "H-FL-OPNSGL" },
-        { seq: "05", name: "Hero Close Up - Fabric (Single)", code: "D-CU-FAB" },
-        { seq: "06", name: "Hero Back Close Up (Single)", code: "D-BKCU-SGL" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - Folded - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay - Folded below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Hero Flat Lay - Folded", code: "H-FL-FOLD", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Show the product folded as it ships." },
+        { seq: "02", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "03", name: "Hero Front - Folded", code: "H-FR-FOLD", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the product folded as it ships." },
+        { seq: "04", name: "Hero Flat Lay - Open (Single)", code: "H-FL-OPNSGL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Focus on the open single." },
+        { seq: "05", name: "Hero Close Up - Fabric (Single)", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric single." },
+        { seq: "06", name: "Hero Back Close Up (Single)", code: "D-BKCU-SGL", family: "Close-Up", whatToShoot: "Tight crop on the back of the product. Show one piece on its own." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Table Cloth",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Flat Lay - Folded - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Flat Lay - Folded", code: "H-FL-FOLD" },
-        { seq: "03", name: "Hero Front - Folded", code: "H-FR-FOLD" },
-        { seq: "04", name: "Hero Flat Lay - Open", code: "H-FL-OPEN" },
-        { seq: "05", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "06", name: "Hero Back Close Up", code: "D-BKCU" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Flat Lay - Folded - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Flat Lay - Folded below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Flat Lay - Folded", code: "H-FL-FOLD", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Show the product folded as it ships." },
+        { seq: "03", name: "Hero Front - Folded", code: "H-FR-FOLD", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Show the product folded as it ships." },
+        { seq: "04", name: "Hero Flat Lay - Open", code: "H-FL-OPEN", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Show the product open." },
+        { seq: "05", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "06", name: "Hero Back Close Up", code: "D-BKCU", family: "Close-Up", whatToShoot: "Tight crop on the back of the product." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     },
     {
       name: "Table Runner",
       category: "Tableware",
       shots: [
-        { seq: "00", name: "Hero Front - Partly Folded - White Background", code: "MAIN", note: "Marketplace MAIN" },
-        { seq: "01", name: "Lifestyle Shot", code: "L-CTX" },
-        { seq: "02", name: "Hero Front - Partly Folded", code: "H-FR-PFOLD" },
-        { seq: "03", name: "Hero Front - Partly Folded (Reverse Side)", code: "H-FR-PFOLDR" },
-        { seq: "04", name: "Hero Flat Lay", code: "H-FL" },
-        { seq: "05", name: "Hero Flat Lay - Reverse Side", code: "H-FL-REV" },
-        { seq: "06", name: "Hero Close Up - Fabric", code: "D-CU-FAB" },
-        { seq: "07", name: "Product Dimension", code: "M-DIM" }
+        { seq: "00", name: "Hero Front - Partly Folded - White Background", code: "MAIN", family: "Product Shot", whatToShoot: "The same angle as the Hero Front - Partly Folded below, but shot on pure white with no styling and no background objects. Amazon and Flipkart require the main listing image to be on a plain white background. This file does NOT appear in the Livspace PDP gallery — it is the only white-background asset for this product.", note: "Marketplace MAIN" },
+        { seq: "01", name: "Lifestyle Shot", code: "L-CTX", family: "Lifestyle", whatToShoot: "The product styled in a real room or in use." },
+        { seq: "02", name: "Hero Front - Partly Folded", code: "H-FR-PFOLD", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Focus on the partly folded." },
+        { seq: "03", name: "Hero Front - Partly Folded (Reverse Side)", code: "H-FR-PFOLDR", family: "Product Shot", whatToShoot: "Product straight-on from the front, plain background. Focus on the partly folded reverse side." },
+        { seq: "04", name: "Hero Flat Lay", code: "H-FL", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat." },
+        { seq: "05", name: "Hero Flat Lay - Reverse Side", code: "H-FL-REV", family: "Product Shot", whatToShoot: "Shot from directly above, product laid flat. Show the other side of the product." },
+        { seq: "06", name: "Hero Close Up - Fabric", code: "D-CU-FAB", family: "Close-Up", whatToShoot: "Tight crop showing the detail. Focus on the fabric." },
+        { seq: "07", name: "Product Dimension", code: "M-DIM", family: "Size", whatToShoot: "Measurement shot, with the dimensions marked on." }
       ]
     }
   ]

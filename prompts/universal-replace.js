@@ -1,0 +1,63 @@
+// Offline fallback for Prompt Database → Universal tab (Product replacement).
+// Live rows from PROMPT_DB_URL (action=universal) take precedence when available.
+window.UNIVERSAL_REPLACE_PROMPTS = {
+  source: 'Prompt_Database_-_Universal.csv',
+  updatedAt: '2026-10-30',
+  rows: [
+    {
+      workflow: 'Product replacement',
+      productType: '',
+      imageShortCode: '',
+      imageName: '',
+      prompt: [
+        '# PRODUCT REPLACEMENT — POSITION AND ANGLE TRANSFER ONLY',
+        '',
+        '**INPUT IMAGE 1 — `reference_image_url`**',
+        '',
+        'The original scene to be edited. Preserve this image exactly, except for the main product.',
+        '',
+        '**INPUT IMAGE 2+ — `second_reference_url`**',
+        '',
+        'The new product to be inserted. These images define the complete and exclusive identity and appearance of the replacement product.',
+        '',
+        '### INSTRUCTIONS',
+        '',
+        'Replace the main product in INPUT IMAGE 1 with the new product from INPUT IMAGE 2+.',
+        '',
+        'Use the original product in INPUT IMAGE 1 ONLY as a guide for:',
+        '- Position and placement.',
+        '- Viewing angle and orientation.',
+        '- Camera viewpoint.',
+        '- Camera zoom and apparent size.',
+        '- Perspective and visible crop.',
+        '',
+        '**Do not use the original product as a visual or design reference.**',
+        '',
+        'The replacement product must retain its own original:',
+        '- Shape, form, geometry, and volume.',
+        '- Dimensions and proportions.',
+        '- Materials, textures, and surface finish.',
+        '- Colours, patterns, and details.',
+        '- Overall design and identity.',
+        '',
+        'Do not transfer, imitate, blend, or borrow any appearance or design characteristics from the original product.',
+        '',
+        'Adapt the new product\'s viewing orientation and placement to match the original product\'s position and angle. Preserve the original camera zoom and framing.',
+        '',
+        'Do not zoom out, change the camera, or reveal more of the replacement product than the composition allows.',
+        '',
+        'Preserve the entire original environment, background, props, lighting, shadows, reflections, and composition. Do not transfer the white background from the product reference images.',
+        '',
+        '### FINAL RULE',
+        '',
+        '**Original product = position, angle, viewpoint, and scale guide ONLY.**',
+        '',
+        '**New product = exclusive source of product appearance and identity.**',
+        '',
+        'Fully remove the prior product silhouette from INPUT IMAGE 1 and insert the new product. Do not leave remnants or blend products.',
+        '',
+        'Replace the original product with the new product. Nothing else in the master image should change.'
+      ].join('\n')
+    }
+  ]
+};
