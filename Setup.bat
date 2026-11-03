@@ -3,18 +3,18 @@ setlocal
 title 3D Playground - AI upscale setup
 rem Install folder: an existing install first, else D:\3d-playground on a local writable D drive, else the user folder.
 set "HOME_DIR=%USERPROFILE%\3d-playground"
-for /f "usebackq delims=" %%p in (`powershell -NoProfile -Command "$d='D:\3d-playground'; $u=Join-Path $env:USERPROFILE '3d-playground'; if (Test-Path ($d+'\firefly-upscaler')) { $d } elseif (Test-Path ($u+'\firefly-upscaler')) { $u } else { try { $i=[IO.DriveInfo]::new('D'); if (-not ($i.IsReady -and $i.DriveType -eq 'Fixed')) { throw 'no D' }; $null=New-Item -ItemType Directory $d -Force -ErrorAction Stop; $t=$d+'\.write-test'; Set-Content $t 'x' -ErrorAction Stop; Remove-Item $t; $d } catch { $u } }"`) do set "HOME_DIR=%%p"
-set "PAGE=https://vinayvarghese-livspace.github.io/3d-playground/?setup=1"
+for /f "usebackq delims=" %%p in (`powershell -NoProfile -Command "$d='D:\3d-playground'; $u=Join-Path $env:USERPROFILE '3d-playground'; if (Test-Path ($d+'\firefly-upscaler\server.js')) { $d } elseif (Test-Path ($u+'\firefly-upscaler\server.js')) { $u } else { try { $i=[IO.DriveInfo]::new('D'); if (-not ($i.IsReady -and $i.DriveType -eq 'Fixed')) { throw 'no D' }; $null=New-Item -ItemType Directory $d -Force -ErrorAction Stop; $t=$d+'\.write-test'; Set-Content $t 'x' -ErrorAction Stop; Remove-Item $t; $d } catch { $u } }"`) do set "HOME_DIR=%%p"
+set "PAGE=https://vinayvarghese-livspace.github.io/3d-playground/preview.html?setup=1"
 
 if not "%~1"=="copied" (
   echo.
   echo  ==============================================
-  echo    3D Playground - AI upscale setup
+  echo    3D Playground - AI upscale / Answerly setup
   echo  ==============================================
   echo.
 )
 
-rem Always run from the user folder, so the Adobe sign-in and the page's Start button keep one fixed place.
+rem Always run from the install folder, so Start / Repair / Adobe sign-in share one fixed place.
 if /I not "%~dp0"=="%HOME_DIR%\" (
   echo  [1/5] Copying files to %HOME_DIR% ...
   robocopy "%~dp0." "%HOME_DIR%" /E /XD node_modules chrome-profile jobs logs /NFL /NDL /NJH /NJS /NP >nul
@@ -31,6 +31,15 @@ if /I not "%~dp0"=="%HOME_DIR%\" (
 
 cd /d "%HOME_DIR%\firefly-upscaler"
 echo  [1/5] Files are in %HOME_DIR%
+if not exist "answerly.js" (
+  echo.
+  echo  [FAIL] answerly.js missing after copy. The zip is too old or incomplete.
+  echo  Download again:
+  echo  https://vinayvarghese-livspace.github.io/3d-playground/dist/3d-playground.zip
+  pause
+  exit /b 1
+)
+echo        Answerly bridge files OK
 echo.
 
 echo  [2/5] Checking Node.js ...
@@ -65,10 +74,10 @@ call register-launcher.bat >nul
 echo        OK
 echo.
 
-echo  [4/5] Adobe sign-in
+echo  [4/5] Adobe sign-in ^(needed for AI upscale; Answerly token is separate in the web page^)
 call start-chrome.bat login >nul
 echo        A Chrome window opened on Adobe Firefly.
-echo        - Sign in with your Adobe account (already signed in? nothing to do).
+echo        - Sign in with your Adobe account ^(already signed in? nothing to do^).
 echo        - Using your company Google account? Approve Google's 2-Step
 echo          Verification on your phone or enter the code in that window.
 echo        - Then CLOSE that Chrome window.
@@ -77,27 +86,30 @@ echo        Press any key here once that Chrome window is closed ...
 pause >nul
 echo.
 
-echo  [5/5] Starting the upscaler ...
-echo        A Firefly Chrome window opens again. This one is used by the
-echo        upscaler: leave it open (you can minimise it). Don't use it.
-rem Free 5175 if an older bridge (no Answerly) is still holding the port.
-powershell -NoProfile -Command "try { $a=Invoke-RestMethod http://127.0.0.1:5175/answerly/health -TimeoutSec 2; if ($a.ok) { exit 0 } } catch {}; $conns=Get-NetTCPConnection -LocalPort 5175 -State Listen -ErrorAction SilentlyContinue; foreach($c in $conns){ if($c.OwningProcess){ Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue } }; Start-Sleep 1" >nul 2>&1
-start "3D Playground upscaler" /min "%HOME_DIR%\firefly-upscaler\start-service.bat"
-echo        Waiting for the upscaler to connect (up to 90 seconds) ...
-powershell -NoProfile -Command "$end = (Get-Date).AddSeconds(90); while ((Get-Date) -lt $end) { try { if ((Invoke-RestMethod http://127.0.0.1:5175/health -TimeoutSec 2).chrome) { exit 0 } } catch {}; Start-Sleep 2 }; exit 1"
+echo  [5/5] Starting the upscaler / Answerly bridge ...
+echo        Freeing port 5175 so an old install cannot block this one ...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%HOME_DIR%\firefly-upscaler\free-port-5175.ps1" >nul 2>&1
+echo        Starting bridge ^(visible window — leave it open^)...
+start "3D Playground upscaler" cmd /k "cd /d ""%HOME_DIR%\firefly-upscaler"" && title 3D Playground upscaler && node server.js"
+echo        Waiting for the bridge on 5175 ^(up to 90 seconds^)...
+powershell -NoProfile -Command "$end=(Get-Date).AddSeconds(90); $chrome=$false; while((Get-Date) -lt $end){ try { $h=Invoke-RestMethod http://127.0.0.1:5175/health -TimeoutSec 2; try { $a=Invoke-RestMethod http://127.0.0.1:5175/answerly/health -TimeoutSec 2 } catch { $a=$null }; if($h.ok -and $a -and $a.ok -and $a.service -eq 'answerly-bridge'){ $chrome=[bool]$h.chrome; if($chrome){ Write-Host '        Connected: bridge + Firefly Chrome'; exit 0 }; Write-Host '        Bridge online (Answerly OK). Firefly Chrome not ready yet — AI upscale may need Start later.'; exit 0 } } catch {}; Start-Sleep 2 }; exit 1"
 if errorlevel 1 goto :not_connected
 
-echo        Connected.
 echo.
-echo        Opening 3D Playground ...
+echo        Opening Preview ...
 call :open_page
 echo.
 echo  ==============================================
 echo    Setup complete.
-echo    3D Playground is now open in Chrome and shows
-echo    "Upscaler connected" in green.
-echo    If Chrome asks to access your local network,
-echo    click Allow.
+echo    Install folder: %HOME_DIR%
+echo    Bridge: http://127.0.0.1:5175/answerly/health
+echo.
+echo    Next: in Preview, paste your Answerly token
+echo    ^(Settings or Product Replacement bar^).
+echo    If Chrome asks to access your local network, Allow.
+echo.
+echo    Later problems? Double-click "Repair Upscaler.bat"
+echo    in %HOME_DIR%
 echo  ==============================================
 echo.
 echo  This window closes by itself in 30 seconds.
@@ -106,14 +118,13 @@ exit /b 0
 
 :not_connected
 echo.
-echo  The upscaler has not connected yet. Opening 3D Playground anyway ...
+echo  The bridge did not come online on port 5175.
+echo  Look at the "3D Playground upscaler" window for the error text.
+echo.
+echo  Quick fix: double-click "Repair Upscaler.bat" in:
+echo    %HOME_DIR%
+echo.
 call :open_page
-echo.
-echo  On the 3D Playground page, wait a minute. If it still shows
-echo  "Upscaler offline", click Start next to it. If that doesn't help,
-echo  click the "3D Playground upscaler" window on the taskbar and read
-echo  its message, or run Setup.bat again.
-echo.
 pause
 exit /b 1
 

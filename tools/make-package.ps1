@@ -7,11 +7,11 @@ $zip = Join-Path $root 'dist\3d-playground.zip'
 Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path "$stage\firefly-upscaler" -Force | Out-Null
 
-'index.html', 'app.js', 'styles.css', 'data.js', 'README.md', 'Setup.bat', 'Start 3D Playground.bat', 'Sign in to Adobe.bat' |
+'index.html', 'app.js', 'styles.css', 'data.js', 'README.md', 'Setup.bat', 'Repair Upscaler.bat', 'Start 3D Playground.bat', 'Sign in to Adobe.bat' |
   ForEach-Object { Copy-Item (Join-Path $root $_) $stage }
 
 'config.js', 'firefly.js', 'server.js', 'answerly.js', 'upscale.js', 'check-login.js', 'package.json', 'package-lock.json',
-  'start-chrome.bat', 'start-service.bat', 'register-launcher.bat', '.gitignore' |
+  'start-chrome.bat', 'start-service.bat', 'register-launcher.bat', 'free-port-5175.ps1', '.gitignore' |
   ForEach-Object { Copy-Item (Join-Path $root "firefly-upscaler\$_") "$stage\firefly-upscaler" }
 
 # Batch files misbehave with LF line endings.
