@@ -80,6 +80,8 @@ echo.
 echo  [5/5] Starting the upscaler ...
 echo        A Firefly Chrome window opens again. This one is used by the
 echo        upscaler: leave it open (you can minimise it). Don't use it.
+rem Free 5175 if an older bridge (no Answerly) is still holding the port.
+powershell -NoProfile -Command "try { $a=Invoke-RestMethod http://127.0.0.1:5175/answerly/health -TimeoutSec 2; if ($a.ok) { exit 0 } } catch {}; $conns=Get-NetTCPConnection -LocalPort 5175 -State Listen -ErrorAction SilentlyContinue; foreach($c in $conns){ if($c.OwningProcess){ Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue } }; Start-Sleep 1" >nul 2>&1
 start "3D Playground upscaler" /min "%HOME_DIR%\firefly-upscaler\start-service.bat"
 echo        Waiting for the upscaler to connect (up to 90 seconds) ...
 powershell -NoProfile -Command "$end = (Get-Date).AddSeconds(90); while ((Get-Date) -lt $end) { try { if ((Invoke-RestMethod http://127.0.0.1:5175/health -TimeoutSec 2).chrome) { exit 0 } } catch {}; Start-Sleep 2 }; exit 1"

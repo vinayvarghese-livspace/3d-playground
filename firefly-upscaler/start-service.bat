@@ -29,10 +29,16 @@ if errorlevel 1 (
   timeout /t 5 /nobreak >nul
 )
 
-powershell -NoProfile -Command "try { Invoke-RestMethod http://127.0.0.1:5175/health -TimeoutSec 2 | Out-Null; exit 0 } catch { exit 1 }"
+rem If something is already on 5175, keep it only when Answerly routes exist.
+rem An old upscaler (pre-V1.4) answers /health but returns "Not found" for /answerly/token.
+powershell -NoProfile -Command "try { $h=Invoke-RestMethod http://127.0.0.1:5175/health -TimeoutSec 2; try { $a=Invoke-RestMethod http://127.0.0.1:5175/answerly/health -TimeoutSec 2; if ($a.ok -and $a.service -eq 'answerly-bridge') { exit 0 } else { exit 2 } } catch { exit 2 } } catch { exit 1 }"
 if not errorlevel 1 (
-  echo The upscaler is already running.
+  echo The upscaler is already running (Answerly bridge OK).
   exit /b 0
+)
+if errorlevel 2 (
+  echo An older upscaler is on port 5175 without Answerly — stopping it so this install can start...
+  powershell -NoProfile -Command "$conns=Get-NetTCPConnection -LocalPort 5175 -State Listen -ErrorAction SilentlyContinue; foreach($c in $conns){ if($c.OwningProcess){ Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue } }; Start-Sleep 1"
 )
 
 node server.js
