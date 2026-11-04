@@ -8225,7 +8225,7 @@
     const blocked = offline && perm === 'denied';
     const hasSaved = !!(localStorage.getItem(ANSWERLY_TOKEN_KEY) || (tok && tok.hasToken));
 
-    setAnswerlyActionVisible('answerly-allow-bridge', offline);
+    setAnswerlyActionVisible('answerly-connect-bridge', offline);
     setAnswerlyActionVisible('answerly-open-session', !offline);
     setAnswerlyActionVisible('answerly-save', !offline);
     setAnswerlyActionVisible('answerly-clear', !offline && hasSaved);
@@ -8236,11 +8236,11 @@
     }
     if (blocked) {
       setAnswerlyHint(
-        'Chrome blocked this site earlier. Lock icon → Site settings → Local network / Loopback network → Allow → reload this page, then click Allow local bridge.'
+        'Chrome blocked this site earlier. Lock icon → Site settings → Local network / Loopback network → Allow → reload, then click Connect bridge.'
       );
     } else {
       setAnswerlyHint(
-        'Chrome must allow this site to use the local bridge. Click Allow local bridge, then choose Allow if Chrome asks.'
+        'Connect bridge starts the upscaler (leave that window open) and asks Chrome to Allow local access. Quick check: open http://127.0.0.1:5175/answerly/health in a new tab — if that fails, the upscaler is not running.'
       );
     }
   }
@@ -8254,7 +8254,7 @@
       setAnswerlyStatus(
         (await localNetworkPermission()) === 'denied'
           ? 'Bridge blocked by Chrome'
-          : 'Bridge not reachable',
+          : 'Bridge not connected',
         false
       );
       return;
@@ -8284,7 +8284,7 @@
       : 'Paste the session JSON (or accessToken) here';
     els.answerlyModal.hidden = false;
     // Hide action buttons until status check finishes (avoids a busy first paint).
-    setAnswerlyActionVisible('answerly-allow-bridge', false);
+    setAnswerlyActionVisible('answerly-connect-bridge', false);
     setAnswerlyActionVisible('answerly-open-session', false);
     setAnswerlyActionVisible('answerly-save', false);
     setAnswerlyActionVisible('answerly-clear', false);
@@ -8304,28 +8304,54 @@
   if ($('answerly-cancel')) {
     $('answerly-cancel').addEventListener('click', closeAnswerlyModal);
   }
-  if ($('answerly-allow-bridge')) {
-    $('answerly-allow-bridge').addEventListener('click', async () => {
-      setAnswerlyStatus('Waiting for Chrome… choose Allow if asked');
-      setAnswerlyHint('');
+  if ($('answerly-connect-bridge')) {
+    $('answerly-connect-bridge').addEventListener('click', async () => {
+      setAnswerlyStatus('Connecting…');
+      setAnswerlyHint('If Chrome asks for local/loopback access, click Allow. Leave the upscaler window open.');
+      // 1) Ask Chrome for loopback access (needs a user gesture).
       try {
-        const res = await bridgeFetch('/answerly/health', { signal: AbortSignal.timeout(5000) });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        await refreshAnswerlyStatus();
-        showToast('Local bridge connected', false);
-      } catch (err) {
-        const perm = await localNetworkPermission();
-        setAnswerlyStatus(perm === 'denied' ? 'Bridge blocked by Chrome' : 'Bridge not reachable', false);
-        await syncAnswerlyModalActions({ bridgeOffline: true });
-        if (perm === 'denied') {
-          setAnswerlyHint(
-            'Chrome blocked this site earlier. Lock icon → Site settings → Local network / Loopback network → Allow → reload this page, then try again.'
-          );
-        } else {
-          setAnswerlyHint(
-            'Keep the upscaler window open, then try Allow local bridge again. If Chrome asked before and you chose Block, follow the steps above.'
-          );
+        const res = await bridgeFetch('/answerly/health', { signal: AbortSignal.timeout(4000) });
+        if (res.ok) {
+          await refreshAnswerlyStatus();
+          showToast('Bridge connected', false);
+          return;
         }
+      } catch (_) { /* start local process next */ }
+
+      // 2) Start / restart local bridge via registered protocol.
+      setAnswerlyStatus('Starting upscaler…');
+      try { location.href = 'playground3d://start'; } catch (_) { /* ignore */ }
+
+      let connected = false;
+      for (let i = 0; i < 20; i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        try {
+          const res = await bridgeFetch('/answerly/health', { signal: AbortSignal.timeout(3000) });
+          if (res.ok) {
+            connected = true;
+            break;
+          }
+        } catch (_) { /* keep waiting */ }
+        setAnswerlyStatus('Waiting for upscaler… ' + (i + 1) + '/20');
+      }
+
+      if (connected) {
+        await refreshAnswerlyStatus();
+        showToast('Bridge connected', false);
+        return;
+      }
+
+      const perm = await localNetworkPermission();
+      setAnswerlyStatus(perm === 'denied' ? 'Bridge blocked by Chrome' : 'Bridge not connected', false);
+      await syncAnswerlyModalActions({ bridgeOffline: true });
+      if (perm === 'denied') {
+        setAnswerlyHint(
+          'Chrome blocked this site earlier. Lock icon → Site settings → Local network / Loopback network → Allow → reload, then click Connect bridge.'
+        );
+      } else {
+        setAnswerlyHint(
+          'Still offline. Open http://127.0.0.1:5175/answerly/health in a new tab. If that fails, the upscaler window did not start — run Repair Upscaler.bat in your 3d-playground folder.'
+        );
       }
     });
   }

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="tasks.css?v=100">
+  <link rel="stylesheet" href="tasks.css?v=101">
 </head>
 <body class="view-renamer">
 
@@ -192,7 +192,7 @@
       <p class="wr-answerly-hint" id="answerly-hint" hidden></p>
       <textarea id="answerly-token" class="tp-input wr-answerly-token" rows="6" placeholder='Paste the session JSON (or accessToken) here' spellcheck="false"></textarea>
       <div class="tp-modal-actions">
-        <button type="button" class="tp-btn tp-btn-primary" id="answerly-allow-bridge" hidden>Allow local bridge</button>
+        <button type="button" class="tp-btn tp-btn-primary" id="answerly-connect-bridge" hidden>Connect bridge</button>
         <button type="button" class="tp-btn tp-btn-ghost" id="answerly-open-session" hidden>Open session page</button>
         <button type="button" class="tp-btn tp-btn-ghost" id="answerly-clear" hidden>Clear saved token</button>
         <button type="button" class="tp-btn tp-btn-ghost" id="answerly-cancel">Cancel</button>
@@ -268,7 +268,8 @@
             <p>A Firefly Chrome window opens again. This one is used by the upscaler: leave it open (you can minimise it), but don't use it.</p>
             <p>Once the upscaler is connected, the black window opens this page in front, with this guide showing a green <strong>Upscaler connected</strong> status. You're done. The black window closes by itself.</p>
             <p><strong>Chrome local access (important for Answerly + upscale):</strong> if Chrome asks to access devices on your <em>local network</em> or <em>loopback</em>, click <strong>Allow</strong>. Do this once per browser.</p>
-            <p class="tip">Already clicked <strong>Block</strong>? Click the lock icon left of the address bar → Site settings → set <strong>Local network</strong> and <strong>Loopback network</strong> to <strong>Allow</strong> → reload this page. Then open Settings → Answerly token; if the bridge is still blocked, use <strong>Allow local bridge</strong>.</p>
+            <p class="tip">Already clicked <strong>Block</strong>? Lock icon → Site settings → <strong>Local network</strong> / <strong>Loopback network</strong> → <strong>Allow</strong> → reload. Then Settings → Answerly token → <strong>Connect bridge</strong>.</p>
+            <p class="tip">Quick check: open <code>http://127.0.0.1:5175/answerly/health</code> in a new tab. If it fails, the upscaler is not running — use <strong>Connect bridge</strong> or <span class="kbd">Repair Upscaler.bat</span>.</p>
             <p class="tip">Still not green after a minute? Click <strong>Start</strong> at the top of this guide. If Chrome asks <em>"Open 3D Playground upscaler?"</em>, tick <strong>Always allow</strong> and click <strong>Open</strong>.</p>
           </li>
         </ol>
@@ -316,6 +317,6 @@
 
   <script src="data.js"></script>
   <script src="prompts/universal-replace.js"></script>
-  <script src="tasks.js?v=100"></script>
+  <script src="tasks.js?v=101"></script>
 </body>
 </html>
