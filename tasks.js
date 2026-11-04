@@ -3767,6 +3767,46 @@
     return new Blob(parts.concat(central).concat([end]), { type: 'application/zip' });
   }
 
+  // Firefly upscale is optional and separate from Answerly. Returns health when ready.
+  async function ensureFireflyUpscalerForExport() {
+    async function readHealth() {
+      const res = await bridgeFetch('/health', { signal: AbortSignal.timeout(3000) });
+      if (!res.ok) throw new Error('Bridge offline');
+      return res.json();
+    }
+    let health;
+    try {
+      health = await readHealth();
+    } catch (_) {
+      throw new Error(
+        'Local bridge offline. For AI upscale, start the Firefly upscaler (Settings → AI upscale setup). Or turn off AI upscale to export without Firefly.'
+      );
+    }
+    // Answerly-only process cannot run /jobs — start the full Firefly service.
+    if (health.answerlyOnly || health.service === 'answerly-bridge') {
+      showToast('Starting Firefly upscaler for AI upscale…', false);
+      try { location.href = 'playground3d://start'; } catch (_) { /* ignore */ }
+      for (let i = 0; i < 25; i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        try {
+          health = await readHealth();
+          if (health.ok && !health.answerlyOnly && health.service === 'firefly-upscaler') break;
+        } catch (_) { /* keep waiting */ }
+      }
+    }
+    if (!health || health.answerlyOnly || health.service !== 'firefly-upscaler') {
+      throw new Error(
+        'AI upscale needs the Firefly upscaler. Start it from Settings → AI upscale setup, or turn off AI upscale to finish export without Firefly.'
+      );
+    }
+    if (!health.chrome) {
+      throw new Error(
+        'Firefly Chrome is not open. Click Start in AI upscale setup (leave the Firefly window open), or turn off AI upscale to export without Firefly.'
+      );
+    }
+    return health;
+  }
+
   async function upscaleBlobForExport(entry, name, opts) {
     opts = opts || {};
     const blob = entry.blob || entry.file;
@@ -3779,7 +3819,14 @@
       headers: { 'Content-Type': blob.type || 'image/png' },
       body: blob
     });
-    if (!res.ok) throw new Error('Upscale submit failed (' + res.status + ')');
+    if (!res.ok) {
+      let detail = 'Upscale submit failed (' + res.status + ')';
+      try {
+        const errBody = await res.json();
+        if (errBody && errBody.error) detail = errBody.error;
+      } catch (_) { /* ignore */ }
+      throw new Error(detail);
+    }
     const job = await res.json();
     const id = job && job.id;
     if (!id) throw new Error('Upscale service returned no job id');
@@ -4022,10 +4069,19 @@
     const upOn = upscaleOn();
     const typeName = state.workspace.productTypeName || '';
     const variant = state.workspace.productTypeVariant || '';
+    const needsFirefly = upOn && indexes.some((idx) => {
+      const img = state.workspace.exportImages[String(idx)] || state.workspace.exportImages[idx];
+      return exportNeedsUpscale(img);
+    });
     state.workspace.exportBusy = true;
-    state.workspace.exportProgress = { file: '', step: 'Starting…', pct: 0 };
+    state.workspace.exportProgress = {
+      file: '',
+      step: needsFirefly ? 'Checking Firefly upscaler…' : 'Starting…',
+      pct: 0
+    };
     renderWorkspace();
     try {
+      if (needsFirefly) await ensureFireflyUpscalerForExport();
       const zipFiles = [];
       const metaBase = {
         Author: state.author || '',
@@ -4164,8 +4220,8 @@
         '</div>' +
       '</div>' +
       '<div class="shot-subhead">' +
-        '<span>JPG or PNG. Drop onto a row or anywhere below. Firefly upscales when under ' +
-          EXPORT_OUT_SIZE + ' × ' + EXPORT_OUT_SIZE + ' px.</span>' +
+        '<span>JPG or PNG. AI upscale (Firefly) is optional — only used when the toggle is on and an image is under ' +
+          EXPORT_OUT_SIZE + ' px. Turn it off to export without Firefly.</span>' +
         '<span class="subhead-right">Target output: ' + EXPORT_OUT_SIZE + ' × ' + EXPORT_OUT_SIZE + ' px PNG</span>' +
       '</div>' +
       '<div class="drop-banner wr-approved-drop-banner" data-ws-drop="approved-upscale">' +
