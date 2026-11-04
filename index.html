@@ -243,7 +243,8 @@
             <p>A Firefly Chrome window opens again. This one is used by the upscaler: leave it open (you can minimise it), but don't use it.</p>
             <p>Once the upscaler is connected, the black window opens this page in front, with this guide showing a green <strong>Upscaler connected</strong> status. You're done. The black window closes by itself.</p>
             <p><strong>Chrome local access (important for Answerly + upscale):</strong> if Chrome asks to access devices on your <em>local network</em> or <em>loopback</em>, click <strong>Allow</strong>. Do this once per browser.</p>
-            <p class="tip">Already clicked <strong>Block</strong>? Click the lock icon left of the address bar → Site settings → set <strong>Local network</strong> and <strong>Loopback network</strong> to <strong>Allow</strong> → reload this page. Then open Settings → Answerly token; if the bridge is still blocked, use <strong>Allow local bridge</strong>.</p>
+            <p class="tip">Already clicked <strong>Block</strong>? Lock icon → Site settings → <strong>Local network</strong> / <strong>Loopback network</strong> → <strong>Allow</strong> → reload. Then Settings → Answerly token → <strong>Connect bridge</strong>.</p>
+            <p class="tip">Quick check: open <code>http://127.0.0.1:5175/answerly/health</code> in a new tab. If it fails, the upscaler is not running — use <strong>Connect bridge</strong> or <span class="kbd">Repair Upscaler.bat</span>.</p>
             <p class="tip">Still not green after a minute? Click <strong>Start</strong> at the top of this guide. If Chrome asks <em>"Open 3D Playground upscaler?"</em>, tick <strong>Always allow</strong> and click <strong>Open</strong>.</p>
           </li>
         </ol>
