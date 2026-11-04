@@ -1617,9 +1617,7 @@
   function friendlyBridgeError(err) {
     const msg = String((err && err.message) || err || '');
     if (/failed to fetch|networkerror|load failed|network request failed|Forbidden/i.test(msg)) {
-      return 'Cannot reach the local bridge at ' + UPSCALE_URL +
-        '. (1) Leave the “3D Playground upscaler” window open. (2) Click “Allow local bridge” below and choose Allow when Chrome asks. ' +
-        '(3) If you clicked Block earlier: site lock icon → Site settings → Local network / Loopback network → Allow, then reload.';
+      return 'Cannot reach the local bridge. Keep the upscaler window open, then use Allow local bridge (or fix Chrome Block in Site settings).';
     }
     return msg || 'Request failed';
   }
@@ -8198,6 +8196,7 @@
   els.answerlyForm = $('answerly-form');
   els.answerlyToken = $('answerly-token');
   els.answerlyStatus = $('answerly-status');
+  els.answerlyHint = $('answerly-hint');
   els.menuAnswerly = $('menu-answerly');
 
   function setAnswerlyStatus(text, ok) {
@@ -8207,24 +8206,70 @@
     els.answerlyStatus.classList.toggle('is-bad', ok === false);
   }
 
+  function setAnswerlyHint(text) {
+    if (!els.answerlyHint) return;
+    const msg = String(text || '').trim();
+    els.answerlyHint.hidden = !msg;
+    els.answerlyHint.textContent = msg;
+  }
+
+  function setAnswerlyActionVisible(id, visible) {
+    const btn = $(id);
+    if (btn) btn.hidden = !visible;
+  }
+
+  // Only show the actions that matter for the current bridge/token state.
+  async function syncAnswerlyModalActions(tok) {
+    const offline = !!(tok && tok.bridgeOffline);
+    const perm = offline ? await localNetworkPermission() : 'unknown';
+    const blocked = offline && perm === 'denied';
+    const hasSaved = !!(localStorage.getItem(ANSWERLY_TOKEN_KEY) || (tok && tok.hasToken));
+
+    setAnswerlyActionVisible('answerly-allow-bridge', offline);
+    setAnswerlyActionVisible('answerly-open-session', !offline);
+    setAnswerlyActionVisible('answerly-save', !offline);
+    setAnswerlyActionVisible('answerly-clear', !offline && hasSaved);
+
+    if (!offline) {
+      setAnswerlyHint('');
+      return;
+    }
+    if (blocked) {
+      setAnswerlyHint(
+        'Chrome blocked this site earlier. Lock icon → Site settings → Local network / Loopback network → Allow → reload this page, then click Allow local bridge.'
+      );
+    } else {
+      setAnswerlyHint(
+        'Chrome must allow this site to use the local bridge. Click Allow local bridge, then choose Allow if Chrome asks.'
+      );
+    }
+  }
+
   async function refreshAnswerlyStatus() {
     setAnswerlyStatus('Checking bridge…');
+    setAnswerlyHint('');
     const tok = await refreshAnswerlyTokenState();
+    await syncAnswerlyModalActions(tok);
     if (tok && tok.bridgeOffline) {
-      setAnswerlyStatus(tok.error || ('Bridge offline at ' + UPSCALE_URL), false);
+      setAnswerlyStatus(
+        (await localNetworkPermission()) === 'denied'
+          ? 'Bridge blocked by Chrome'
+          : 'Bridge not reachable',
+        false
+      );
       return;
     }
     if (tok && tok.hasToken && !tok.expired) {
       const personal = String(tok.workspaceKind || '').toLowerCase() === 'personal';
       setAnswerlyStatus(
-        'Bridge online · ' + formatTokenExpiry(tok) +
-          (personal ? ' — still on Personal; re-save token to switch to Marketing Visualization' : ''),
+        'Connected · ' + formatTokenExpiry(tok) +
+          (personal ? ' — still on Personal; save again to use Marketing Visualization' : ''),
         !personal
       );
     } else if (tok && tok.hasToken && tok.expired) {
-      setAnswerlyStatus('Bridge online · ' + formatTokenExpiry(tok) + ' — paste a fresh session JSON', false);
+      setAnswerlyStatus('Connected · token expired — paste a fresh session', false);
     } else {
-      setAnswerlyStatus('Bridge online · workspace: Marketing Visualization · no token saved yet', false);
+      setAnswerlyStatus('Connected · paste a session token to continue', false);
     }
     if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
   }
@@ -8232,13 +8277,18 @@
   function openAnswerlyModal() {
     if (!els.answerlyModal) return;
     closeSettings();
-    // Don't prefill a raw JWT into the box if user will paste session JSON; show placeholder hint only.
     const saved = localStorage.getItem(ANSWERLY_TOKEN_KEY) || '';
     els.answerlyToken.value = saved && saved.charAt(0) === '{' ? saved : '';
     els.answerlyToken.placeholder = saved && saved.charAt(0) !== '{'
-      ? 'Token on file (hidden). Paste a fresh session JSON or accessToken to replace it.'
-      : 'Paste full session JSON or accessToken';
+      ? 'Token on file (hidden). Paste a fresh session JSON to replace it.'
+      : 'Paste the session JSON (or accessToken) here';
     els.answerlyModal.hidden = false;
+    // Hide action buttons until status check finishes (avoids a busy first paint).
+    setAnswerlyActionVisible('answerly-allow-bridge', false);
+    setAnswerlyActionVisible('answerly-open-session', false);
+    setAnswerlyActionVisible('answerly-save', false);
+    setAnswerlyActionVisible('answerly-clear', false);
+    setAnswerlyHint('');
     refreshAnswerlyStatus();
     setTimeout(() => els.answerlyToken.focus(), 30);
   }
@@ -8256,22 +8306,25 @@
   }
   if ($('answerly-allow-bridge')) {
     $('answerly-allow-bridge').addEventListener('click', async () => {
-      // Must run from a click so Chrome can show the Local Network Access prompt.
-      setAnswerlyStatus('Requesting Chrome local/loopback access… click Allow if prompted.');
+      setAnswerlyStatus('Waiting for Chrome… choose Allow if asked');
+      setAnswerlyHint('');
       try {
         const res = await bridgeFetch('/answerly/health', { signal: AbortSignal.timeout(5000) });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         await refreshAnswerlyStatus();
-        showToast('Local bridge allowed · Answerly ready to connect', false);
+        showToast('Local bridge connected', false);
       } catch (err) {
         const perm = await localNetworkPermission();
+        setAnswerlyStatus(perm === 'denied' ? 'Bridge blocked by Chrome' : 'Bridge not reachable', false);
+        await syncAnswerlyModalActions({ bridgeOffline: true });
         if (perm === 'denied') {
-          setAnswerlyStatus(
-            'Chrome blocked local access. Site lock icon → Site settings → Local network / Loopback network → Allow, then reload and try again.',
-            false
+          setAnswerlyHint(
+            'Chrome blocked this site earlier. Lock icon → Site settings → Local network / Loopback network → Allow → reload this page, then try again.'
           );
         } else {
-          setAnswerlyStatus(friendlyBridgeError(err), false);
+          setAnswerlyHint(
+            'Keep the upscaler window open, then try Allow local bridge again. If Chrome asked before and you chose Block, follow the steps above.'
+          );
         }
       }
     });
@@ -8288,7 +8341,8 @@
       try {
         await answerlyFetch('/answerly/token', { method: 'DELETE' });
         await refreshAnswerlyTokenState();
-        setAnswerlyStatus('Token cleared on bridge', true);
+        setAnswerlyStatus('Saved token cleared', true);
+        await syncAnswerlyModalActions(state.answerlyToken);
         if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
       } catch (err) {
         setAnswerlyStatus(friendlyBridgeError(err), false);

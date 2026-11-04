@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="tasks.css?v=99">
+  <link rel="stylesheet" href="tasks.css?v=100">
 </head>
 <body class="view-renamer">
 
@@ -242,14 +242,15 @@
             <p>The black window now starts the upscaler by itself. <strong>You don't need to click Start.</strong></p>
             <p>A Firefly Chrome window opens again. This one is used by the upscaler: leave it open (you can minimise it), but don't use it.</p>
             <p>Once the upscaler is connected, the black window opens this page in front, with this guide showing a green <strong>Upscaler connected</strong> status. You're done. The black window closes by itself.</p>
-            <p>If Chrome asks <em>"?wants to access devices on your local network"</em>, click <strong>Allow</strong>.</p>
+            <p><strong>Chrome local access (important for Answerly + upscale):</strong> if Chrome asks to access devices on your <em>local network</em> or <em>loopback</em>, click <strong>Allow</strong>. Do this once per browser.</p>
+            <p class="tip">Already clicked <strong>Block</strong>? Click the lock icon left of the address bar → Site settings → set <strong>Local network</strong> and <strong>Loopback network</strong> to <strong>Allow</strong> → reload this page. Then open Settings → Answerly token; if the bridge is still blocked, use <strong>Allow local bridge</strong>.</p>
             <p class="tip">Still not green after a minute? Click <strong>Start</strong> at the top of this guide. If Chrome asks <em>"Open 3D Playground upscaler?"</em>, tick <strong>Always allow</strong> and click <strong>Open</strong>.</p>
           </li>
         </ol>
 
         <div class="setup-daily">
           <strong>Every day after that</strong>
-          <p>Open this page. If it shows <em>Upscaler offline</em>, click <strong>Start</strong> next to it and wait about 15 seconds. A Firefly Chrome window and a small <em>3D Playground upscaler</em> window open: minimise them, but don't close them or use them while images are processing.</p>
+          <p>Open this page. If it shows <em>Upscaler offline</em>, click <strong>Start</strong> next to it and wait about 15 seconds. Keep the Firefly Chrome window and the <em>3D Playground upscaler</em> window open (you can minimise them). For Product Replacement, open Settings → Answerly token when you need a fresh token.</p>
         </div>
 
         <details class="setup-help">
@@ -264,8 +265,8 @@
             <dd>Run <span class="kbd">Setup.bat</span> again from the 3d-playground folder, or repeat steps 1 to 4.</dd>
             <dt>It stays on "starting?" and then goes offline</dt>
             <dd>Check that you clicked <strong>Allow</strong> if Chrome asked about your local network (see the next item). Then click the <em>3D Playground upscaler</em> window on the taskbar and read the message. Running <span class="kbd">Setup.bat</span> again fixes most problems.</dd>
-            <dt>"Upscaler blocked by Chrome"</dt>
-            <dd>Click the icon to the left of the web address, set <strong>Local network access</strong> to <strong>Allow</strong>, then reload the page.</dd>
+            <dt>"Upscaler blocked by Chrome" / cannot reach bridge</dt>
+            <dd>You (or Chrome) blocked local access for this site. Lock icon → Site settings → <strong>Local network</strong> / <strong>Loopback network</strong> → <strong>Allow</strong> → reload. Then Settings → Answerly token → <strong>Allow local bridge</strong> if shown.</dd>
             <dt>"Not signed in to Firefly"</dt>
             <dd>In the 3d-playground folder, double-click <span class="kbd">Sign in to Adobe.bat</span>, sign in, then close that Chrome window.</dd>
             <dt>"Too many requests" or an upscale fails after several images</dt>
@@ -290,6 +291,6 @@
 
   <script src="data.js"></script>
   <script src="prompts/universal-replace.js"></script>
-  <script src="tasks.js?v=99"></script>
+  <script src="tasks.js?v=100"></script>
 </body>
 </html>
