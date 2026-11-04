@@ -1602,11 +1602,24 @@
 
   /* ---------- Answerly bridge (local firefly-upscaler :5175) ---------- */
 
+  // Chrome Local Network Access: public HTTPS → http://127.0.0.1 needs loopback permission.
+  // targetAddressSpace triggers the Allow prompt and exempts mixed-content blocking.
+  function bridgeFetchInit(opts) {
+    const init = Object.assign({ cache: 'no-store' }, opts || {});
+    init.targetAddressSpace = 'loopback';
+    return init;
+  }
+
+  function bridgeFetch(path, opts) {
+    return fetch(UPSCALE_URL + path, bridgeFetchInit(opts));
+  }
+
   function friendlyBridgeError(err) {
     const msg = String((err && err.message) || err || '');
-    if (/failed to fetch|networkerror|load failed|network request failed/i.test(msg)) {
+    if (/failed to fetch|networkerror|load failed|network request failed|Forbidden/i.test(msg)) {
       return 'Cannot reach the local bridge at ' + UPSCALE_URL +
-        '. Start firefly-upscaler (node server.js), then try again. If Chrome blocked local network access, allow it for this site.';
+        '. (1) Leave the “3D Playground upscaler” window open. (2) Click “Allow local bridge” below and choose Allow when Chrome asks. ' +
+        '(3) If you clicked Block earlier: site lock icon → Site settings → Local network / Loopback network → Allow, then reload.';
     }
     return msg || 'Request failed';
   }
@@ -1706,7 +1719,7 @@
   async function answerlyFetch(path, opts) {
     let res;
     try {
-      res = await fetch(UPSCALE_URL + path, Object.assign({ cache: 'no-store' }, opts || {}));
+      res = await bridgeFetch(path, opts);
     } catch (err) {
       throw new Error(friendlyBridgeError(err));
     }
@@ -2740,7 +2753,7 @@
 
       if (isShotCancelRequested(shotIndex)) throw makeCancelledError();
 
-      const resultRes = await fetch(UPSCALE_URL + '/answerly/jobs/' + encodeURIComponent(job.id) + '/result');
+      const resultRes = await bridgeFetch('/answerly/jobs/' + encodeURIComponent(job.id) + '/result');
       if (!resultRes.ok) throw new Error('Could not download Answerly result');
       if (isShotCancelRequested(shotIndex)) throw makeCancelledError();
       const outBlob = await resultRes.blob();
@@ -3763,11 +3776,10 @@
     entry.upscale = { state: 'queued', progress: 0, elapsed: 0, stage: 'queued' };
     if (typeof opts.onProgress === 'function') opts.onProgress(entry.upscale);
     else if (opts.shotIndex != null) updateExportUpscaleCell(opts.shotIndex);
-    const res = await fetch(UPSCALE_URL + '/jobs?scale=2x&name=' + encodeURIComponent(name || 'image.png'), {
+    const res = await bridgeFetch('/jobs?scale=2x&name=' + encodeURIComponent(name || 'image.png'), {
       method: 'POST',
       headers: { 'Content-Type': blob.type || 'image/png' },
-      body: blob,
-      cache: 'no-store'
+      body: blob
     });
     if (!res.ok) throw new Error('Upscale submit failed (' + res.status + ')');
     const job = await res.json();
@@ -3775,7 +3787,7 @@
     if (!id) throw new Error('Upscale service returned no job id');
     for (;;) {
       await new Promise((r) => setTimeout(r, 1000));
-      const st = await fetch(UPSCALE_URL + '/jobs/' + encodeURIComponent(id), { cache: 'no-store' });
+      const st = await bridgeFetch('/jobs/' + encodeURIComponent(id));
       if (!st.ok) throw new Error('Lost connection to upscale service');
       const info = await st.json();
       entry.upscale = {
@@ -3788,7 +3800,7 @@
       else if (opts.shotIndex != null) updateExportUpscaleCell(opts.shotIndex);
       else if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
       if (info.status === 'done') {
-        const out = await fetch(UPSCALE_URL + '/jobs/' + encodeURIComponent(id) + '/result', { cache: 'no-store' });
+        const out = await bridgeFetch('/jobs/' + encodeURIComponent(id) + '/result');
         entry.upscale = { state: 'done', ms: info.elapsedMs };
         if (opts.shotIndex != null) updateExportUpscaleCell(opts.shotIndex);
         return await out.blob();
@@ -7113,7 +7125,7 @@
     if (!upscaleOn() && (!els.setupModal || els.setupModal.hidden)) return;
     let next;
     try {
-      const res = await fetch(UPSCALE_URL + '/health', { cache: 'no-store', signal: AbortSignal.timeout(3000) });
+      const res = await bridgeFetch('/health', { signal: AbortSignal.timeout(3000) });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const health = await res.json();
       next = health.chrome ? 'online' : 'nochrome';
@@ -8241,6 +8253,28 @@
   }
   if ($('answerly-cancel')) {
     $('answerly-cancel').addEventListener('click', closeAnswerlyModal);
+  }
+  if ($('answerly-allow-bridge')) {
+    $('answerly-allow-bridge').addEventListener('click', async () => {
+      // Must run from a click so Chrome can show the Local Network Access prompt.
+      setAnswerlyStatus('Requesting Chrome local/loopback access… click Allow if prompted.');
+      try {
+        const res = await bridgeFetch('/answerly/health', { signal: AbortSignal.timeout(5000) });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        await refreshAnswerlyStatus();
+        showToast('Local bridge allowed · Answerly ready to connect', false);
+      } catch (err) {
+        const perm = await localNetworkPermission();
+        if (perm === 'denied') {
+          setAnswerlyStatus(
+            'Chrome blocked local access. Site lock icon → Site settings → Local network / Loopback network → Allow, then reload and try again.',
+            false
+          );
+        } else {
+          setAnswerlyStatus(friendlyBridgeError(err), false);
+        }
+      }
+    });
   }
   if ($('answerly-open-session')) {
     $('answerly-open-session').addEventListener('click', () => {

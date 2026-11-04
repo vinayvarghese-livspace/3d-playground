@@ -486,13 +486,13 @@ async function handle(req, res) {
     if (!originAllowed(origin)) return sendJson(res, 403, { error: `Origin ${origin} is not allowed` });
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
+    // Chrome Local Network Access / Private Network Access preflight + response.
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
   }
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    if (req.headers['access-control-request-private-network']) {
-      res.setHeader('Access-Control-Allow-Private-Network', 'true');
-    }
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
     res.setHeader('Access-Control-Max-Age', '600');
     res.writeHead(204);
     return res.end();

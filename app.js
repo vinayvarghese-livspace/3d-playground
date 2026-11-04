@@ -682,7 +682,9 @@
   });
 
   async function serviceFetch(path, options) {
-    const res = await fetch(UPSCALE_URL + path, Object.assign({ cache: 'no-store' }, options));
+    const init = Object.assign({ cache: 'no-store' }, options || {});
+    init.targetAddressSpace = 'loopback';
+    const res = await fetch(UPSCALE_URL + path, init);
     if (!res.ok) {
       let message = `HTTP ${res.status}`;
       try { message = (await res.json()).error || message; } catch (_) { /* not JSON */ }
