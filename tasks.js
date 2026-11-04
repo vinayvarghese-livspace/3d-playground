@@ -7182,9 +7182,17 @@
       const res = await bridgeFetch('/health', { signal: AbortSignal.timeout(3000) });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const health = await res.json();
-      next = health.chrome ? 'online' : 'nochrome';
       if (health.folder) state.upscaleFolder = health.folder;
+      // Answerly-only bridge is not the Firefly upscaler — show offline so Start can upgrade it.
+      if (health.answerlyOnly || health.service === 'answerly-bridge') {
+        state.answerlyOnlyBridge = true;
+        next = 'offline';
+      } else {
+        state.answerlyOnlyBridge = false;
+        next = health.chrome ? 'online' : 'nochrome';
+      }
     } catch (_) {
+      state.answerlyOnlyBridge = false;
       next = (await localNetworkPermission()) === 'denied' ? 'blocked' : 'offline';
     }
     if (state.service === 'starting' && (next === 'offline' || next === 'nochrome')) {
@@ -7232,9 +7240,11 @@
         starting: 'Starting the upscaler… this can take up to a minute. If Chrome asks to access devices on your local network, click Allow.',
         online: 'All set. AI upscale is ready to use on this PC.',
         nochrome: 'The upscaler is running, but the Firefly Chrome window is closed. Click Start.',
-        offline: state.startFailed
-          ? 'The upscaler did not respond. Click the "3D Playground upscaler" window on the taskbar to read its message, then click Start again. See also Something not working below.'
-          : 'Not running on this PC. New PC? Follow the steps below. Already set up? Click Start.',
+        offline: state.answerlyOnlyBridge
+          ? 'Answerly bridge is running (Product Replacement OK). Click Start to switch on the Firefly upscaler for AI upscale — leave that window open until status turns green.'
+          : (state.startFailed
+            ? 'The upscaler did not respond. Check the “3D Playground upscaler” window, then click Start again.'
+            : 'Firefly upscaler not running. New PC? Follow the steps below. Already set up? Click Start.'),
         blocked: 'Chrome is blocking the connection. See "Upscaler blocked by Chrome" under Something not working.'
       }[state.service] || '';
     }

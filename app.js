@@ -699,10 +699,15 @@
     try {
       const res = await serviceFetch('/health', { signal: AbortSignal.timeout(3000) });
       const health = await res.json();
-      next = health.chrome ? 'online' : 'nochrome';
       if (health.folder && health.folder !== state.folder) {
         state.folder = health.folder;
         renderServiceStatus();
+      }
+      // Answerly-only bridge ≠ Firefly upscaler — keep Start available to replace it.
+      if (health.answerlyOnly || health.service === 'answerly-bridge') {
+        next = 'offline';
+      } else {
+        next = health.chrome ? 'online' : 'nochrome';
       }
     } catch (err) {
       next = (await localNetworkPermission()) === 'denied' ? 'blocked' : 'offline';
