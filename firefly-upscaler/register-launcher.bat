@@ -1,14 +1,16 @@
 @echo off
-rem Lets the 3D Playground page start the upscaler through playground3d:// links. Current user only, no admin needed.
-set "SVC=%~dp0start-service.bat"
+rem Registers playground3d:// for the page Start / Connect buttons.
+rem   playground3d://answerly → Answerly-only bridge (no Firefly)
+rem   playground3d://start    → full Firefly upscaler (+ Answerly)
+set "DIR=%~dp0"
+set "LAUNCH=%DIR%launch-playground3d.bat"
 set "KEY=HKCU\Software\Classes\playground3d"
 
-reg add "%KEY%" /ve /d "URL:3D Playground upscaler" /f >nul
+reg add "%KEY%" /ve /d "URL:3D Playground" /f >nul
 reg add "%KEY%" /v "URL Protocol" /d "" /f >nul
-rem Visible window so crashes / "bridge started" are obvious (not minimized).
-reg add "%KEY%\shell\open\command" /ve /d "\"%ComSpec%\" /c start \"3D Playground upscaler\" \"%SVC%\"" /f >nul
+reg add "%KEY%\shell\open\command" /ve /d "\"%ComSpec%\" /c \"\"%LAUNCH%\" \"%%1\"\"" /f >nul
 if errorlevel 1 (
-  echo Could not register the page's Start button.
+  echo Could not register playground3d://
   exit /b 1
 )
-echo The page's "Start upscaler" button is ready.
+echo playground3d:// registered (answerly + upscale).

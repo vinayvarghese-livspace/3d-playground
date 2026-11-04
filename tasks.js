@@ -1617,7 +1617,7 @@
   function friendlyBridgeError(err) {
     const msg = String((err && err.message) || err || '');
     if (/failed to fetch|networkerror|load failed|network request failed|Forbidden/i.test(msg)) {
-      return 'Cannot reach the local bridge. Keep the upscaler window open, then use Allow local bridge (or fix Chrome Block in Site settings).';
+      return 'Cannot reach the Answerly bridge. Use Connect bridge (or fix Chrome Block in Site settings). Firefly upscaler is optional.';
     }
     return msg || 'Request failed';
   }
@@ -8240,7 +8240,7 @@
       );
     } else {
       setAnswerlyHint(
-        'Connect bridge starts the upscaler (leave that window open) and asks Chrome to Allow local access. Quick check: open http://127.0.0.1:5175/answerly/health in a new tab — if that fails, the upscaler is not running.'
+        'Connect bridge starts the Answerly bridge only (no Firefly). Leave that window open and Allow if Chrome asks. Check: http://127.0.0.1:5175/answerly/health'
       );
     }
   }
@@ -8307,20 +8307,20 @@
   if ($('answerly-connect-bridge')) {
     $('answerly-connect-bridge').addEventListener('click', async () => {
       setAnswerlyStatus('Connecting…');
-      setAnswerlyHint('If Chrome asks for local/loopback access, click Allow. Leave the upscaler window open.');
+      setAnswerlyHint('If Chrome asks for local/loopback access, click Allow. Leave the Answerly bridge window open.');
       // 1) Ask Chrome for loopback access (needs a user gesture).
       try {
         const res = await bridgeFetch('/answerly/health', { signal: AbortSignal.timeout(4000) });
         if (res.ok) {
           await refreshAnswerlyStatus();
-          showToast('Bridge connected', false);
+          showToast('Answerly bridge connected', false);
           return;
         }
-      } catch (_) { /* start local process next */ }
+      } catch (_) { /* start Answerly-only process next */ }
 
-      // 2) Start / restart local bridge via registered protocol.
-      setAnswerlyStatus('Starting upscaler…');
-      try { location.href = 'playground3d://start'; } catch (_) { /* ignore */ }
+      // 2) Start Answerly-only bridge (does not start Firefly Chrome).
+      setAnswerlyStatus('Starting Answerly bridge…');
+      try { location.href = 'playground3d://answerly'; } catch (_) { /* ignore */ }
 
       let connected = false;
       for (let i = 0; i < 20; i++) {
@@ -8332,12 +8332,12 @@
             break;
           }
         } catch (_) { /* keep waiting */ }
-        setAnswerlyStatus('Waiting for upscaler… ' + (i + 1) + '/20');
+        setAnswerlyStatus('Waiting for Answerly bridge… ' + (i + 1) + '/20');
       }
 
       if (connected) {
         await refreshAnswerlyStatus();
-        showToast('Bridge connected', false);
+        showToast('Answerly bridge connected', false);
         return;
       }
 
@@ -8350,7 +8350,7 @@
         );
       } else {
         setAnswerlyHint(
-          'Still offline. Open http://127.0.0.1:5175/answerly/health in a new tab. If that fails, the upscaler window did not start — run Repair Upscaler.bat in your 3d-playground folder.'
+          'Still offline. Open http://127.0.0.1:5175/answerly/health in a new tab. If that fails, run “Setup Answerly.bat” from the latest zip (no Firefly needed).'
         );
       }
     });
