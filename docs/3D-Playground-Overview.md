@@ -1,9 +1,9 @@
 # 3D Playground: Overview
 
 **Live link (production V1.3):** https://vinayvarghese-livspace.github.io/3d-playground/
-**Preview link (V1.5 Tasks + Product Replacement):** https://vinayvarghese-livspace.github.io/3d-playground/preview.html
+**Preview link (V1.6 Tasks + Product Replacement):** https://vinayvarghese-livspace.github.io/3d-playground/preview.html
 **Source code:** https://github.com/vinayvarghese-livspace/3d-playground
-**Current version:** Preview V1.5 on `preview.html` only. Production root stays V1.3 (not this release).
+**Current version:** Preview V1.6 on `preview.html` only. Production root stays V1.3 (not this release).
 
 ---
 
@@ -11,7 +11,7 @@
 
 ### In one line
 
-3D Playground turns a folder of product photos or renders into a ready-to-upload set of marketplace images: correctly named, correctly sized, in the correct order, in one click. Preview V1.5 also shows which products are ready to work, who should take them, Product Replacement via Answerly, and what each person already has on their plate.
+3D Playground turns a folder of product photos or renders into a ready-to-upload set of marketplace images: correctly named, correctly sized, in the correct order, in one click. Preview V1.6 also shows which products are ready to work, who should take them, Product Replacement via Answerly, and what each person already has on their plate.
 
 ### The problem before
 
@@ -195,7 +195,7 @@ We deliberately avoided servers, app stores and installers.
 
 **Everyone (basic Renamer use):** just the production link, https://vinayvarghese-livspace.github.io/3d-playground/. Nothing else is needed.
 
-**Preview V1.5 testers:** open https://vinayvarghese-livspace.github.io/3d-playground/preview.html (or `#available` / `#my`). Sign in to Google in the same browser so the Apps Script feed can read the sheets. Enter the same author name used in the Renamer. For Product Replacement, run `Setup Answerly.bat` from the latest zip (Firefly/`Setup.bat` only if AI upscale is needed).
+**Preview V1.6 testers:** open https://vinayvarghese-livspace.github.io/3d-playground/preview.html (or `#available` / `#my`). Sign in to Google in the same browser so the Apps Script feed can read the sheets. Enter the same author name used in the Renamer. For Product Replacement, run `Setup Answerly.bat` from the latest zip (Firefly/`Setup.bat` only if AI upscale is needed). Redeploy Prompt DB Apps Script (v11+) for Generation count and retired Image input column cleanup.
 
 **AI upscale (one time per PC, about 10 minutes, no admin rights):**
 
@@ -311,10 +311,22 @@ Adds Product Replacement on the Tasks preview shell.
 - Chrome local/loopback Allow flow; simplified Answerly token steps.
 - Setup zip includes `answerly-server.js`, `Setup Answerly.bat`, and updated Start scripts.
 
+### Preview V1.6: Multi-ref Answerly + Prompt DB + MAIN regen, 5 Nov 2026
+
+**Preview only** (`preview.html`). Production root stays V1.3.
+
+**Changes:**
+
+- Answerly Jobs sends A + up to 4 B as separate reference slots (no packing / no duplicate alias fields).
+- Browse B file picker fix; B tiles show Answerly slot badges (2–5).
+- Generation count written to Prompt DB on Approve; retired Image input column removed on deploy.
+- MAIN Regenerate enabled after Hero Front / 01 D exists; manual MAIN uses hero D as A with chosen B.
+- Drive rail selection / approved-thumb styling clarified; stale blob URL console spam reduced.
+
 ### Summary of changes
 
-| | Beta (V1.0) | Beta V1.1 | Preview V1.3 | Preview V1.5 |
+| | Beta (V1.0) | Beta V1.1 | Preview V1.3 | Preview V1.6 |
 |---|---|---|---|---|
 | Name | Image Renamer | 3D Playground | Tasks preview shell | Tasks + Product Replacement |
-| Where people open it | GitHub Pages | GitHub Pages | Preview = `preview.html` | Preview V1.5 only; production root V1.3 |
+| Where people open it | GitHub Pages | GitHub Pages | Preview = `preview.html` | Preview V1.6 only; production root V1.3 |
 | Install needed | None | Setup.bat for AI upscale | Same + Google for Tasks | `Setup Answerly.bat` for PR; full Setup.bat only if Firefly upscale |

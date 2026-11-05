@@ -30,7 +30,7 @@
   const PROMPT_DB_URL = 'https://script.google.com/a/macros/livspace.com/s/AKfycbwjLPIuL9J_XtHmnEm7jdbnJHlUIEjscACqYiSIB3ISTQNXHDhKHAVyuOc9VuPaobHT/exec';
   const FEED_TIMEOUT_MS = 90000;
   const FEED_VERSION = 32;
-  const APP_VERSION = 'Preview V1.5';
+  const APP_VERSION = 'Preview V1.6';
   // How often to re-read the assign sheet while this tab is visible (other users' picks).
   // ~2 reads/min per open browser — well under the Sheets ~60 reads/min/user cap.
   const ASSIGN_POLL_MS = 30000;
@@ -1482,7 +1482,111 @@
 
   function revokeAssetUrl(asset) {
     if (asset && asset.url && String(asset.url).indexOf('blob:') === 0) {
-      try { URL.revokeObjectURL(asset.url); } catch (e) { /* ignore */ }
+      const dead = asset.url;
+      try { URL.revokeObjectURL(dead); } catch (e) { /* ignore */ }
+      asset.url = '';
+      asset._blobRef = null;
+      // Drop any export-row thumbs that still pointed at the revoked blob (stops console spam).
+      if (state.workspace && state.workspace.exportImages) {
+        Object.keys(state.workspace.exportImages).forEach((k) => {
+          const img = state.workspace.exportImages[k];
+          if (img && img.url === dead) {
+            img.url = '';
+            img._blobRef = null;
+            ensureExportDisplayUrl(img);
+          }
+        });
+      }
+      if (state.workspace && state.workspace.approved) {
+        Object.keys(state.workspace.approved).forEach((k) => {
+          const rec = state.workspace.approved[k];
+          if (rec && rec.url === dead) {
+            rec.url = ensureAssetDisplayUrl(shotAssets(k).output) || '';
+          }
+        });
+      }
+    }
+  }
+
+  /**
+   * Safe display URL for local assets.
+   * Never reuse a bare blob: string — those die after revoke / EAN switch / refresh and
+   * Chrome keeps retrying them (ERR_FILE_NOT_FOUND spam). Always mint from blob/file.
+   */
+  function ensureAssetDisplayUrl(asset) {
+    if (!asset) return '';
+    if (asset.url && /^https?:/i.test(asset.url)) return asset.url;
+    const blob = asset.blob || asset.file;
+    if (blob) {
+      if (asset.url && asset._blobRef === blob) return asset.url;
+      if (asset.url && String(asset.url).indexOf('blob:') === 0) {
+        try { URL.revokeObjectURL(asset.url); } catch (_) { /* ignore */ }
+      }
+      try {
+        asset.url = URL.createObjectURL(blob);
+        asset._blobRef = blob;
+        return asset.url;
+      } catch (_) { /* ignore */ }
+    }
+    // Orphan blob: URL with no backing file — drop it so <img> is not painted dead.
+    if (asset.url && String(asset.url).indexOf('blob:') === 0) asset.url = '';
+    return '';
+  }
+
+  function ensureExportDisplayUrl(img) {
+    if (!img) return '';
+    if (img.url && /^https?:/i.test(img.url)) return img.url;
+    const blob = img.blob || img.file;
+    if (blob) {
+      if (img.url && img._blobRef === blob) return img.url;
+      if (img.url && String(img.url).indexOf('blob:') === 0) {
+        try { URL.revokeObjectURL(img.url); } catch (_) { /* ignore */ }
+      }
+      try {
+        img.url = URL.createObjectURL(blob);
+        img._blobRef = blob;
+        return img.url;
+      } catch (_) { /* ignore */ }
+    }
+    if (img.url && String(img.url).indexOf('blob:') === 0) img.url = '';
+    return '';
+  }
+
+  /** After restoring a draft (memory/IDB), drop dead blob: URLs so prior EANs don't spam the console. */
+  function healWorkspaceBlobUrls() {
+    if (!state.workspace) return;
+    const assets = state.workspace.assets || {};
+    Object.keys(assets).forEach((k) => {
+      const a = assets[k];
+      if (!a) return;
+      (a.inputs || []).forEach((inp) => ensureAssetDisplayUrl(inp));
+      if (a.priorOverride) ensureAssetDisplayUrl(a.priorOverride);
+      if (a.output) ensureAssetDisplayUrl(a.output);
+      if (a._previousOutput) ensureAssetDisplayUrl(a._previousOutput);
+    });
+    if (state.workspace.exportImages) {
+      Object.keys(state.workspace.exportImages).forEach((k) => {
+        const img = state.workspace.exportImages[k];
+        if (!img) return;
+        // Re-link export thumb to live D output blob when possible.
+        const out = shotAssets(k).output;
+        if (out && (out.blob || out.file)) {
+          img.blob = out.blob || out.file;
+          img.file = out.file || img.file || null;
+        }
+        ensureExportDisplayUrl(img);
+      });
+    }
+    if (state.workspace.approved) {
+      Object.keys(state.workspace.approved).forEach((k) => {
+        const rec = state.workspace.approved[k];
+        if (!rec) return;
+        if (rec.url && String(rec.url).indexOf('blob:') === 0) {
+          const out = shotAssets(k).output;
+          const live = ensureAssetDisplayUrl(out);
+          rec.url = live || '';
+        }
+      });
     }
   }
 
@@ -1504,9 +1608,9 @@
 
   function isAcceptedImageFile(file) {
     if (!file) return false;
-    if (/image\/(jpeg|png)/i.test(file.type || '')) return true;
+    if (/image\/(jpeg|png|webp)/i.test(file.type || '')) return true;
     // Some OS/browsers leave type empty — fall back to extension.
-    return /\.(jpe?g|png)$/i.test(file.name || '');
+    return /\.(jpe?g|png|webp)$/i.test(file.name || '');
   }
 
   function readLocalImageFile(file) {
@@ -1520,6 +1624,7 @@
         file: file,
         blob: file,
         url: url,
+        _blobRef: file,
         w: img.naturalWidth,
         h: img.naturalHeight
       });
@@ -1556,8 +1661,13 @@
       syncShotInputNames(shotIndex);
       renderWorkspace();
       persistCurrentReplaceDraft();
+      showToast(
+        'Added ' + loaded.length + ' product image' + (loaded.length === 1 ? '' : 's') +
+          ' to B · ' + assets.inputs.length + '/4',
+        false
+      );
     } catch (err) {
-      showToast(err.message || 'Could not add image(s).', false);
+      showToast(err.message || 'Could not add image(s).', false, { error: true });
     }
   }
 
@@ -1617,9 +1727,28 @@
   function friendlyBridgeError(err) {
     const msg = String((err && err.message) || err || '');
     if (/failed to fetch|networkerror|load failed|network request failed|Forbidden/i.test(msg)) {
-      return 'Cannot reach the Answerly bridge. Use Connect bridge (or fix Chrome Block in Site settings). Firefly upscaler is optional.';
+      return 'Cannot reach the Answerly bridge at ' + UPSCALE_URL +
+        '. Confirm Connect bridge / start-answerly (or full Start Firefly). If Chrome blocked local network access, Allow it for this site, then reload.';
     }
     return msg || 'Request failed';
+  }
+
+  function isStaleBridgeError(text) {
+    return /Cannot reach the (local |Answerly )?bridge|Start firefly-upscaler|bridge_offline|Failed to fetch|local network access/i
+      .test(String(text || ''));
+  }
+
+  function clearStaleBridgeShotErrors() {
+    if (!state.workspace || !state.workspace.assets) return false;
+    let cleared = false;
+    Object.keys(state.workspace.assets).forEach((k) => {
+      const a = state.workspace.assets[k];
+      if (a && a.error && isStaleBridgeError(a.error)) {
+        a.error = null;
+        cleared = true;
+      }
+    });
+    return cleared;
   }
 
   function decodeJwtExpClient(token) {
@@ -1645,20 +1774,40 @@
     return 'Marketing Visualization';
   }
 
+  function formatTokenRemaining(tok) {
+    if (!tok || typeof tok.secondsLeft !== 'number') return '';
+    const mins = Math.max(0, Math.round(tok.secondsLeft / 60));
+    if (mins >= 120) {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      return '~' + h + 'h' + (m ? ' ' + m + 'm' : '');
+    }
+    return '~' + mins + 'm left';
+  }
+
   function formatTokenExpiry(tok) {
+    // Chip label — keep short, but always show remaining time when known.
+    if (!tok || tok.bridgeOffline) return 'Bridge Answerly';
+    if (!tok.hasToken) return 'Answerly Bridge · no token';
+    if (tok.expired) return 'Answerly Bridge · expired';
+    const left = formatTokenRemaining(tok);
+    return left ? ('Answerly Bridge · ' + left) : 'Answerly Bridge';
+  }
+
+  function formatTokenExpiryDetail(tok) {
     const ws = formatWorkspaceLabel(tok);
-    if (!tok || !tok.hasToken) return ws + ' · No token';
+    if (!tok || !tok.hasToken) return ws + ' · No token — click to paste';
     if (tok.expired) {
       return ws + ' · ' + (tok.expiresAt
         ? 'expired ' + new Date(tok.expiresAt).toLocaleString()
-        : 'expired');
+        : 'expired') + ' — click to refresh';
     }
     if (tok.expiresAt) {
       const mins = typeof tok.secondsLeft === 'number' ? Math.max(0, Math.round(tok.secondsLeft / 60)) : null;
       return ws + ' · expires ' + new Date(tok.expiresAt).toLocaleString() +
-        (mins != null ? ' · ~' + mins + 'm' : '');
+        (mins != null ? ' · ~' + mins + 'm' : '') + ' — click to refresh';
     }
-    return ws + ' · token saved';
+    return ws + ' · token saved — click to refresh';
   }
 
   function tokenChipClass(tok) {
@@ -1744,6 +1893,10 @@
       if (health.workspaceName && !tok.workspaceName) tok.workspaceName = health.workspaceName;
       if (health.workspaceKind && !tok.workspaceKind) tok.workspaceKind = health.workspaceKind;
       state.answerlyToken = tok;
+      // Drop stale “bridge offline” D errors once the bridge answers again.
+      if (clearStaleBridgeShotErrors() && state.workspace && state.workspace.mode === 'replace') {
+        renderWorkspace();
+      }
       return state.answerlyToken;
     } catch (err) {
       state.answerlyToken = {
@@ -1931,6 +2084,7 @@
       blob: row.blob,
       file: row.blob,
       url: url,
+      _blobRef: row.blob,
       fromDraft: true,
       approved: false
     };
@@ -1972,6 +2126,7 @@
       rating: Number(state.workspace.rating) || 0,
       ratings: Object.assign({}, state.workspace.ratings || {}),
       promptBaselines: Object.assign({}, state.workspace.promptBaselines || {}),
+      genCounts: Object.assign({}, state.workspace.genCounts || {}),
       shots: shots,
       savedAt: Date.now()
     };
@@ -1999,6 +2154,7 @@
       rating: Number(state.workspace.rating) || 0,
       ratings: Object.assign({}, state.workspace.ratings || {}),
       promptBaselines: Object.assign({}, state.workspace.promptBaselines || {}),
+      genCounts: Object.assign({}, state.workspace.genCounts || {}),
       assets: state.workspace.assets || {},
       savedAt: Date.now()
     };
@@ -2006,28 +2162,40 @@
     state.workspace.assets = {};
   }
 
-  function applyMemoryDraftToWorkspace(ean) {
+  function applyMemoryDraftToWorkspace(ean, opts) {
+    opts = opts || {};
     const draft = state.replaceDraftCache && state.replaceDraftCache[ean];
     if (!draft || !state.workspace) return false;
+    const lockedMatch = opts.keepMatchEan != null && opts.keepMatchEan !== ''
+      ? String(opts.keepMatchEan)
+      : '';
     state.workspace.assets = draft.assets || {};
     state.workspace.prompts = Object.assign({}, draft.prompts || {});
     state.workspace.outputs = Object.assign({}, draft.outputs || {});
     state.workspace.approved = Object.assign({}, draft.approved || {});
     state.workspace.rejected = Object.assign({}, draft.rejected || {});
-    state.workspace.driveImgIndex = draft.driveImgIndex;
+    // Keep Drive selection only when already set for this session; otherwise first image.
+    if (state.workspace.driveImgIndex == null || state.workspace.driveImgIndex === '') {
+      state.workspace.driveImgIndex = 0;
+    }
     state.workspace.productTypeName = draft.productTypeName || state.workspace.productTypeName || '';
     state.workspace.productTypeVariant = draft.productTypeVariant || state.workspace.productTypeVariant || '';
     state.workspace.productTypeQuery = draft.productTypeQuery || state.workspace.productTypeName || '';
     state.workspace.dimSeparate = !!draft.dimSeparate;
     state.workspace.ratings = Object.assign({}, draft.ratings || {});
     state.workspace.promptBaselines = Object.assign({}, draft.promptBaselines || {});
+    state.workspace.genCounts = Object.assign({}, draft.genCounts || {});
     state.workspace.rating = 0;
-    if (draft.matchEan) state.workspace.matchEan = draft.matchEan;
+    state.workspace.exportImages = {};
+    // Prefer the match chosen on Continue / Choose workflow over a stale draft prior.
+    if (lockedMatch) state.workspace.matchEan = lockedMatch;
+    else if (draft.matchEan) state.workspace.matchEan = draft.matchEan;
     state.workspaceShot = draft.workspaceShot || 0;
     state.workspace.draftsLoaded = true;
     state.workspace.ptPrefsApplied = true;
     const task = taskByEan(state.workspace.ean);
     if (task) scrubBorrowedMainInputs(shotListFor(task));
+    healWorkspaceBlobUrls();
     return true;
   }
 
@@ -2069,6 +2237,7 @@
       rating: record.rating,
       ratings: record.ratings,
       promptBaselines: record.promptBaselines,
+      genCounts: record.genCounts || {},
       assets: state.workspace.assets || {},
       savedAt: record.savedAt
     };
@@ -2153,8 +2322,12 @@
     }
   }
 
-  function applyIdbDraftToWorkspace(row) {
+  function applyIdbDraftToWorkspace(row, opts) {
+    opts = opts || {};
     if (!row || !state.workspace) return false;
+    const lockedMatch = opts.keepMatchEan != null && opts.keepMatchEan !== ''
+      ? String(opts.keepMatchEan)
+      : '';
     if (!state.workspace.assets) state.workspace.assets = {};
     if (!state.workspace.prompts) state.workspace.prompts = {};
     if (!state.workspace.outputs) state.workspace.outputs = {};
@@ -2162,18 +2335,22 @@
     if (row.outputs) state.workspace.outputs = Object.assign({}, row.outputs);
     state.workspace.approved = Object.assign({}, row.approved || {});
     state.workspace.rejected = Object.assign({}, row.rejected || {});
-    if (row.driveImgIndex != null) state.workspace.driveImgIndex = row.driveImgIndex;
+    if (state.workspace.driveImgIndex == null || state.workspace.driveImgIndex === '') {
+      state.workspace.driveImgIndex = 0;
+    }
     if (row.productTypeName) {
       state.workspace.productTypeName = row.productTypeName;
       state.workspace.productTypeQuery = row.productTypeQuery || row.productTypeName;
       state.workspace.productTypeVariant = row.productTypeVariant || '';
       state.workspace.ptPrefsApplied = true;
     }
-    if (row.matchEan) state.workspace.matchEan = row.matchEan;
+    if (lockedMatch) state.workspace.matchEan = lockedMatch;
+    else if (row.matchEan) state.workspace.matchEan = row.matchEan;
     if (row.workspaceShot != null) state.workspaceShot = row.workspaceShot || 0;
     state.workspace.dimSeparate = !!row.dimSeparate;
     state.workspace.ratings = Object.assign({}, row.ratings || {});
     state.workspace.promptBaselines = Object.assign({}, row.promptBaselines || {});
+    state.workspace.genCounts = Object.assign({}, row.genCounts || {});
     state.workspace.rating = 0; // unused shared field — ratings are per-shot only
     Object.keys(row.shots || {}).forEach((k) => {
       const s = row.shots[k] || {};
@@ -2181,13 +2358,16 @@
       assets.inputs = (s.inputs || []).map(reviveAssetFromIdb).filter(Boolean);
       assets.priorOverride = reviveAssetFromIdb(s.priorOverride);
       assets.output = reviveAssetFromIdb(s.output);
-      assets.error = s.error || null;
+      // Never revive old bridge-offline noise into D after the bridge is back.
+      assets.error = (s.error && !isStaleBridgeError(s.error)) ? s.error : null;
       if (assets.output) state.workspace.outputs[k] = true;
       syncShotInputNames(k);
     });
     const task = taskByEan(state.workspace.ean);
     if (task) scrubBorrowedMainInputs(shotListFor(task));
+    state.workspace.exportImages = {};
     state.workspace.draftsLoaded = true;
+    healWorkspaceBlobUrls();
     return true;
   }
 
@@ -2216,10 +2396,17 @@
     renderWorkspace();
   }
 
-  async function restoreReplaceDraftsIntoWorkspace() {
+  async function restoreReplaceDraftsIntoWorkspace(opts) {
+    opts = opts || {};
     if (!state.workspace || state.workspace.mode !== 'replace' || state.workspace.draftsLoaded) return;
     const ean = String(state.workspace.ean || '');
-    if (applyMemoryDraftToWorkspace(ean)) {
+    const keepMatchEan = opts.keepMatchEan != null && opts.keepMatchEan !== ''
+      ? String(opts.keepMatchEan)
+      : String(state.workspace.matchEan || '');
+    if (applyMemoryDraftToWorkspace(ean, { keepMatchEan: keepMatchEan })) {
+      if (keepMatchEan && state.replaceDraftCache && state.replaceDraftCache[ean]) {
+        state.replaceDraftCache[ean].matchEan = keepMatchEan;
+      }
       if (state.workspace.mode === 'replace') renderWorkspace();
       return;
     }
@@ -2227,10 +2414,10 @@
     const row = await loadEanDraftFromIdb(ean);
     if (!state.workspace || state.workspace.mode !== 'replace' || String(state.workspace.ean) !== ean) return;
     if (row) {
-      applyIdbDraftToWorkspace(row);
+      applyIdbDraftToWorkspace(row, { keepMatchEan: keepMatchEan });
       if (!state.replaceDraftCache) state.replaceDraftCache = {};
       state.replaceDraftCache[ean] = {
-        matchEan: state.workspace.matchEan || '',
+        matchEan: state.workspace.matchEan || keepMatchEan || '',
         workspaceShot: state.workspaceShot || 0,
         driveImgIndex: state.workspace.driveImgIndex,
         productTypeName: state.workspace.productTypeName || '',
@@ -2247,6 +2434,8 @@
         assets: state.workspace.assets || {},
         savedAt: row.savedAt || Date.now()
       };
+    } else if (keepMatchEan) {
+      state.workspace.matchEan = keepMatchEan;
     }
     state.workspace.draftsLoaded = true;
     if (state.workspace.mode === 'replace') renderWorkspace();
@@ -2348,6 +2537,7 @@
       blob: blob,
       file: blob,
       url: url,
+      _blobRef: blob,
       mime: mime,
       size: data.size || blob.size,
       w: 0,
@@ -2503,11 +2693,7 @@
     });
     if (!same) return;
     // Drop cloned copies; Answerly still borrows H-FR B at submit via productInputsForShot.
-    mIn.forEach((inp) => {
-      if (inp && inp.url && String(inp.url).indexOf('blob:') === 0) {
-        try { URL.revokeObjectURL(inp.url); } catch (_) { /* ignore */ }
-      }
-    });
+    mIn.forEach((inp) => revokeAssetUrl(inp));
     mainA.inputs = [];
     syncShotInputNames(mainIdx);
   }
@@ -2551,6 +2737,24 @@
       name: asset.name || 'image.png',
       mime: (file && file.type) || 'image/png'
     }));
+  }
+
+  function shotGenerationCount(shotIndex) {
+    if (!state.workspace || !state.workspace.genCounts) return 0;
+    return Number(state.workspace.genCounts[String(shotIndex)]) || 0;
+  }
+
+  function bumpShotGenerationCount(shotIndex) {
+    if (!state.workspace) return 0;
+    if (!state.workspace.genCounts) state.workspace.genCounts = {};
+    const key = String(shotIndex);
+    state.workspace.genCounts[key] = (Number(state.workspace.genCounts[key]) || 0) + 1;
+    return state.workspace.genCounts[key];
+  }
+
+  function clearShotGenerationCount(shotIndex) {
+    if (!state.workspace || !state.workspace.genCounts) return;
+    delete state.workspace.genCounts[String(shotIndex)];
   }
 
   function makeCancelledError(message) {
@@ -2675,12 +2879,14 @@
     localStorage.setItem(ANSWERLY_SIZE_KEY, imageSize);
     localStorage.setItem(ANSWERLY_MODEL_KEY, model);
 
-    // Order: INPUT IMAGE 1 = prior/master, 2+ = product inputs.
+    // Order: INPUT IMAGE 1 = prior/master, 2+ = each product B as its own Answerly reference slot
+    // (second_reference_url, third_reference_url, fourth_reference_url, …).
     // Krea / Grok accept at most 1 reference — send prior only; product stays in the prompt text.
     const maxRefs = modelMaxReferenceImages(model);
+    const productInputs = source.inputs.slice(0, Math.max(0, maxRefs - 1));
     const assetList = maxRefs <= 1
       ? [source.prior]
-      : [source.prior].concat(source.inputs);
+      : [source.prior].concat(productInputs);
     const images = await Promise.all(assetList.map(assetToImagePayload));
     let prompt = String(promptText || '').trim();
     if (!prompt) throw new Error('Prompt is empty');
@@ -2695,9 +2901,14 @@
       source.reason = (source.reason || 'Image to Image') + ' · 1-ref model (prior only)';
     } else {
       prompt += '\n\n---\nINPUT IMAGE 1 — PRIOR / MASTER: ' + priorLabel +
-        '\n' + source.inputs.map((a, i) =>
+        '\n' + productInputs.map((a, i) =>
           'INPUT IMAGE ' + (i + 2) + ' — PRODUCT REFERENCE: ' + (a.name || ('product_' + (i + 1) + '.png'))
         ).join('\n');
+      source.reason = (source.reason || 'Image to Image') +
+        ' · ' + assetList.length + ' refs (A + ' + productInputs.length + ' B)';
+      if (source.inputs.length > productInputs.length) {
+        source.reason += ' · capped ' + productInputs.length + '/' + source.inputs.length + ' B';
+      }
     }
     if (resolvedPrior && resolvedPrior.source && String(resolvedPrior.source).indexOf('main-from-hero') === 0) {
       source.reason = 'MAIN from ' +
@@ -2779,6 +2990,7 @@
       assets.output = {
         blob: outBlob,
         url: outUrl,
+        _blobRef: outBlob,
         name: synthesizeFileName(task, driveName, activeShot),
         model: model,
         size: imageSize,
@@ -2796,6 +3008,7 @@
       if (state.workspace.exportImages) {
         state.workspace.exportImages[String(shotIndex)] = {
           url: outUrl,
+          _blobRef: outBlob,
           name: assets.output.name,
           blob: outBlob,
           file: outBlob,
@@ -2808,6 +3021,7 @@
       }
       // Fresh generate → rating must start blank for this shot (do not carry prior stars).
       clearShotRating(shotIndex);
+      bumpShotGenerationCount(shotIndex);
       saveReplaceOutputDraft(state.workspace.ean, shotIndex, assets.output);
       // First successful generate for this EAN → Render Tracker "In progress".
       markRenderInProgress(state.workspace.ean);
@@ -2894,29 +3108,44 @@
     if (!state.workspace) return;
     state.workspace.fileTarget = target || { kind: 'inputs', shotIndex: state.workspaceShot || 0 };
     // Keep the file input on document.body so renderWorkspace() innerHTML rebuilds do not destroy it mid-pick.
+    // Do NOT use the HTML `hidden` attribute — some browsers refuse input.click() on hidden file inputs.
     let input = document.getElementById('wr-file-input');
     if (!input) {
       input = document.createElement('input');
       input.type = 'file';
       input.id = 'wr-file-input';
-      input.accept = 'image/jpeg,image/png,.jpg,.jpeg,.png';
+      input.accept = 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp';
       input.multiple = true;
-      input.hidden = true;
+      input.className = 'wr-file-input-native';
+      input.setAttribute('aria-hidden', 'true');
+      input.tabIndex = -1;
       document.body.appendChild(input);
       input.addEventListener('change', () => {
-        const files = input.files;
-        const dest = state.workspace && state.workspace.fileTarget;
-        input.value = '';
-        if (!files || !files.length || !dest) return;
+        // Snapshot FileList BEFORE clearing — input.files is live; value='' empties it.
+        const picked = Array.prototype.slice.call(input.files || []);
+        const dest = state.workspace && state.workspace.fileTarget
+          ? Object.assign({}, state.workspace.fileTarget)
+          : null;
+        try { input.value = ''; } catch (_) { /* ignore */ }
+        if (!picked.length || !dest || !state.workspace) return;
         if (dest.kind === 'prior') {
-          setPriorOverrideFromFile(dest.shotIndex, files[0]);
+          setPriorOverrideFromFile(dest.shotIndex, picked[0]);
+        } else if (dest.kind === 'export') {
+          addExportImageToShot(dest.shotIndex, picked[0]);
+        } else if (dest.kind === 'export-fill') {
+          fillNextExportSlots(picked);
         } else {
-          addLocalFilesToShot(dest.shotIndex, files);
+          addLocalFilesToShot(dest.shotIndex, picked);
         }
       });
     }
     input.multiple = !(state.workspace.fileTarget && state.workspace.fileTarget.kind === 'prior');
-    input.click();
+    // Defer click one tick so the user-gesture chain stays intact after React-less re-renders.
+    try {
+      input.click();
+    } catch (err) {
+      showToast('Could not open file picker — try dropping a JPG/PNG onto B.', false, { error: true });
+    }
   }
 
   function normPromptKey(s) {
@@ -2961,6 +3190,52 @@
     return rows;
   }
 
+  async function ensureApprovedCustomPrompts(force) {
+    if (state.approvedCustomsReady && !force) return state.approvedCustoms || [];
+    state.approvedCustomsReady = true;
+    state.approvedCustoms = state.approvedCustoms || [];
+    if (!PROMPT_DB_URL) return state.approvedCustoms;
+    try {
+      const data = await jsonp('action=approvedCustoms&limit=250', 45000, PROMPT_DB_URL);
+      const rows = (data && data.rows) || [];
+      state.approvedCustoms = Array.isArray(rows) ? rows : [];
+      state.approvedCustomsSource = 'live';
+    } catch (err) {
+      // Older Prompt DB deploys lack approvedCustoms — reuse stays off until redeploy.
+      state.approvedCustomsError = (err && err.message) || 'approvedCustoms failed';
+      if (!state.approvedCustoms) state.approvedCustoms = [];
+    }
+    return state.approvedCustoms || [];
+  }
+
+  function findReusedCustomPrompt(t, shot) {
+    const rows = state.approvedCustoms || [];
+    if (!t || !shot || !rows.length) return null;
+    const tpl = normPromptKey(t.template);
+    const sub = normPromptKey(t.subCategory);
+    const code = normPromptKey(shot.code);
+    const name = normPromptKey(shot.name);
+    if (!tpl || !sub) return null;
+    // Newest-first list from the sheet — first match wins.
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (normPromptKey(row.template) !== tpl) continue;
+      if (normPromptKey(row.subCategory) !== sub) continue;
+      const rowCode = normPromptKey(row.imageShortCode);
+      const rowName = normPromptKey(row.imageName);
+      const codeOk = code && rowCode && code === rowCode;
+      const nameOk = name && rowName && (name === rowName || name.indexOf(rowName) >= 0 || rowName.indexOf(name) >= 0);
+      // MAIN: also accept Universal MAIN / marketplace main naming.
+      const mainOk = isMainShot(shot) && (rowCode === 'main' || /main/.test(rowName));
+      if (!(codeOk || nameOk || mainOk)) continue;
+      if (String(row.ean) === String(t.ean)) continue; // not self
+      const prompt = String(row.prompt || '').trim();
+      if (!prompt) continue;
+      return row;
+    }
+    return null;
+  }
+
   async function ensureUniversalPrompts(force) {
     if (state.universalReady && !force) return state.universalRows || [];
     state.universalReady = true;
@@ -2999,15 +3274,12 @@
     shots.forEach((shot, idx) => {
       if (!isMainShot(shot)) return;
       const compiled = compileReplacePrompt(t, shot, prior);
-      const curN = normalizePromptCompare(state.workspace.prompts[idx]);
+      const cur = state.workspace.prompts[idx];
+      const curN = normalizePromptCompare(cur);
       const nextN = normalizePromptCompare(compiled.text);
       if (curN === nextN) return;
-      const baseN = normalizePromptCompare(
-        state.workspace.promptBaselines && state.workspace.promptBaselines[idx]
-      );
-      // Keep only true Custom edits (changed after baseline). Replace wrong Hero Front soft-matches.
-      const isCustomEdit = !!(curN && baseN && curN !== baseN);
-      if (isCustomEdit) return;
+      // Keep any author edit (differs from live Universal MAIN compile), including cleared text.
+      if (cur != null && curN !== nextN) return;
       state.workspace.prompts[idx] = compiled.text;
       rememberPromptBaseline(idx, compiled.text);
       changed = true;
@@ -3328,7 +3600,10 @@
     const text = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
     return {
       text: text,
-      universalLabel: resolved.label || 'master',
+      // MAIN always surfaces as MAIN so authors can confirm the PDP Universal row.
+      universalLabel: isMainShot(shot)
+        ? (resolved.label && /main/i.test(resolved.label) ? resolved.label : 'MAIN')
+        : (resolved.label || 'master'),
       universalRow: resolved.row || null,
       cleanedWhatToShoot: cleaned
     };
@@ -3339,7 +3614,13 @@
   }
 
   function normalizePromptCompare(s) {
-    return String(s || '').replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+    // Normalize line endings / trailing spaces only — keep real wording differences.
+    return String(s || '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/[ \t]+$/gm, '')
+      .trim();
   }
 
   function rememberPromptBaseline(shotIndex, text) {
@@ -3371,16 +3652,53 @@
   }
 
   function promptOriginForShot(t, shot, prior, promptText, shotIndex) {
+    // Strict rule: differs from the live compiled default → Custom (saved to DB).
+    // Exact match (or empty-vs-empty) → Automated (DB prompt cell blank).
     const norm = normalizePromptCompare(promptText);
-    if (!norm) return 'Automated';
-    const live = compileReplacePrompt(t, shot, prior).text;
-    if (norm === normalizePromptCompare(live)) return 'Automated';
-    const idx = shotIndex != null ? shotIndex : (state.workspaceShot || 0);
-    const stored = state.workspace && state.workspace.promptBaselines
-      ? state.workspace.promptBaselines[idx]
-      : null;
-    if (stored != null && norm === normalizePromptCompare(stored)) return 'Automated';
-    return 'Custom';
+    if (!norm) return 'Custom';
+    const liveN = normalizePromptCompare(compileReplacePrompt(t, shot, prior).text);
+    return norm === liveN ? 'Automated' : 'Custom';
+  }
+
+  function promptOriginNoteHtml(t, shot, compiled, origin, reuseMeta) {
+    const source = isMainShot(shot)
+      ? 'Prompt source: Universal <strong>MAIN</strong> (PDP). '
+      : 'Prompt source: Universal · ' + esc(compiled.universalLabel) + '. ';
+    if (reuseMeta && reuseMeta.ean && origin === 'Custom') {
+      return source + '<strong>Custom</strong> — reused from EAN <span class="tp-mono">' +
+        esc(String(reuseMeta.ean)) + '</span> (same Sub-category + Template)' +
+        (reuseMeta.author ? ' by ' + esc(reuseMeta.author) : '') +
+        '. Edit freely; Approve saves a new All user row.';
+    }
+    if (origin === 'Custom') {
+      return source + '<strong>Custom</strong> — edited from the compiled default. Will be saved to Prompt DB on Approve.';
+    }
+    return source + '<strong>Automated</strong> — compiled default (prompt cell stays blank in DB). Default restores it. Rate 4–5★, then Approve.';
+  }
+
+  function refreshPromptOriginUi() {
+    if (!els.workspace || !state.workspace || state.workspace.mode !== 'replace') return;
+    const task = taskByEan(state.workspace.ean);
+    if (!task) return;
+    const idx = state.workspaceShot || 0;
+    const shots = shotListFor(task);
+    const shot = shots[idx] || shots[0];
+    const prior = resolveWorkspaceMatch(task).selected;
+    const compiled = compileReplacePrompt(task, shot, prior);
+    const promptEl = els.workspace.querySelector('[data-ws-prompt]');
+    const promptText = promptEl
+      ? promptEl.value
+      : ((state.workspace.prompts && state.workspace.prompts[idx]) || '');
+    const origin = promptOriginForShot(task, shot, prior, promptText, idx);
+    const reuseMeta = state.workspace.promptReuse && state.workspace.promptReuse[idx];
+    const note = els.workspace.querySelector('.wr-prompt-note');
+    if (note) note.innerHTML = promptOriginNoteHtml(task, shot, compiled, origin, reuseMeta);
+    const badge = els.workspace.querySelector('[data-ws-prompt-origin]');
+    if (badge) {
+      badge.textContent = origin;
+      badge.className = 'wr-badge-ghost' + (origin === 'Custom' ? ' is-custom' : ' is-automated');
+      badge.setAttribute('data-ws-prompt-origin', origin);
+    }
   }
 
   function syncAutomatedPromptsToLatestCompile(t, prior) {
@@ -3391,19 +3709,15 @@
     shots.forEach((shot, idx) => {
       const compiled = compileReplacePrompt(t, shot, prior).text;
       const current = state.workspace.prompts[idx];
-      const baseline = state.workspace.promptBaselines[idx];
-      // Only refresh prompts the user has not customized.
-      if (current == null || current === '' ||
-          (baseline != null && normalizePromptCompare(current) === normalizePromptCompare(baseline)) ||
-          normalizePromptCompare(current) === normalizePromptCompare(compiled)) {
+      // Never touch author text (including Clear → ''). Only fill missing slots or refresh exact Automated matches.
+      if (current == null) {
         state.workspace.prompts[idx] = compiled;
         rememberPromptBaseline(idx, compiled);
-      } else if (baseline == null) {
-        // First time we see this prompt — treat current as baseline if it matches live compile.
-        if (normalizePromptCompare(current) === normalizePromptCompare(compiled)) {
-          rememberPromptBaseline(idx, compiled);
-        }
+        return;
       }
+      if (normalizePromptCompare(current) !== normalizePromptCompare(compiled)) return;
+      state.workspace.prompts[idx] = compiled;
+      rememberPromptBaseline(idx, compiled);
     });
   }
 
@@ -3412,7 +3726,8 @@
   function exportOutputName(t, shot, idx) {
     const ean = (t && t.ean) || 'EAN';
     if (isMainShot(shot)) return ean + '_MAIN.png';
-    const seq = shot && shot.seq != null ? String(shot.seq) : String(idx).padStart(2, '0');
+    const seqRaw = shot && shot.seq != null ? String(shot.seq) : String(idx);
+    const seq = seqRaw.replace(/\D/g, '') ? String(parseInt(seqRaw, 10) || idx).padStart(2, '0') : String(idx).padStart(2, '0');
     return ean + '_' + seq + '_' + (shot && shot.code ? shot.code : 'SHOT') + '.png';
   }
 
@@ -3451,7 +3766,9 @@
 
   function ensureExportImageDims(entry, key) {
     if (!entry || (entry.w > 0 && entry.h > 0) || entry._measuring) return;
-    const src = entry.blob || entry.file || entry.url;
+    // Prefer blob/file — never measure a stale blob: string (causes ERR_FILE_NOT_FOUND).
+    const src = entry.blob || entry.file ||
+      (entry.url && /^https?:/i.test(entry.url) ? entry.url : '');
     if (!src) return;
     entry._measuring = true;
     measureBlobDims(src).then((dims) => {
@@ -3480,25 +3797,39 @@
     const key = String(idx);
     // User cleared this row — do not re-seed from approved/D until they drop again.
     if (state.workspace.exportCleared[key]) return null;
-    if (state.workspace.exportImages[key]) {
-      ensureExportImageDims(state.workspace.exportImages[key], key);
-      return state.workspace.exportImages[key];
-    }
     const approved = state.workspace.approved && state.workspace.approved[idx];
     const out = shotAssets(idx).output;
-    const src = (approved && approved.url) || (out && out.url) || '';
-    if (!src) return null;
+    const blob = (out && (out.blob || out.file)) || null;
+    if (state.workspace.exportImages[key]) {
+      const existing = state.workspace.exportImages[key];
+      // Refresh backing blob from live D so thumbs survive revoke / EAN switch.
+      if (blob) {
+        existing.blob = blob;
+        existing.file = out.file || existing.file || null;
+      }
+      if (!ensureExportDisplayUrl(existing)) {
+        delete state.workspace.exportImages[key];
+        delete state.workspace.exportImages[idx];
+      } else {
+        ensureExportImageDims(existing, key);
+        return existing;
+      }
+    }
+    const liveUrl = ensureAssetDisplayUrl(out);
+    if (!liveUrl && !blob) return null;
     const entry = {
-      url: src,
+      url: '',
       name: (approved && approved.outputName) || (out && out.name) || '',
-      blob: (out && (out.blob || out.file)) || null,
+      blob: blob,
       file: (out && out.file) || null,
       w: (out && out.w) || 0,
       h: (out && out.h) || 0,
       status: 'ready',
-      fromApproved: !!(approved && approved.url),
+      fromApproved: !!approved,
       upscale: null
     };
+    entry.url = ensureExportDisplayUrl(entry) || liveUrl;
+    if (!entry.url) return null;
     state.workspace.exportImages[key] = entry;
     ensureExportImageDims(entry, key);
     return entry;
@@ -3613,7 +3944,7 @@
     const task = taskByEan(state.workspace.ean) || { ean: state.workspace.ean };
     const prior = resolveWorkspaceMatch(task).selected;
     const shots = shotListFor(task);
-    const msg = 'Reset this EAN?\n\nThis clears all product inputs (B), outputs (D), and per-image ratings for every shot, and restores prompts to Universal defaults.\n\nApprovals for this EAN are cleared too. A (prior) overrides stay.';
+    const msg = 'Reset all Gen Img & Prompt?\n\nThis clears product inputs (B), outputs (D), and per-image ratings for every shot, and restores prompts to Universal defaults.\n\nApprovals for this EAN are cleared too. A (prior) overrides stay.';
     if (!window.confirm(msg)) return;
     Object.keys(state.workspace.assets || {}).forEach((k) => {
       const a = shotAssets(k);
@@ -3630,6 +3961,7 @@
     state.workspace.rejected = {};
     state.workspace.ratings = {};
     state.workspace.rating = 0;
+    state.workspace.genCounts = {};
     state.workspace.exportImages = {};
     state.workspace.prompts = {};
     state.workspace.promptBaselines = {};
@@ -3641,7 +3973,7 @@
     });
     await persistCurrentReplaceDraft();
     renderWorkspace();
-    showToast('EAN reset — B, D, ratings cleared; prompts restored to Universal defaults.', false);
+    showToast('Reset all Gen Img & Prompt — B, D, ratings cleared; prompts restored to Universal defaults.', false);
   }
 
   async function addExportImageToShot(shotIndex, file) {
@@ -4060,10 +4392,15 @@
     seedExportImagesFromApproved(shots);
     const indexes = orderedRailShots(shots).map(({ idx }) => idx).filter((idx) => {
       const img = state.workspace.exportImages && state.workspace.exportImages[String(idx)];
-      return !!(img && img.url);
+      return !!(img && ensureExportDisplayUrl(img));
     });
     if (!indexes.length) {
       showToast('Add at least one image.', false, { error: true });
+      return;
+    }
+    const unrated = indexes.filter((idx) => shotRating(idx) < 1);
+    if (unrated.length) {
+      showToast('Rate every filled image before generating (1–5 stars). ' + unrated.length + ' still unrated.', false, { error: true });
       return;
     }
     const upOn = upscaleOn();
@@ -4179,6 +4516,7 @@
           (zipFiles.length === 1 ? '' : 's') + ' at ' + EXPORT_OUT_SIZE + '×' + EXPORT_OUT_SIZE + '.',
         false
       );
+      openCompleteDriveModal(task.ean);
     } catch (err) {
       showToast('Export failed: ' + esc((err && err.message) || err), false, { error: true });
     } finally {
@@ -4193,10 +4531,18 @@
   function approvedExportCardHtml(t, shots) {
     seedExportImagesFromApproved(shots);
     const list = orderedRailShots(shots);
-    const filled = list.filter(({ idx }) => {
+    const filledRows = list.filter(({ idx }) => {
       const img = state.workspace.exportImages && state.workspace.exportImages[idx];
-      return !!(img && img.url);
-    }).length;
+      return !!(img && ensureExportDisplayUrl(img));
+    });
+    const filled = filledRows.length;
+    const unratedFilled = filledRows.filter(({ idx }) => shotRating(idx) < 1).length;
+    const canExport = filled > 0 && unratedFilled === 0 && !(state.workspace && state.workspace.exportBusy);
+    const exportDisabledTitle = !filled
+      ? 'Add at least one image'
+      : (unratedFilled
+        ? 'Rate every filled image first (' + unratedFilled + ' unrated)'
+        : '');
     const upOn = upscaleOn();
     const typeName = state.workspace.productTypeName || '';
     const variant = state.workspace.productTypeVariant || '';
@@ -4244,6 +4590,7 @@
           '<tbody>' +
             list.map(({ s, idx }) => {
               const img = state.workspace.exportImages && state.workspace.exportImages[idx];
+              const imgUrl = ensureExportDisplayUrl(img);
               const outName = exportOutputName(t, s, idx);
               const approvedRec = state.workspace.approved && state.workspace.approved[idx];
               const approved = !!approvedRec;
@@ -4251,14 +4598,15 @@
               let imageCell;
               const canRestoreGenerated = !!(
                 (state.workspace.exportCleared && state.workspace.exportCleared[String(idx)]) &&
-                ((approvedRec && approvedRec.url) || (outForRestore && outForRestore.url))
+                ((approvedRec && (approvedRec.url || (outForRestore && (outForRestore.blob || outForRestore.file)))) ||
+                  (outForRestore && (outForRestore.url || outForRestore.blob || outForRestore.file)))
               );
-              if (!img || !img.url) {
+              if (!img || !imgUrl) {
                 imageCell = '<button type="button" class="wr-slot-drop" data-ws-drop-export="' + idx + '">+ Drop image</button>';
               } else {
                 imageCell =
                   '<div class="wr-export-img-cell" data-ws-drop-export="' + idx + '">' +
-                    '<img class="wr-approved-thumb" draggable="false" src="' + esc(img.url) + '" alt="">' +
+                    '<img class="wr-approved-thumb" draggable="false" src="' + esc(imgUrl) + '" alt="">' +
                     '<div class="wr-export-img-meta">' +
                       '<span class="dims">' + (img.w && img.h ? (img.w + ' × ' + img.h) : '—') + '</span>' +
                       (img.name ? '<span class="dims-sub" title="' + esc(img.name) + '">' + esc(img.name) + '</span>' : '') +
@@ -4266,16 +4614,22 @@
                   '</div>';
               }
               const upCell = exportUpscaleCellHtml(img, upOn);
-              const status = !img ? '<span class="pill is-empty">Empty</span>'
-                : (approved ? '<span class="pill">Approved</span>' : '<span class="pill is-ready">Ready</span>');
+              const seqDisp = s && s.seq != null
+                ? String(parseInt(String(s.seq), 10) || 0).padStart(2, '0')
+                : String(idx).padStart(2, '0');
+              const rated = shotRating(idx) >= 1;
+              const statusWithRate = !img ? '<span class="pill is-empty">Empty</span>'
+                : (!rated
+                  ? '<span class="pill is-empty" title="Rate this shot (stars above) before export">Needs rating</span>'
+                  : (approved ? '<span class="pill">Approved</span>' : '<span class="pill is-ready">Ready</span>'));
               return '<tr data-export-row="' + idx + '">' +
-                '<td class="c-seq tp-mono">' + esc(String(s.seq != null ? s.seq : String(idx).padStart(2, '0'))) + '</td>' +
+                '<td class="c-seq tp-mono">' + esc(seqDisp) + '</td>' +
                 '<td class="c-name">' + esc(s.name || '') + '</td>' +
                 '<td class="c-code tp-mono">' + esc(s.code || '') + '</td>' +
                 '<td class="c-img">' + imageCell + '</td>' +
                 '<td class="c-out tp-mono">' + esc(outName) + '</td>' +
                 '<td class="c-up" data-up-cell="' + idx + '">' + upCell + '</td>' +
-                '<td class="c-status">' + status + '</td>' +
+                '<td class="c-status">' + statusWithRate + '</td>' +
                 '<td class="c-action">' +
                   (img
                     ? '<button type="button" class="btn-clear" data-ws-clear-export="' + idx + '">Clear</button>'
@@ -4292,11 +4646,11 @@
       '<div class="wr-approved-actions">' +
         '<div class="wr-approved-save">' +
           '<span class="wr-approved-save-label">Save to: <strong class="tp-mono">' + esc((t.ean || 'EAN') + '.zip') + '</strong></span>' +
-          '<span class="muted">All PNGs download as one zip with a folder named after the EAN.</span>' +
+          '<span class="muted">All PNGs download as one zip with a folder named after the EAN. Every filled image must be rated first.</span>' +
         '</div>' +
         '<button type="button" class="tp-btn tp-btn-primary" data-ws="export-generate"' +
-          ((filled && !(state.workspace && state.workspace.exportBusy)) ? '' : ' disabled') +
-          (!filled ? ' title="Add at least one image"' : '') + '>' +
+          (canExport ? '' : ' disabled') +
+          (exportDisabledTitle ? ' title="' + esc(exportDisabledTitle) + '"' : '') + '>' +
           (state.workspace && state.workspace.exportBusy
             ? 'Working…'
             : (upOn ? 'Upscale &amp; generate images' : 'Generate images')) +
@@ -4316,43 +4670,131 @@
   function modelMaxReferenceImages(modelId) {
     const low = String(modelId || '').toLowerCase();
     if (/krea|grok|xai\//.test(low)) return 1;
-    return 4;
+    // prior + up to 4 product B as separate Answerly reference slots.
+    return 5;
+  }
+
+  // JSONP URLs cannot carry long Custom prompts in one query — split into CacheService chunks.
+  function splitPromptForJsonp(text, maxEncodedLen) {
+    const src = String(text || '');
+    const max = Math.max(400, Number(maxEncodedLen) || 1400);
+    const chunks = [];
+    let i = 0;
+    while (i < src.length) {
+      let lo = i + 1;
+      let hi = Math.min(src.length, i + Math.max(200, Math.floor(max / 2)));
+      let best = lo;
+      while (lo <= hi) {
+        const mid = Math.floor((lo + hi) / 2);
+        const enc = encodeURIComponent(src.slice(i, mid)).length;
+        if (enc <= max) {
+          best = mid;
+          lo = mid + 1;
+        } else {
+          hi = mid - 1;
+        }
+      }
+      if (best <= i) best = i + 1;
+      chunks.push(src.slice(i, best));
+      i = best;
+    }
+    return chunks.length ? chunks : [''];
+  }
+
+  async function pingPromptDbVersion() {
+    try {
+      const data = await jsonp('action=ping', 20000, PROMPT_DB_URL);
+      return Number((data && data.version) || 0) || 0;
+    } catch (err) {
+      return 0;
+    }
   }
 
   async function writePromptApprove(payload) {
     if (!PROMPT_DB_URL) throw new Error('PROMPT_DB_URL is not set.');
     let origin = String(payload.promptOrigin || '');
-    // Automated → blank prompt cell; Custom → full prompt text.
-    // JSONP URLs truncate long Custom prompts and used to fail with "prompt is required".
-    let promptOut = /^custom$/i.test(origin) ? String(payload.prompt || '') : '';
-    if (/^custom$/i.test(origin)) {
-      const encodedLen = encodeURIComponent(promptOut).length;
-      if (!promptOut.trim() || encodedLen > 1600) {
-        // Prefer a successful Automated write over a truncated Custom failure.
-        origin = 'Automated';
-        promptOut = '';
+    if (/^custom$/i.test(origin)) origin = 'Custom';
+    else if (/^automated$/i.test(origin)) origin = 'Automated';
+    else throw new Error('promptOrigin must be Automated or Custom');
+
+    // Automated → blank prompt cell.
+    // Custom → always upload via promptChunk (never put the full prompt in the approve URL —
+    // long query strings were truncating promptOrigin back to a failed/blank Automated write).
+    let promptUploadId = '';
+    if (origin === 'Custom') {
+      const promptOut = String(payload.prompt || '');
+      if (!promptOut.trim()) {
+        throw new Error('Custom prompt is empty — edit the prompt or use Default before Approve.');
+      }
+      const ver = await pingPromptDbVersion();
+      if (ver < 6) {
+        throw new Error(
+          'Prompt DB web app is outdated (v' + (ver || '?') + ', need v7). ' +
+          'Copy dashboard/apps-script-prompt-db/Code.gs into the Prompt Database Apps Script → ' +
+          'Deploy → Manage deployments → Edit → Version: New version → Deploy. Then Approve again.'
+        );
+      }
+      promptUploadId = 'p' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+      const chunks = splitPromptForJsonp(promptOut, 1400);
+      try {
+        for (let i = 0; i < chunks.length; i++) {
+          await jsonp(
+            [
+              'action=promptChunk',
+              'uploadId=' + encodeURIComponent(promptUploadId),
+              'i=' + i,
+              'n=' + chunks.length,
+              'data=' + encodeURIComponent(chunks[i])
+            ].join('&'),
+            45000,
+            PROMPT_DB_URL
+          );
+        }
+      } catch (err) {
+        const msg = String((err && err.message) || err || '');
+        if (/Unknown action:\s*promptChunk/i.test(msg)) {
+          throw new Error(
+            'Prompt DB deploy is missing promptChunk. Paste latest Code.gs, then ' +
+            'Deploy → Manage deployments → Edit → New version → Deploy (keep same URL).'
+          );
+        }
+        throw err;
       }
     }
+
+    // promptOrigin + qualityRating early so they cannot be dropped if the URL is truncated.
     const q = [
       'action=promptApprove',
+      'promptOrigin=' + encodeURIComponent(origin),
+      'qualityRating=' + encodeURIComponent(payload.qualityRating || ''),
+      'promptUploadId=' + encodeURIComponent(promptUploadId),
+      'prompt=',
       'ean=' + encodeURIComponent(payload.ean || ''),
       'author=' + encodeURIComponent(payload.author || ''),
       'workflow=' + encodeURIComponent(payload.workflow || 'Product replacement'),
       'productType=' + encodeURIComponent(payload.productType || ''),
-      // Write the real Answerly model id — any model is allowed.
+      'productTypeVariant=' + encodeURIComponent(payload.productTypeVariant || ''),
+      'subCategory=' + encodeURIComponent(payload.subCategory || ''),
+      'template=' + encodeURIComponent(payload.template || ''),
+      'priorEan=' + encodeURIComponent(payload.priorEan || ''),
+      'matchLevel=' + encodeURIComponent(payload.matchLevel || ''),
       'model=' + encodeURIComponent(payload.model || ''),
+      'imageSize=' + encodeURIComponent(payload.imageSize || ''),
       'imageShortCode=' + encodeURIComponent(payload.imageShortCode || ''),
       'imageName=' + encodeURIComponent(payload.imageName || ''),
-      'qualityRating=' + encodeURIComponent(payload.qualityRating || ''),
+      'shotSeq=' + encodeURIComponent(payload.shotSeq != null ? payload.shotSeq : ''),
       'appVersion=' + encodeURIComponent(payload.appVersion || APP_VERSION),
-      'prompt=' + encodeURIComponent(promptOut),
       'priorImage=' + encodeURIComponent(payload.priorImage || ''),
       'productImage=' + encodeURIComponent(payload.productImage || ''),
-      'imageInput=' + encodeURIComponent(payload.imageInput || ''),
-      'promptOrigin=' + encodeURIComponent(origin),
-      'universalRow=' + encodeURIComponent(payload.universalRow || '')
+      'universalRow=' + encodeURIComponent(payload.universalRow || ''),
+      'generationCount=' + encodeURIComponent(
+        payload.generationCount != null ? payload.generationCount : (payload.regenCount != null ? payload.regenCount : '')
+      )
     ].join('&');
-    return jsonp(q, 60000, PROMPT_DB_URL);
+    const data = await jsonp(q, 60000, PROMPT_DB_URL);
+    if (data && !data.promptOrigin) data.promptOrigin = origin;
+    if (data && data.qualityRating == null) data.qualityRating = payload.qualityRating || '';
+    return data;
   }
 
   async function markRenderInProgress(ean) {
@@ -4374,6 +4816,113 @@
     } catch (err) {
       console.warn('Could not set Render Tracker In progress', err);
     }
+  }
+
+  async function markRenderCompleted(ean, outputLink) {
+    const id = String(ean || '').replace(/\s+/g, '');
+    const link = String(outputLink || '').trim();
+    if (!id || !FEED_URL) throw new Error('FEED_URL is not set.');
+    if (!link || !/^https?:\/\//i.test(link)) {
+      throw new Error('Paste a valid Google Drive folder/file link (https://…).');
+    }
+    const data = await jsonp(
+      'action=pdpStatus&ean=' + encodeURIComponent(id) +
+        '&status=' + encodeURIComponent('Completed') +
+        '&outputLink=' + encodeURIComponent(link),
+      45000
+    );
+    const t = taskByEan(id);
+    if (t) {
+      t.pdpImages = (data && data.pdpImages) || 'Completed';
+      if (link) {
+        t.outputLink = link;
+        t.outputFolderId = folderIdFrom(link) || t.outputFolderId;
+      }
+    }
+    const row = assignmentRow(id);
+    if (row) {
+      row.pdpImages = (data && data.pdpImages) || 'Completed';
+      if (link) row.outputLink = link;
+    }
+    return data;
+  }
+
+  function closeCompleteDriveModal() {
+    const modal = document.getElementById('wr-complete-drive-modal');
+    if (modal) modal.hidden = true;
+  }
+
+  function openCompleteDriveModal(ean) {
+    let modal = document.getElementById('wr-complete-drive-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'wr-complete-drive-modal';
+      modal.className = 'wr-complete-modal';
+      modal.hidden = true;
+      modal.innerHTML =
+        '<div class="wr-complete-modal-backdrop" data-complete-dismiss></div>' +
+        '<div class="wr-complete-modal-panel" role="dialog" aria-modal="true" aria-labelledby="wr-complete-title">' +
+          '<div class="wr-complete-modal-head">' +
+            '<h2 id="wr-complete-title" class="wr-complete-modal-title">Mark task Completed?</h2>' +
+            '<button type="button" class="wr-icon-btn" data-complete-dismiss title="Close" aria-label="Close">✕</button>' +
+          '</div>' +
+          '<p class="wr-complete-modal-copy">' +
+            'Upload the zip to Google Drive, then paste the Drive folder (or file) link below. ' +
+            'Submitting sets <strong>PDP Images = Completed</strong> on the Render Tracker and saves the link. ' +
+            'Close without submitting to leave the task In progress.' +
+          '</p>' +
+          '<label class="wr-complete-field">' +
+            '<span>Google Drive link</span>' +
+            '<input type="url" class="wr-complete-input" data-complete-link ' +
+              'placeholder="https://drive.google.com/drive/folders/…" autocomplete="off">' +
+          '</label>' +
+          '<p class="wr-complete-ean muted">EAN <span class="tp-mono" data-complete-ean></span></p>' +
+          '<div class="wr-complete-modal-foot">' +
+            '<button type="button" class="tp-btn tp-btn-ghost" data-complete-dismiss>Close without completing</button>' +
+            '<button type="button" class="tp-btn tp-btn-primary" data-complete-submit>Submit &amp; mark Completed</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(modal);
+      modal.addEventListener('click', (e) => {
+        if (e.target.closest('[data-complete-dismiss]')) {
+          closeCompleteDriveModal();
+          showToast('Zip downloaded. Task left unchanged (not marked Completed).', false);
+          return;
+        }
+        if (e.target.closest('[data-complete-submit]')) {
+          const input = modal.querySelector('[data-complete-link]');
+          const link = input ? String(input.value || '').trim() : '';
+          const eanVal = modal.getAttribute('data-ean') || '';
+          const btn = e.target.closest('[data-complete-submit]');
+          if (btn) btn.disabled = true;
+          markRenderCompleted(eanVal, link).then((data) => {
+            closeCompleteDriveModal();
+            showToast(
+              'Render Tracker Updated · Completed' +
+                (data && data.driveCol > 0 ? ' · Drive link saved' : '') +
+                ' · EAN <span class="tp-mono">' + esc(eanVal) + '</span>.',
+              false
+            );
+            if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
+            else render();
+          }).catch((err) => {
+            if (btn) btn.disabled = false;
+            showToast('Could not mark Completed: ' + esc((err && err.message) || err), false, { error: true });
+          });
+        }
+      });
+    }
+    modal.setAttribute('data-ean', String(ean || ''));
+    const eanEl = modal.querySelector('[data-complete-ean]');
+    if (eanEl) eanEl.textContent = String(ean || '');
+    const input = modal.querySelector('[data-complete-link]');
+    if (input) {
+      input.value = '';
+      setTimeout(() => input.focus(), 50);
+    }
+    const submitBtn = modal.querySelector('[data-complete-submit]');
+    if (submitBtn) submitBtn.disabled = false;
+    modal.hidden = false;
   }
 
   function replaceApprovalBadge(t) {
@@ -4524,8 +5073,10 @@
   }
 
   function shotHasGeneratedOutput(shotIdx) {
-    return !!(state.workspace && state.workspace.outputs && state.workspace.outputs[shotIdx] &&
-      shotAssets(shotIdx).output && shotAssets(shotIdx).output.url);
+    const out = shotAssets(shotIdx).output;
+    if (!(out && (out.blob || out.file || out.url))) return false;
+    // outputs[] flag may lag; blob/file is enough proof D exists for MAIN gating.
+    return true;
   }
 
   function shotHasProductInputs(shotIdx) {
@@ -4988,11 +5539,15 @@
     return sortPriorDriveImages(priorFolderImages(prior));
   }
 
-  function defaultDriveImgIndex(prior) {
-    const imgs = priorDriveImages(prior);
-    if (!imgs.length) return 0;
-    const hfr = imgs.findIndex((img) => driveSortBucket(img.name) === 0);
-    return hfr >= 0 ? hfr : 0;
+  function defaultDriveImgIndex(/* prior */) {
+    // Always the first Drive image in the sorted rail (page open / refresh).
+    return 0;
+  }
+
+  function resetDriveImgSelectionToFirst() {
+    if (!state.workspace) return;
+    state.workspace.driveImgIndex = 0;
+    state.workspace.priorFetch = null;
   }
 
   function priorImgAt(prior, index, width) {
@@ -5374,7 +5929,7 @@
       frame.hidden = true;
     }
     const title = view === 'renamer' ? 'Renamer' : view === 'my' ? 'My Tasks' : 'Available Tasks';
-    const ver = /preview\.html$/i.test(location.pathname) ? 'PREVIEW V1.5' : 'V1.3';
+    const ver = /preview\.html$/i.test(location.pathname) ? 'PREVIEW V1.6' : 'V1.3';
     document.title = title + ' · 3D Playground (' + ver + ')';
     const titleEl = $('view-title');
     if (titleEl) titleEl.textContent = title;
@@ -5899,16 +6454,41 @@
 
   /* ---------- My Tasks workspace (UI mock only — no save / upload) ---------- */
 
+  function manualPriorMatchFromEan(ean) {
+    const key = String(ean || '').replace(/\D/g, '');
+    if (!/^\d{8,}$/.test(key)) return null;
+    const p = taskByEan(key) ||
+      (state.model && state.model.products || []).find((x) => String(x.ean) === key) ||
+      null;
+    if (!p) return null;
+    const drive = outputLinkOf(p) || p.driveLink || '';
+    const folderId = outputFolderIdOf(p) || p.folderId || '';
+    if (!drive && !folderId) return null;
+    return {
+      level: 'manual',
+      label: 'Manual EAN',
+      best: false,
+      ean: p.ean,
+      title: p.title || p.productName || p.ean,
+      artist: p.assignArtist || (assignmentRow(p.ean) || {}).artist || '',
+      drive: drive,
+      folderId: folderId,
+      product: p
+    };
+  }
+
   function resolveWorkspaceMatch(t) {
     const matches = t ? priorMatches(t) : [];
-    if (!matches.length) {
-      if (state.workspace) state.workspace.matchEan = '';
-      return { matches: [], selected: null };
+    const want = String((state.workspace && state.workspace.matchEan) || '').replace(/\D/g, '');
+    let selected = matches.find((m) => String(m.ean).replace(/\D/g, '') === want) || null;
+    if (!selected && want) selected = manualPriorMatchFromEan(want);
+    // Only fall back to Best match when the author has not locked a prior EAN.
+    if (!selected && !want && matches.length) selected = matches.find((m) => m.best) || matches[0];
+    if (state.workspace) {
+      // Keep a typed manual EAN even when it is not in the recommended list.
+      if (selected) state.workspace.matchEan = String(selected.ean);
+      else if (!want) state.workspace.matchEan = '';
     }
-    const want = String((state.workspace && state.workspace.matchEan) || '');
-    let selected = matches.find((m) => String(m.ean) === want) || null;
-    if (!selected) selected = matches.find((m) => m.best) || matches[0];
-    if (state.workspace) state.workspace.matchEan = selected ? String(selected.ean) : '';
     return { matches: matches, selected: selected };
   }
 
@@ -5934,9 +6514,8 @@
     resolveWorkspaceMatch(t);
     if (opts.matchEan) state.workspace.matchEan = String(opts.matchEan);
     state.workspaceShot = opts.shot != null ? (Number(opts.shot) || 0) : 0;
-    if (opts.drive != null && opts.drive !== '') {
-      state.workspace.driveImgIndex = Number(opts.drive);
-    }
+    // Drive images rail always starts on the first image when opening a page / EAN.
+    state.workspace.driveImgIndex = 0;
     state.selectedEan = ean;
     document.body.classList.add('view-workspace');
     if (els.workspace) els.workspace.hidden = false;
@@ -5950,6 +6529,12 @@
     if (state.workspace.mode === 'replace') {
       prefetchSelectedDrivePrior();
       restoreReplaceDraftsIntoWorkspace();
+      ensureUniversalPrompts(true).then(() => {
+        if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
+      });
+      ensureApprovedCustomPrompts(true).then(() => {
+        if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
+      });
       loadAnswerlyModels().then(() => {
         if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
       });
@@ -5988,7 +6573,8 @@
         state.workspace.mode === ws) {
       if (route.match) state.workspace.matchEan = route.match;
       if (route.shot != null && route.shot !== '') state.workspaceShot = Number(route.shot) || 0;
-      if (route.drive != null && route.drive !== '') state.workspace.driveImgIndex = Number(route.drive);
+      // Refresh / deep-link: keep Drive images selection on the first rail image.
+      resetDriveImgSelectionToFirst();
       renderWorkspace();
       if (ws === 'replace') {
         prefetchSelectedDrivePrior();
@@ -6259,9 +6845,26 @@
             '<div class="tw-card-title tw-card-title-caps">Possible previous matches</div>' +
             '<div class="tw-card-note">Best match first. Select a prior match to reuse outputs, or open Drive links to view folder assets.</div>' +
           '</div>' +
-          '<span class="tw-match-count">' + matches.length + ' match' + (matches.length === 1 ? '' : 'es') + ' found</span>' +
+          '<div class="tw-match-head-right">' +
+            '<form class="tw-manual-ean" data-ws-manual-ean-form>' +
+              '<label class="tw-manual-ean-label" for="tw-manual-ean-input">Or enter EAN</label>' +
+              '<input id="tw-manual-ean-input" class="tw-manual-ean-input" type="text" inputmode="numeric" ' +
+                'pattern="[0-9]*" maxlength="18" placeholder="e.g. 8909…" ' +
+                'value="' + esc((selected && selected.level === 'manual') ? String(selected.ean) : '') + '" ' +
+                'aria-label="Enter a Completed EAN for Product Replacement">' +
+              '<button type="submit" class="tp-btn tp-btn-ghost tw-manual-ean-btn">Use EAN</button>' +
+            '</form>' +
+            '<span class="tw-match-count">' + matches.length + ' match' + (matches.length === 1 ? '' : 'es') + ' found</span>' +
+          '</div>' +
         '</div>' +
-        '<div class="tw-card-body">' + matchHtml + '</div>' +
+        '<div class="tw-card-body">' +
+          (selected && selected.level === 'manual'
+            ? '<div class="tw-manual-ean-selected">Using manual prior EAN <strong class="tp-mono">' +
+                esc(String(selected.ean)) + '</strong> — ' + esc(selected.title || '') +
+                '. Continue with Product Replacement below, or pick a recommended match.</div>'
+            : '') +
+          matchHtml +
+        '</div>' +
       '</section>' +
 
       '<footer class="tw-confirm-bar">' +
@@ -6391,21 +6994,31 @@
     const priorOverride = assets.priorOverride || null;
     const mainBorrowNote = isMainShot(shot) && !inputAssets.length && mainHasProductRefs(i, shots);
     const compiled = compileReplacePrompt(t, shot, prior);
-    const promptText = (state.workspace.prompts && state.workspace.prompts[i] != null)
-      ? state.workspace.prompts[i]
-      : compiled.text;
     if (!state.workspace.prompts) state.workspace.prompts = {};
     if (!state.workspace.promptBaselines) state.workspace.promptBaselines = {};
+    // First fill: prefer a prior Custom prompt from the same Sub-category + Template (+ shot).
+    const reusedCustom = (state.workspace.prompts[i] == null) ? findReusedCustomPrompt(t, shot) : null;
     if (state.workspace.prompts[i] == null) {
-      state.workspace.prompts[i] = compiled.text;
+      state.workspace.prompts[i] = (reusedCustom && reusedCustom.prompt) || compiled.text;
       rememberPromptBaseline(i, compiled.text);
+      if (reusedCustom && reusedCustom.prompt) {
+        if (!state.workspace.promptReuse) state.workspace.promptReuse = {};
+        state.workspace.promptReuse[i] = {
+          ean: reusedCustom.ean,
+          author: reusedCustom.author || '',
+          rating: reusedCustom.qualityRating || ''
+        };
+      }
     } else if (state.workspace.promptBaselines[i] == null &&
         normalizePromptCompare(state.workspace.prompts[i]) === normalizePromptCompare(compiled.text)) {
       rememberPromptBaseline(i, compiled.text);
     }
+    const promptText = state.workspace.prompts[i];
     const promptOriginPreview = promptOriginForShot(t, shot, prior, promptText, i);
+    const reuseMeta = state.workspace.promptReuse && state.workspace.promptReuse[i];
     const outAsset = assets.output || null;
-    const hasOutput = !!(outAsset && outAsset.url) || !!(state.workspace.outputs && state.workspace.outputs[i]);
+    const outUrl = ensureAssetDisplayUrl(outAsset);
+    const hasOutput = !!outUrl || !!(state.workspace.outputs && state.workspace.outputs[i]);
     const shotError = assets.error || null;
     const dimsDiffer = productDimsDiffer(t, prior);
     const panelOpen = state.workspace.panelOpen !== false;
@@ -6474,10 +7087,20 @@
     const shotHasPriorDrive = !!(activeMap && driveImgs[activeMap.imgIdx]);
     const shotNeedsPriorOverride = canGenerate && !shotHasPriorDrive;
     const priorReady = !!(priorOverride || (shotHasPriorDrive && drivePriorMeta));
-    // MAIN uses Hero Front / seq 01 as A — treat as prior-ready when angle source is available.
+    // MAIN uses Hero Front / seq 01 D as A when available; B may be own or borrowed from angle.
+    const angleSrcIdx = angleSourceShotIndex(shots);
+    const mainHeroDReady = isMainShot(shot) && angleSrcIdx >= 0 && shotHasGeneratedOutput(angleSrcIdx);
     const mainAngleReady = isMainShot(shot) && !!mainAngleSourceShot(shots);
-    const canRunShot = canGenerate && (priorReady || mainAngleReady) && !!inputAssets.length &&
-      !(shotHasPriorDrive && priorLoading && !priorOverride && !mainAngleReady);
+    const productReady = isMainShot(shot)
+      ? mainHasProductRefs(i, shots)
+      : inputAssets.length > 0;
+    const mainPriorOk = isMainShot(shot) &&
+      (!!priorOverride || mainHeroDReady || mainAngleReady);
+    const canRunShot = canGenerate && productReady && (
+      isMainShot(shot)
+        ? mainPriorOk
+        : (priorReady && !(shotHasPriorDrive && priorLoading && !priorOverride))
+    );
     // Keep Generate enabled after a result so user can regenerate when B (+ prompt C) are present.
     const canApprove = hasOutput && rating >= 4;
     const approvedCount = state.workspace.approved
@@ -6503,7 +7126,8 @@
             (approved ? ' is-approved' : '') +
             (isMain ? ' is-main' : '') +
             '" data-ws-shot="' + idx + '"' +
-            (driveIdxForShot >= 0 ? ' data-ws-drive-img="' + driveIdxForShot + '"' : '') +
+            // Drive index is stored for A/prior only — do not also mark as data-ws-drive-img
+            // on shot buttons (that caused the Drive handler to fight shot selection).
             ' data-ws-drop-shot="' + idx + '" draggable="false">' +
             '<div class="wr-shot-thumb" draggable="false"' +
               (driveIdxForShot >= 0
@@ -6512,7 +7136,7 @@
               (driveIdxForShot >= 0
                 ? String(priorImgAt(prior, driveIdxForShot, 360) || '').replace(/<img /g, '<img draggable="false" ')
                 : (hasOverride
-                  ? '<img class="tp-img" draggable="false" src="' + esc(shotAssets(idx).priorOverride.url) + '" alt="">'
+                  ? '<img class="tp-img" draggable="false" src="' + esc(ensureAssetDisplayUrl(shotAssets(idx).priorOverride)) + '" alt="">'
                   : '<span class="wr-ph">—</span>')) +
               (busy ? '<span class="wr-shot-busy">In progress</span>' : '') +
               (approved && !busy ? '<span class="wr-shot-done">Approved</span>' :
@@ -6553,15 +7177,22 @@
 
     const cappedInputs = inputAssets.slice(0, 4);
     const inputTiles = cappedInputs.length
-      ? cappedInputs.map((asset, n) =>
-          '<div class="wr-in-tile">' +
+      ? cappedInputs.map((asset, n) => {
+          const thumbUrl = ensureAssetDisplayUrl(asset);
+          // Answerly slots: A = INPUT IMAGE 1, first B = 2, second B = 3, …
+          const answerlyNum = n + 2;
+          return '<div class="wr-in-tile">' +
+            '<span class="wr-in-num" title="Answerly INPUT IMAGE ' + answerlyNum + ' (product B' + (n + 1) + ')">' +
+              answerlyNum +
+            '</span>' +
             '<button type="button" class="wr-in-remove" data-ws-remove-input="' + n + '" title="Remove">×</button>' +
-            (asset.url
-              ? '<img class="wr-in-thumb" src="' + esc(asset.url) + '" alt="' + esc(asset.name) + '">'
+            (thumbUrl
+              ? '<img class="wr-in-thumb" src="' + esc(thumbUrl) + '" alt="' + esc(asset.name) + '">'
               : '<div class="wr-in-glyph" aria-hidden="true"></div>') +
             '<div class="wr-in-name" title="' + esc(asset.name) + '">' + esc(asset.name) + '</div>' +
             '<div class="wr-in-dim">' + (asset.w && asset.h ? asset.w + '×' + asset.h : '') + '</div>' +
-          '</div>').join('') +
+          '</div>';
+        }).join('') +
         (cappedInputs.length < 4
           ? '<div class="wr-in-empty wr-in-empty-slot" data-ws="add-input" role="button" tabindex="0">' +
               '<span class="wr-in-empty-title">Add more</span>' +
@@ -6583,13 +7214,14 @@
 
     return '<div class="tw-shell tw-shell-replace">' +
       '<nav class="tw-crumb" aria-label="Breadcrumb">' +
-        '<button type="button" class="tw-back-pill" data-ws="close">' +
+        '<button type="button" class="tw-back-pill" data-ws="choose">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>' +
-          'Back to My Tasks</button>' +
+          'Choose workflow</button>' +
         '<span class="tw-crumb-sep" aria-hidden="true">/</span>' +
         '<ol class="tw-crumb-list">' +
           '<li>My Tasks</li><li aria-hidden="true">›</li>' +
-          '<li>Active</li><li aria-hidden="true">›</li>' +
+          '<li><button type="button" class="tw-crumb-link" data-ws="choose">Choose workflow</button></li>' +
+          '<li aria-hidden="true">›</li>' +
           '<li aria-current="page">Product Replacement</li>' +
         '</ol>' +
       '</nav>' +
@@ -6611,8 +7243,8 @@
               (t.setLabel ? '<span class="tw-chip">' + esc(t.setLabel) + '</span>' : '') +
               '<span class="tw-chip">' + (canGenerate ? shots.length + ' shots' : 'Select product type') + '</span>' +
               pdp + driveChip +
-              '<button type="button" class="tw-reset-ean" data-ws="reset-ean" title="Clear B, D, ratings and restore default prompts for this EAN">' +
-                'Reset EAN</button>' +
+              '<button type="button" class="tw-reset-ean" data-ws="reset-ean" title="Clear all generated images (B/D), ratings, and restore default prompts for this EAN">' +
+                'Reset all Gen Img &amp; Prompt</button>' +
             '</div>' +
           '</div>' +
           productTypePickerHtml() +
@@ -6629,10 +7261,8 @@
           '<div class="wr-prior-actions">' +
             '<button type="button" class="wr-token-chip ' + tokenChipClass(state.answerlyToken) +
               '" data-ws="answerly-token" title="' +
-              esc((state.answerlyToken && state.answerlyToken.error) || (formatTokenExpiry(state.answerlyToken) + ' · click to refresh')) + '">' +
-              esc(state.answerlyToken && state.answerlyToken.bridgeOffline
-                ? 'Bridge offline'
-                : formatTokenExpiry(state.answerlyToken)) +
+              esc((state.answerlyToken && state.answerlyToken.error) || formatTokenExpiryDetail(state.answerlyToken)) + '">' +
+              esc(formatTokenExpiry(state.answerlyToken)) +
             '</button>' +
           '</div>' +
         '</div>' +
@@ -6723,12 +7353,12 @@
                 esc((prior && prior.folderId) || '') + '" data-drive-img="' +
                 (shotHasPriorDrive && activeMap ? activeMap.imgIdx : driveImgIndex) + '">' +
                 (priorOverride
-                  ? '<img class="tp-img" src="' + esc(priorOverride.url) + '" alt="' + esc(priorOverride.name) + '">'
+                  ? '<img class="tp-img" src="' + esc(ensureAssetDisplayUrl(priorOverride)) + '" alt="' + esc(priorOverride.name) + '">'
                   : (shotHasPriorDrive
                     ? priorImgAt(prior, activeMap.imgIdx, 640)
                     : '<span class="wr-frame-empty">' +
                         (shotNeedsPriorOverride
-                          ? 'No matching prior — drop or Override any image'
+                          ? 'No matching prior — drop any image here'
                           : 'No prior') +
                       '</span>')) +
               '</div>' +
@@ -6770,7 +7400,11 @@
               '<div class="wr-card-head">' +
                 '<div class="wr-card-label">C · Prompt</div>' +
                 '<div class="wr-prompt-head-actions">' +
-                  '<span class="wr-badge-ghost">' + (String(promptText || '').trim() ? 'Draft' : 'Empty') + '</span>' +
+                  '<span class="wr-badge-ghost' +
+                    (promptOriginPreview === 'Custom' ? ' is-custom' : ' is-automated') +
+                    '" data-ws-prompt-origin="' + esc(promptOriginPreview) + '">' +
+                    esc(promptOriginPreview) +
+                  '</span>' +
                   '<button type="button" class="wr-icon-btn wr-prompt-expand" data-ws="prompt-expand" title="Expand prompt" aria-label="Expand prompt">' +
                     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>' +
                   '</button>' +
@@ -6780,11 +7414,12 @@
                 '<textarea class="wr-prompt" data-ws-prompt="' + i + '" rows="8" placeholder="Compiled from Universal + Shoot Tracker + Naming">' + esc(promptText) + '</textarea>' +
               '</div>' +
               '<div class="wr-prompt-foot">' +
-                '<span class="wr-prompt-note">Universal: ' + esc(compiled.universalLabel) +
-                  ' · ' + esc(promptOriginPreview) +
-                  ' if approved now. Reset restores compiled prompt. Approve needs 4–5 stars.</span>' +
+                '<span class="wr-prompt-note">' +
+                  promptOriginNoteHtml(t, shot, compiled, promptOriginPreview, reuseMeta) +
+                '</span>' +
                 '<div class="wr-prompt-actions">' +
-                  '<button type="button" class="wr-text-btn" data-ws="prompt-reset">Reset</button>' +
+                  '<button type="button" class="wr-text-btn" data-ws="prompt-reset" title="Restore the compiled Universal prompt">Default</button>' +
+                  '<button type="button" class="wr-text-btn" data-ws="prompt-clear" title="Clear the prompt field so you can paste a new one">Clear</button>' +
                   '<button type="button" class="wr-text-btn" data-ws="prompt-copy">Copy</button>' +
                 '</div>' +
               '</div>' +
@@ -6793,7 +7428,11 @@
             '<div class="wr-card wr-card-out">' +
               '<div class="wr-card-head">' +
                 '<div class="wr-card-label">D · Output · Answerly</div>' +
-                '<span class="wr-badge-ok">' + (hasOutput ? 'Done' : 'Ready') + '</span>' +
+                '<span class="' + (isShotBusy(i) ? 'wr-badge-ghost' : (shotError ? 'wr-badge-muted' : 'wr-badge-ok')) + '">' +
+                  (isShotBusy(i)
+                    ? esc((state.workspace.busyShots && state.workspace.busyShots[i]) || genStage || 'Working…')
+                    : (shotError ? 'Failed' : (hasOutput ? 'Done' : 'Ready'))) +
+                '</span>' +
               '</div>' +
               '<div class="wr-out-controls">' +
                 '<label class="wr-size-label">Size <select class="wr-size-select">' +
@@ -6808,35 +7447,52 @@
                   ).join('') +
                 '</select></label>' +
               '</div>' +
-              '<div class="wr-out-frame' + (hasOutput ? ' has-result' : '') + (shotError ? ' has-error' : '') + '">' +
-                (outAsset && outAsset.url
-                  ? '<img class="wr-out-img" src="' + esc(outAsset.url) + '" alt="Answerly output">' +
-                    '<button type="button" class="wr-out-download" data-ws="download-out" title="Download generated image" aria-label="Download generated image">' +
-                      ICON.download +
-                    '</button>' +
-                    '<div class="wr-out-meta">' +
+              '<div class="wr-out-frame' +
+                (isShotBusy(i) ? ' is-busy'
+                  : (shotError ? ' has-error'
+                    : (hasOutput ? ' has-result' : ''))) + '">' +
+                (isShotBusy(i)
+                  ? '<div class="wr-out-progress" aria-live="polite">' +
+                      '<div class="wr-out-progress-title">' +
+                        esc((state.workspace.busyShots && state.workspace.busyShots[i]) || genStage || 'Generating…') +
+                      '</div>' +
+                      '<div class="wr-out-progress-sub">Answerly is working on this shot</div>' +
                       '<div class="tp-mono">' + esc(synthName) + '</div>' +
-                      (outAsset.w && outAsset.h
-                        ? '<div class="wr-out-dims">' + outAsset.w + ' × ' + outAsset.h + '</div>'
-                        : '') +
                     '</div>'
                   : shotError
-                    ? '<div class="wr-out-error">' + esc(shotError) + '</div><div class="tp-mono">' + esc(synthName) + '</div>'
-                    : canGenerate
-                      ? '<div class="wr-out-ready">' +
-                          (priorFetchError
-                            ? esc((priorFetch && priorFetch.error) || 'Could not load prior from Drive')
-                            : (priorLoading
-                              ? 'Loading prior full-res from Drive…'
-                              : (!priorReady
-                                ? (shotNeedsPriorOverride
-                                  ? 'No prior match — drop or Override any image onto A'
-                                  : 'Select a prior on the left rail or Override on A')
-                                : (!inputAssets.length
-                                  ? 'Drop a JPG/PNG product input onto B, then Generate'
-                                  : 'Ready to generate (Image to Image)')))) +
-                        '</div><div class="tp-mono">' + esc(synthName) + '</div>'
-                      : '<div class="wr-out-ready">Select Product Type to start</div><div class="tp-mono">' + esc(synthName) + '</div>') +
+                    ? '<div class="wr-out-error" aria-live="assertive">' + esc(shotError) + '</div>' +
+                      '<div class="tp-mono">' + esc(synthName) + '</div>' +
+                      (outUrl
+                        ? '<div class="wr-out-error-hint">Previous result kept — fix the issue and regenerate</div>'
+                        : '')
+                    : (outUrl
+                      ? '<img class="wr-out-img" src="' + esc(outUrl) + '" alt="Answerly output">' +
+                        '<button type="button" class="wr-out-download" data-ws="download-out" title="Download generated image" aria-label="Download generated image">' +
+                          ICON.download +
+                        '</button>' +
+                        '<div class="wr-out-meta">' +
+                          '<div class="tp-mono">' + esc(synthName) + '</div>' +
+                          (outAsset.w && outAsset.h
+                            ? '<div class="wr-out-dims">' + outAsset.w + ' × ' + outAsset.h + '</div>'
+                            : '') +
+                        '</div>'
+                      : canGenerate
+                        ? '<div class="wr-out-ready">' +
+                            (priorFetchError
+                              ? esc((priorFetch && priorFetch.error) || 'Could not load prior from Drive')
+                              : (priorLoading
+                                ? 'Loading prior full-res from Drive…'
+                                  : (!(priorReady || mainPriorOk)
+                                    ? (shotNeedsPriorOverride && !isMainShot(shot)
+                                    ? 'No prior match — drop any image onto A'
+                                    : (isMainShot(shot)
+                                      ? 'Generate Hero Front / 01 first, or drop an image onto A'
+                                      : 'Select a prior on the left rail, or drop any image onto A'))
+                                  : (!productReady
+                                    ? 'Drop a JPG/PNG product input onto B, then Generate'
+                                    : 'Ready to generate (Image to Image)')))) +
+                          '</div><div class="tp-mono">' + esc(synthName) + '</div>'
+                        : '<div class="wr-out-ready">Select Product Type to start</div><div class="tp-mono">' + esc(synthName) + '</div>')) +
               '</div>' +
               (isShotBusy(i)
                 ? '<button type="button" class="tp-btn tp-btn-ghost wr-gen-btn wr-cancel-btn" data-ws="cancel-gen" data-shot="' + i + '"' +
@@ -6849,19 +7505,21 @@
                     (!canRunShot || anyShotBusy() ? ' disabled' : '') +
                     (!canGenerate
                       ? ' title="Select a Product Type first"'
-                      : (shotNeedsPriorOverride && !priorOverride && !mainAngleReady
-                        ? ' title="This shot has no prior match — drop or Override any image onto A first"'
-                        : (priorLoading && !priorOverride && !mainAngleReady
-                          ? ' title="Loading prior full-res from Drive…"'
-                          : (priorFetchError && !priorOverride && !mainAngleReady
-                            ? ' title="Prior Drive file failed to load — Override with a local image or re-select"'
-                            : (!(priorReady || mainAngleReady)
-                              ? ' title="Add a prior image on A first"'
-                              : (!inputAssets.length
-                                ? ' title="Drop a JPG/PNG product input onto B first"'
-                                : (hasOutput
-                                  ? ' title="Regenerate with current B inputs and prompt C"'
-                                  : ' title="Image to Image: prior + product input(s)"'))))))) + '>' +
+                      : (isMainShot(shot) && !mainPriorOk
+                        ? ' title="Generate Hero Front / 01 first (MAIN uses that D as A), or drop an image onto A"'
+                        : (shotNeedsPriorOverride && !priorOverride && !mainAngleReady
+                          ? ' title="This shot has no prior match — drop any image onto A first"'
+                          : (priorLoading && !priorOverride && !mainAngleReady
+                            ? ' title="Loading prior full-res from Drive…"'
+                            : (priorFetchError && !priorOverride && !mainAngleReady
+                              ? ' title="Prior Drive file failed to load — drop a local image onto A or re-select"'
+                              : (!(priorReady || mainPriorOk)
+                                ? ' title="Add a prior image on A first"'
+                                : (!productReady
+                                  ? ' title="Drop a JPG/PNG product input onto B first (or on Hero Front / 01 for MAIN)"'
+                                  : (hasOutput
+                                    ? ' title="Regenerate with current B inputs and prompt C"'
+                                    : ' title="Image to Image: prior + product input(s)"')))))))) + '>' +
                     (hasOutput ? 'Regenerate this shot' : 'Generate this shot') + '</button>') +
             '</div>' +
           '</div>' +
@@ -6884,8 +7542,8 @@
               '</div>' +
               '<div class="wr-compare" data-ws-compare>' +
                 '<div class="wr-compare-base">' +
-                  (outAsset && outAsset.url
-                    ? '<img class="wr-compare-img" src="' + esc(outAsset.url) + '" alt="Generated output">'
+                  (outUrl
+                    ? '<img class="wr-compare-img" src="' + esc(outUrl) + '" alt="Generated output">'
                     : hasOutput
                       ? '<div class="wr-compare-ph is-out">Generated</div>'
                       : '<div class="wr-compare-ph">Generate to compare</div>') +
@@ -6916,6 +7574,11 @@
                         ' aria-label="' + n + ' star' + (n > 1 ? 's' : '') + '">★</button>'
                     ).join('') +
                   '</div>' +
+                  (shotGenerationCount(i) > 0
+                    ? '<span class="wr-gen-count" title="Successful Generate clicks for this shot before Approve">' +
+                        'Gens: ' + shotGenerationCount(i) +
+                      '</span>'
+                    : '') +
                 '</div>' +
                 '<button type="button" class="tp-btn tp-btn-primary" data-ws="prompt-approve"' +
                   (canApprove ? '' : ' disabled title="' +
@@ -7424,6 +8087,45 @@
       syncRoute({ replace: true });
     });
 
+    els.workspace.addEventListener('submit', (e) => {
+      const form = e.target.closest('[data-ws-manual-ean-form]');
+      if (!form || !state.workspace || state.workspace.mode !== 'choose') return;
+      e.preventDefault();
+      const input = form.querySelector('.tw-manual-ean-input');
+      const raw = String((input && input.value) || '').replace(/\D/g, '');
+      if (!/^\d{8,}$/.test(raw)) {
+        showToast('Enter a valid EAN (digits only).', false, { error: true });
+        return;
+      }
+      const task = taskByEan(state.workspace.ean);
+      if (task && String(task.ean) === raw) {
+        showToast('Pick a different EAN than the current task.', false, { error: true });
+        return;
+      }
+      const manual = manualPriorMatchFromEan(raw);
+      if (!manual) {
+        showToast('No Completed product with an output folder found for EAN ' + raw + '.', false, { error: true });
+        return;
+      }
+      state.workspace.matchEan = String(manual.ean);
+      state.workspace.focus = 'replace';
+      if (!state.replaceDraftCache) state.replaceDraftCache = {};
+      if (!state.replaceDraftCache[state.workspace.ean]) {
+        state.replaceDraftCache[state.workspace.ean] = {
+          matchEan: String(manual.ean),
+          assets: {},
+          prompts: {},
+          outputs: {}
+        };
+      } else {
+        state.replaceDraftCache[state.workspace.ean].matchEan = String(manual.ean);
+      }
+      previewPriorMatch(manual.ean, null);
+      renderWorkspace();
+      syncRoute({ replace: true });
+      showToast('Using prior EAN <span class="tp-mono">' + esc(String(manual.ean)) + '</span> for Product Replacement.', false);
+    });
+
     els.workspace.addEventListener('click', (e) => {
       const copyMatch = e.target.closest('[data-action="copy-match"]');
       if (copyMatch) {
@@ -7509,6 +8211,14 @@
       if (matchRow && state.workspace && state.workspace.mode === 'choose') {
         const ean = String(matchRow.dataset.wsMatch || '');
         state.workspace.matchEan = ean;
+        if (!state.replaceDraftCache) state.replaceDraftCache = {};
+        if (!state.replaceDraftCache[state.workspace.ean]) {
+          state.replaceDraftCache[state.workspace.ean] = {
+            matchEan: ean, assets: {}, prompts: {}, outputs: {}
+          };
+        } else {
+          state.replaceDraftCache[state.workspace.ean].matchEan = ean;
+        }
         previewPriorMatch(ean, matchRow);
         renderWorkspace();
         syncRoute({ replace: true });
@@ -7527,6 +8237,32 @@
         const n = Number(removeIn.dataset.wsRemoveInput);
         removeShotInput(idx, n);
         renderWorkspace();
+        return;
+      }
+      // Prefer explicit shot clicks over Drive-index remapping so only one rail item stays active.
+      const shotBtn = e.target.closest('[data-ws-shot]');
+      if (shotBtn) {
+        captureRailScroll();
+        if (state.workspace && state.workspace.mode === 'replace') {
+          const promptEl = els.workspace.querySelector('[data-ws-prompt]');
+          if (promptEl) {
+            if (!state.workspace.prompts) state.workspace.prompts = {};
+            state.workspace.prompts[state.workspaceShot || 0] = promptEl.value;
+          }
+        }
+        state.workspaceShot = Number(shotBtn.dataset.wsShot) || 0;
+        // Sync Drive prior index to this shot's mapped prior when available.
+        const taskNow = taskByEan(state.workspace.ean);
+        const priorNow = resolveWorkspaceMatch(taskNow).selected;
+        const mapNow = priorTargetCodeMap(priorNow, shotListFor(taskNow || {}));
+        const mapped = (mapNow.mapped || []).find((m) => m.shotIdx === state.workspaceShot);
+        if (mapped && mapped.imgIdx != null) {
+          state.workspace.driveImgIndex = mapped.imgIdx;
+          state.workspace.priorFetch = null;
+        }
+        persistCurrentReplaceDraft();
+        renderWorkspace();
+        syncRoute({ replace: true });
         return;
       }
       const driveImgBtn = e.target.closest('[data-ws-drive-img]');
@@ -7550,32 +8286,33 @@
         syncRoute({ replace: true });
         return;
       }
-      const shotBtn = e.target.closest('[data-ws-shot]');
-      if (shotBtn) {
-        captureRailScroll();
-        if (state.workspace && state.workspace.mode === 'replace') {
-          const promptEl = els.workspace.querySelector('[data-ws-prompt]');
-          if (promptEl) {
-            if (!state.workspace.prompts) state.workspace.prompts = {};
-            state.workspace.prompts[state.workspaceShot || 0] = promptEl.value;
-          }
+      // Browse / empty-slot for B — handle before generic [data-ws] so the file dialog
+      // stays inside the user-gesture window (and is not lost to a later re-render).
+      const addInputEl = e.target.closest('[data-ws="add-input"]');
+      if (addInputEl && state.workspace && state.workspace.mode === 'replace') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (addInputEl.hasAttribute('disabled') || addInputEl.disabled) return;
+        const idx = state.workspaceShot || 0;
+        if (shotAssets(idx).inputs.length >= 4) {
+          showToast('Maximum 4 input images per shot.', false);
+          return;
         }
-        state.workspaceShot = Number(shotBtn.dataset.wsShot) || 0;
-        if (shotBtn.dataset.wsDriveImg != null && shotBtn.dataset.wsDriveImg !== '') {
-          state.workspace.driveImgIndex = Number(shotBtn.dataset.wsDriveImg) || 0;
-          state.workspace.priorFetch = null;
-        }
-        persistCurrentReplaceDraft();
-        renderWorkspace();
-        syncRoute({ replace: true });
+        openReplaceFilePicker({ kind: 'inputs', shotIndex: idx });
         return;
       }
+
       const actionEl = e.target.closest('[data-ws]');
       if (!actionEl || actionEl.hasAttribute('disabled') || actionEl.disabled) return;
       const action = actionEl.dataset.ws;
       if (action === 'close') { closeWorkspace(); render(); return; }
       if (action === 'choose' && state.workspace) {
+        if (state.workspace.mode === 'replace') {
+          persistCurrentReplaceDraft();
+          stashReplaceDraftInMemory();
+        }
         state.workspace.mode = 'choose';
+        state.workspace.focus = 'replace';
         renderWorkspace();
         syncRoute({ replace: true });
         window.scrollTo(0, 0);
@@ -7594,18 +8331,42 @@
         const task = taskByEan(state.workspace.ean);
         const resolved = resolveWorkspaceMatch(task);
         if (!resolved.selected) {
-          showToast('No prior match available — choose Primary workflow, or wait for a Completed match.', false);
+          showToast('No prior match available — enter a Completed EAN, choose Primary workflow, or wait for a Completed match.', false);
           return;
         }
+        const lockedMatch = String(resolved.selected.ean);
+        const cachedMatch = state.replaceDraftCache && state.replaceDraftCache[state.workspace.ean]
+          ? String(state.replaceDraftCache[state.workspace.ean].matchEan || '')
+          : '';
         state.workspace.mode = 'replace';
         state.workspace.focus = 'replace';
-        state.workspace.matchEan = String(resolved.selected.ean);
+        state.workspace.matchEan = lockedMatch;
         state.workspace.draftsLoaded = false;
+        if (cachedMatch && cachedMatch.replace(/\D/g, '') !== lockedMatch.replace(/\D/g, '')) {
+          // New prior EAN — reset Drive rail / prior fetch so A/B map to the manual prior.
+          state.workspace.driveImgIndex = null;
+          state.workspace.priorFetch = null;
+        }
         renderDrawer(null);
         renderWorkspace();
         syncRoute({ replace: true });
-        restoreReplaceDraftsIntoWorkspace();
+        restoreReplaceDraftsIntoWorkspace({ keepMatchEan: lockedMatch }).then(() => {
+          if (!state.workspace || state.workspace.mode !== 'replace') return;
+          state.workspace.matchEan = lockedMatch;
+          if (!state.replaceDraftCache) state.replaceDraftCache = {};
+          if (!state.replaceDraftCache[state.workspace.ean]) {
+            state.replaceDraftCache[state.workspace.ean] = { matchEan: lockedMatch, assets: {}, prompts: {}, outputs: {} };
+          } else {
+            state.replaceDraftCache[state.workspace.ean].matchEan = lockedMatch;
+          }
+          persistCurrentReplaceDraft();
+          prefetchSelectedDrivePrior();
+          renderWorkspace();
+        });
         ensureUniversalPrompts(true).then(() => {
+          if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
+        });
+        ensureApprovedCustomPrompts(true).then(() => {
           if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
         });
         loadAnswerlyModels().then(() => {
@@ -7657,7 +8418,21 @@
         if (promptEl) promptEl.value = compiled.text;
         persistCurrentReplaceDraft();
         renderWorkspace();
-        showToast('Prompt reset to compiled Universal · ' + compiled.universalLabel + '.', false);
+        showToast('Prompt restored to Default · Universal ' + compiled.universalLabel + '.', false);
+        return;
+      }
+      if (action === 'prompt-clear' && state.workspace && state.workspace.mode === 'replace') {
+        const idx = state.workspaceShot || 0;
+        if (!state.workspace.prompts) state.workspace.prompts = {};
+        state.workspace.prompts[idx] = '';
+        const promptEl = els.workspace.querySelector('[data-ws-prompt]');
+        if (promptEl) {
+          promptEl.value = '';
+          promptEl.focus();
+        }
+        persistCurrentReplaceDraft();
+        renderWorkspace();
+        showToast('Prompt cleared — paste a new one.', false);
         return;
       }
       if (action === 'prompt-approve' && state.workspace && state.workspace.mode === 'replace') {
@@ -7688,62 +8463,84 @@
         const shots = shotListFor(task);
         const shot = shots[idx] || shots[0] || { name: '', code: '' };
         const prior = resolveWorkspaceMatch(task).selected;
-        const promptText = (state.workspace.prompts && state.workspace.prompts[idx] != null)
-          ? state.workspace.prompts[idx]
-          : defaultReplacePrompt(task, shot, prior);
+        // Always prefer the live textarea — state can lag behind typing.
+        const promptEl = els.workspace.querySelector('[data-ws-prompt]');
+        const promptText = promptEl
+          ? String(promptEl.value || '')
+          : ((state.workspace.prompts && state.workspace.prompts[idx] != null)
+            ? state.workspace.prompts[idx]
+            : defaultReplacePrompt(task, shot, prior));
+        if (!state.workspace.prompts) state.workspace.prompts = {};
+        state.workspace.prompts[idx] = promptText;
         if (!String(promptText || '').trim()) {
           showToast('Prompt is empty.', false, { error: true });
           return;
         }
         const compiled = compileReplacePrompt(task, shot, prior);
         let origin = promptOriginForShot(task, shot, prior, promptText, idx);
-        // If unchanged vs current compile, lock baseline so DB stays Automated.
-        if (origin === 'Automated') rememberPromptBaseline(idx, compiled.text);
+        if (origin === 'Automated') {
+          rememberPromptBaseline(idx, compiled.text);
+        } else {
+          // Keep baseline as the compiled default so future compares stay correct.
+          if (!(state.workspace.promptBaselines && state.workspace.promptBaselines[idx] != null)) {
+            rememberPromptBaseline(idx, compiled.text);
+          }
+          // Re-confirm after baseline lock — must stay Custom when text differs.
+          origin = promptOriginForShot(task, shot, prior, promptText, idx);
+          if (origin !== 'Custom') {
+            showToast('Could not mark prompt as Custom — text still matches the compiled default.', false, { error: true });
+            return;
+          }
+        }
         const priorMeta = selectedDrivePriorMeta();
         const priorImageName = (assets.priorOverride && assets.priorOverride.name) ||
           (priorMeta && priorMeta.img && priorMeta.img.name) ||
           (isMainShot(shot) ? 'Hero Front / seq 01 (angle source)' : '');
         const productImageNames = (assets.inputs || []).map((a) => a.name || 'product.png').filter(Boolean);
-        const imageInputCombined = [
-          priorImageName ? ('A · Prior: ' + priorImageName) : '',
-          productImageNames.length ? ('B · Product: ' + productImageNames.join(', ')) : ''
-        ].filter(Boolean).join(' | ');
         showToast('Saving approval to Prompt DB…', false);
         writePromptApprove({
           ean: task.ean,
           author: author,
           workflow: 'Product replacement',
           productType: state.workspace.productTypeName || '',
+          productTypeVariant: state.workspace.productTypeVariant || '',
+          subCategory: task.subCategory || '',
+          template: task.template || '',
+          priorEan: prior && prior.ean ? String(prior.ean) : '',
+          matchLevel: prior ? ((prior.best ? 'Best · ' : '') + (prior.label || prior.level || '')) : '',
           model: (assets.output && assets.output.model) || localStorage.getItem(ANSWERLY_MODEL_KEY) || '',
+          imageSize: (assets.output && assets.output.size) || localStorage.getItem(ANSWERLY_SIZE_KEY) || '',
           imageShortCode: shot.code || '',
           imageName: shot.name || '',
+          shotSeq: shot.seq != null ? shot.seq : idx,
           qualityRating: String(rating),
           appVersion: APP_VERSION,
           prompt: promptText,
           priorImage: priorImageName,
           productImage: productImageNames.join(', '),
-          imageInput: imageInputCombined,
           promptOrigin: origin,
-          universalRow: compiled.universalLabel || 'master'
+          universalRow: compiled.universalLabel || 'master',
+          generationCount: shotGenerationCount(idx)
         }).then((data) => {
           if (!state.workspace) return;
           if (!state.workspace.approved) state.workspace.approved = {};
+          const liveOutUrl = ensureAssetDisplayUrl(assets.output);
           state.workspace.approved[idx] = {
             seq: shot.seq != null ? shot.seq : idx,
             shotName: shot.name || '',
             code: shot.code || '',
             outputName: (assets.output && assets.output.name) || '',
-            url: (assets.output && assets.output.url) || '',
+            url: liveOutUrl,
             rating: rating,
             promptOrigin: origin,
             approvedAt: Date.now()
           };
           if (assets.output) assets.output.approved = true;
           if (state.workspace.rejected) delete state.workspace.rejected[idx];
-          // Seed renamer-style export row from this approved output.
+          // Seed renamer-style export row from this approved output (live blob, not a stale URL).
           if (!state.workspace.exportImages) state.workspace.exportImages = {};
-          state.workspace.exportImages[idx] = {
-            url: (assets.output && assets.output.url) || '',
+          const exportEntry = {
+            url: '',
             name: (assets.output && assets.output.name) || '',
             blob: (assets.output && (assets.output.blob || assets.output.file)) || null,
             file: (assets.output && assets.output.file) || null,
@@ -7753,8 +8550,30 @@
             fromApproved: true,
             upscale: null
           };
+          exportEntry.url = ensureExportDisplayUrl(exportEntry) || liveOutUrl;
+          state.workspace.exportImages[idx] = exportEntry;
           persistCurrentReplaceDraft();
-          showToast('Approved · ' + origin + ' · All user row ' + ((data && data.row) || '') + '.', false);
+          const savedOrigin = (data && data.promptOrigin) || origin;
+          const chars = data && data.promptChars != null ? Number(data.promptChars) : 0;
+          const savedRating = (data && data.qualityRating) || String(rating);
+          const savedGens = (data && data.generationCount != null && data.generationCount !== '')
+            ? data.generationCount
+            : shotGenerationCount(idx);
+          showToast(
+            'Approved · ' + savedOrigin +
+              ' · ' + savedRating + '★' +
+              (savedGens !== '' && savedGens != null ? (' · ' + savedGens + ' gen' + (Number(savedGens) === 1 ? '' : 's')) : '') +
+              (savedOrigin === 'Custom'
+                ? (' · prompt saved (' + (chars || String(promptText || '').length) + ' chars)')
+                : ' · prompt blank in DB') +
+              ' · All user row ' + ((data && data.row) || '') + '.',
+            false
+          );
+          // Refresh reuse cache so the next EAN in this Sub-category + Template can pick it up.
+          if (savedOrigin === 'Custom') {
+            state.approvedCustomsReady = false;
+            ensureApprovedCustomPrompts(true).catch(() => {});
+          }
           renderWorkspace();
           // Hero Front / seq 01 Rate & Approve → auto-generate MAIN (prompt kept; no manual MAIN run).
           return maybeAutoGenerateMain(idx);
@@ -7799,15 +8618,6 @@
         }).catch(() => {
           showToast('Could not copy prompt.', false, { error: true });
         });
-        return;
-      }
-      if (action === 'add-input' && state.workspace) {
-        const idx = state.workspaceShot || 0;
-        if (shotAssets(idx).inputs.length >= 4) {
-          showToast('Maximum 4 input images per shot.', false);
-          return;
-        }
-        openReplaceFilePicker({ kind: 'inputs', shotIndex: idx });
         return;
       }
       if (action === 'browse-prior' && state.workspace) {
@@ -7946,7 +8756,7 @@
           const hasMappedPrior = (mapForPrior.mapped || []).some((m) => m.shotIdx === idx);
           const mainOk = isMain && !!mainAngleSourceShot(shotsNow);
           if (!hasMappedPrior && !mainOk) {
-            showToast('No matching prior for this shot — drop or Override any image onto A.', false, { error: true });
+            showToast('No matching prior for this shot — drop any image onto A.', false, { error: true });
             return;
           }
         }
@@ -7968,8 +8778,10 @@
         state.workspace.genStage = 'Loading prior…';
         state.workspace.panelOpen = true;
         renderWorkspace();
+        // Manual Generate/Regenerate: prefer Hero Front D as A when present, but do not
+        // hard-block if the user set an A override or Drive prior — only auto/gen-all requires hero D.
         runAnswerlyForShot(idx, promptText, {
-          requireMainFromHeroOutput: isMainShot(shotsNow[idx])
+          requireMainFromHeroOutput: false
         }).then((result) => {
           if (!state.workspace || state.workspace.mode !== 'replace') return;
           const prev = shotAssets(idx)._previousOutput;
@@ -8089,6 +8901,7 @@
       }
       if (e.target.matches('[data-ws-prompt]')) {
         persistReplacePromptFromDom();
+        refreshPromptOriginUi();
         return;
       }
       if (!e.target.matches('.wr-compare-range')) return;
@@ -8328,7 +9141,7 @@
     if (tok && tok.hasToken && !tok.expired) {
       const personal = String(tok.workspaceKind || '').toLowerCase() === 'personal';
       setAnswerlyStatus(
-        'Connected · ' + formatTokenExpiry(tok) +
+        'Connected · ' + formatTokenExpiryDetail(tok) +
           (personal ? ' — still on Personal; save again to use Marketing Visualization' : ''),
         !personal
       );
@@ -8475,7 +9288,7 @@
           });
         }
         await refreshAnswerlyStatus();
-        showToast('Answerly token saved · ' + formatTokenExpiry(state.answerlyToken), false);
+        showToast('Answerly token saved · ' + formatTokenExpiryDetail(state.answerlyToken), false);
         closeAnswerlyModal();
       } catch (err) {
         setAnswerlyStatus(friendlyBridgeError(err), false);
@@ -8489,8 +9302,8 @@
     if (!chip) return;
     const tok = state.answerlyToken;
     chip.className = 'wr-token-chip ' + tokenChipClass(tok);
-    chip.title = (tok && tok.error) || formatTokenExpiry(tok);
-    chip.textContent = (tok && tok.bridgeOffline) ? 'Bridge offline' : formatTokenExpiry(tok);
+    chip.title = (tok && tok.error) || formatTokenExpiryDetail(tok);
+    chip.textContent = formatTokenExpiry(tok);
   }
 
   // Keep expiry chip fresh while Replacement is open (avoid full re-render so the prompt isn't disrupted).

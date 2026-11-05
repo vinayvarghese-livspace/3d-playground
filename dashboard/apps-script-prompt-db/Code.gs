@@ -6,10 +6,13 @@
  *
  * Actions (JSON or JSONP via ?callback=):
  *   action=universal     — read Universal tab (templates)
- *   action=promptApprove — append Rate & Approve row to All user
- *   action=ping          — health check
+ *   action=promptChunk      — stash one Custom-prompt slice (CacheService; v6+)
+ *   action=promptApprove    — append Rate & Approve row to All user
+ *   action=approvedCustoms  — latest Custom prompts for Sub-category + Template reuse (v8+)
+ *   action=ping             — health check ({ version, sheet })
  *
- * Deploy: Deploy → New deployment → Web app
+ * After editing this file: Deploy → Manage deployments → ✎ Edit →
+ *   Version: New version → Deploy (keep the same /exec URL).
  *   Execute as: Me
  *   Who has access: Anyone within Livspace (or same as your other HH reader)
  */
@@ -17,7 +20,14 @@
 var PROMPT_DB_ID = '12NU2Ru7Jnxok4M0Ylva1n8CKBxScnOs3k4gPs35a4Ec';
 var UNIVERSAL_TAB = 'Universal';
 var ALL_USER_TAB = 'All user';
-var SCRIPT_VERSION = 5;
+var SCRIPT_VERSION = 11;
+
+/** Old headers that must never be re-created (and are deleted if still present). */
+var RETIRED_COLUMNS = [
+  'Image input (Separate links)',
+  'Image input (separate links)',
+  'Image input'
+];
 
 /** Columns written on Rate & Approve (header names must match All user row 1). */
 var APPROVE_COLUMNS = [
@@ -25,13 +35,20 @@ var APPROVE_COLUMNS = [
   'Author',
   'Primary/Product replacement',
   'Product Type',
+  'Product Type Variant',
+  'Sub-category',
+  'Template',
+  'Prior EAN',
+  'Match level',
   'Model name',
+  'Image size',
   'Image short code',
   'Image Name',
+  'Shot seq',
   'Quality Rating',
+  'Generation count',
   'app version',
   'Final successful prompt',
-  'Image input (Separate links)',
   'Prior image (A)',
   'Product image (B)',
   'Prompt origin',
@@ -44,9 +61,12 @@ function doGet(e) {
   var body;
   try {
     if (p.action === 'universal') body = { ok: true, data: readUniversal_() };
+    else if (p.action === 'promptChunk') body = { ok: true, data: stashPromptChunk_(p) };
     else if (p.action === 'promptApprove') body = { ok: true, data: writePromptApprove_(p) };
+    else if (p.action === 'approvedCustoms') body = { ok: true, data: readApprovedCustoms_(p) };
     else if (p.action === 'ping') body = { ok: true, data: { version: SCRIPT_VERSION, sheet: PROMPT_DB_ID } };
-    else throw new Error('Unknown action: ' + (p.action || '(none)') + '. Use universal, promptApprove, or ping.');
+    else throw new Error('Unknown action: ' + (p.action || '(none)') +
+      '. Use universal, promptChunk, promptApprove, approvedCustoms, or ping.');
   } catch (err) {
     body = { ok: false, error: String((err && err.message) || err) };
   }
@@ -58,6 +78,55 @@ function doGet(e) {
   }
   return ContentService.createTextOutput(json)
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Stash one prompt chunk in CacheService so long Custom prompts can approve via JSONP.
+ * Params: uploadId, i (0-based), n (total), data (raw prompt slice)
+ */
+function stashPromptChunk_(p) {
+  var id = String(p.uploadId || '').replace(/[^\w.-]/g, '');
+  var i = parseInt(p.i, 10);
+  var n = parseInt(p.n, 10);
+  var data = String(p.data != null ? p.data : '');
+  if (!id) throw new Error('uploadId is required');
+  if (isNaN(i) || i < 0 || isNaN(n) || n < 1 || n > 80) throw new Error('Invalid prompt chunk index');
+  if (i >= n) throw new Error('Chunk index out of range');
+  var cache = CacheService.getScriptCache();
+  var key = 'promptUpload:' + id;
+  var raw = cache.get(key);
+  var obj = raw ? JSON.parse(raw) : { n: n, parts: {} };
+  obj.n = n;
+  if (!obj.parts) obj.parts = {};
+  obj.parts[String(i)] = data;
+  // CacheService entry limit ~100KB — prompts stay well under that.
+  cache.put(key, JSON.stringify(obj), 600);
+  return {
+    version: SCRIPT_VERSION,
+    uploadId: id,
+    received: Object.keys(obj.parts).length,
+    n: n
+  };
+}
+
+function takePromptUpload_(uploadId) {
+  var id = String(uploadId || '').replace(/[^\w.-]/g, '');
+  if (!id) throw new Error('promptUploadId is required');
+  var cache = CacheService.getScriptCache();
+  var key = 'promptUpload:' + id;
+  var raw = cache.get(key);
+  if (!raw) throw new Error('Custom prompt upload expired or missing — approve again');
+  var obj = JSON.parse(raw);
+  var n = parseInt(obj.n, 10) || 0;
+  var parts = [];
+  for (var i = 0; i < n; i++) {
+    if (obj.parts[String(i)] == null) {
+      throw new Error('Missing prompt chunk ' + i + ' of ' + n);
+    }
+    parts.push(String(obj.parts[String(i)]));
+  }
+  cache.remove(key);
+  return parts.join('');
 }
 
 function getSpreadsheet_() {
@@ -105,7 +174,7 @@ function readUniversal_() {
 /**
  * Append one approval row to All user.
  * Params (query string): ean, author, workflow, productType, model, imageShortCode,
- *   imageName, qualityRating, appVersion, prompt, imageInput, promptOrigin, universalRow
+ *   imageName, qualityRating, appVersion, prompt, priorImage, productImage, promptOrigin, universalRow
  */
 function writePromptApprove_(p) {
   var ean = String(p.ean || '').trim();
@@ -113,19 +182,24 @@ function writePromptApprove_(p) {
   var prompt = String(p.prompt || '');
   var origin = String(p.promptOrigin || p.origin || '').trim();
   var rating = String(p.qualityRating != null ? p.qualityRating : (p.rating != null ? p.rating : '')).trim();
+  var uploadId = String(p.promptUploadId || p.uploadId || '').trim();
 
   if (!ean) throw new Error('ean is required');
   if (!author) throw new Error('author is required');
   if (!origin) throw new Error('promptOrigin is required (Automated or Custom)');
+  if (!rating) throw new Error('qualityRating is required (1–5)');
+  if (!/^[1-5]$/.test(rating)) throw new Error('qualityRating must be 1–5, got: ' + rating);
   if (/^automated$/i.test(origin)) origin = 'Automated';
   else if (/^custom$/i.test(origin)) origin = 'Custom';
   else throw new Error('promptOrigin must be Automated or Custom');
+
+  // Long Custom prompts arrive via promptChunk uploads (JSONP URL limit).
+  if (origin === 'Custom' && uploadId) {
+    prompt = takePromptUpload_(uploadId);
+  }
   // Only Custom prompts are stored; Automated keeps the cell blank.
-  // If Custom arrives without a prompt (common when JSONP truncates long URLs),
-  // fall back to Automated instead of failing the whole approve write.
   if (origin === 'Custom' && !String(prompt || '').trim()) {
-    origin = 'Automated';
-    prompt = '';
+    throw new Error('Custom prompt is empty — edit the prompt or use Default before Approve');
   }
   if (origin === 'Automated') prompt = '';
 
@@ -163,37 +237,52 @@ function writePromptApprove_(p) {
 
   var priorImage = String(p.priorImage || p.imagePrior || '').trim();
   var productImage = String(p.productImage || p.imageProduct || '').trim();
-  var imageInput = String(p.imageInput || '').trim();
-  if (!imageInput && (priorImage || productImage)) {
-    imageInput = [
-      priorImage ? ('A: ' + priorImage) : '',
-      productImage ? ('B: ' + productImage) : ''
-    ].filter(Boolean).join(' | ');
-  }
 
   set('EAN Number', ean);
   set('Author', author);
   set('Primary/Product replacement', String(p.workflow || 'Product replacement').trim() || 'Product replacement');
   set('Product Type', String(p.productType || '').trim());
+  set('Product Type Variant', String(p.productTypeVariant || p.variant || '').trim());
+  set('Sub-category', String(p.subCategory || p.subcategory || '').trim());
+  set('Template', String(p.template || '').trim());
+  set('Prior EAN', String(p.priorEan || p.matchEan || '').trim());
+  set('Match level', String(p.matchLevel || p.matchLabel || '').trim());
   // Keep the real Answerly model id/label — any model is allowed.
   set('Model name', String(p.model || p.modelName || '').trim());
+  set('Image size', String(p.imageSize || p.size || '').trim());
   set('Image short code', String(p.imageShortCode || p.shotCode || '').trim());
   set('Image Name', String(p.imageName || p.shotName || '').trim());
+  set('Shot seq', String(p.shotSeq != null ? p.shotSeq : (p.seq != null ? p.seq : '')).trim());
+  // Force rating as plain text so sheet dropdowns / number formats cannot blank it.
   set('Quality Rating', rating);
+  // Successful Generate clicks for this shot before Approve (1 = first try, 2+ = regenerations).
+  var genCount = String(
+    p.generationCount != null ? p.generationCount
+      : (p.regenCount != null ? p.regenCount : '')
+  ).trim();
+  if (genCount && !/^\d+$/.test(genCount)) genCount = '';
+  set('Generation count', genCount);
   set('app version', String(p.appVersion || '').trim());
   set('Final successful prompt', prompt);
-  set('Image input (Separate links)', imageInput);
   set('Prior image (A)', priorImage);
   set('Product image (B)', productImage);
+  // Intentionally do not write retired "Image input (Separate links)".
   set('Prompt origin', origin);
   set('Universal row', String(p.universalRow || '').trim());
   set('Approved At', approvedAt);
 
   var next = sheet.getLastRow() + 1;
   var range = sheet.getRange(next, 1, 1, row.length);
-  // Sheet dropdowns on Model name (and similar) reject unknown values — clear validation on this row first.
+  // Sheet dropdowns on Model name / Quality Rating reject unknown values — clear validation on this row first.
   try { range.clearDataValidations(); } catch (e) { /* ignore */ }
   range.setValues([row]);
+  // Re-write rating as text after setValues in case the column format coerced it away.
+  var ratingCol = col('Quality Rating');
+  if (ratingCol >= 0 && rating) {
+    try {
+      sheet.getRange(next, ratingCol + 1).setNumberFormat('@').setValue(String(rating));
+    } catch (e2) { /* ignore */ }
+  }
   SpreadsheetApp.flush();
 
   return {
@@ -203,12 +292,98 @@ function writePromptApprove_(p) {
     ean: ean,
     model: String(p.model || p.modelName || '').trim(),
     promptOrigin: origin,
+    qualityRating: rating,
+    generationCount: genCount,
+    promptChars: origin === 'Custom' ? String(prompt || '').length : 0,
     approvedAt: approvedAt
   };
 }
 
+/**
+ * Latest Custom prompts from All user for reuse on matching Sub-category + Template (+ shot code).
+ * Optional filters: template, subCategory, imageShortCode, limit (default 200).
+ */
+function readApprovedCustoms_(p) {
+  var ss = getSpreadsheet_();
+  var sheet = findSheet_(ss, ALL_USER_TAB);
+  ensureHeaders_(sheet);
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow < 2 || lastCol < 1) {
+    return { version: SCRIPT_VERSION, rows: [], count: 0 };
+  }
+  var values = sheet.getRange(1, 1, lastRow, lastCol).getDisplayValues();
+  var header = values[0] || [];
+  var colIndex = {};
+  header.forEach(function (h, i) {
+    var key = norm_(h);
+    if (key) colIndex[key] = i;
+  });
+  function idx(name) {
+    var i = colIndex[norm_(name)];
+    return i == null ? -1 : i;
+  }
+  function cell(row, name) {
+    var i = idx(name);
+    return i < 0 ? '' : String(row[i] || '').trim();
+  }
+  var wantTpl = norm_(p.template || '');
+  var wantSub = norm_(p.subCategory || p.subcategory || '');
+  var wantCode = norm_(p.imageShortCode || p.shotCode || '');
+  var limit = Math.max(1, Math.min(500, parseInt(p.limit, 10) || 200));
+  var out = [];
+  // Newest first.
+  for (var r = values.length - 1; r >= 1 && out.length < limit; r--) {
+    var row = values[r] || [];
+    var origin = cell(row, 'Prompt origin');
+    if (!/^custom$/i.test(origin)) continue;
+    var prompt = cell(row, 'Final successful prompt');
+    if (!prompt) continue;
+    var tpl = cell(row, 'Template');
+    var sub = cell(row, 'Sub-category');
+    var code = cell(row, 'Image short code');
+    if (wantTpl && norm_(tpl) !== wantTpl) continue;
+    if (wantSub && norm_(sub) !== wantSub) continue;
+    if (wantCode && norm_(code) !== wantCode) continue;
+    out.push({
+      ean: cell(row, 'EAN Number'),
+      author: cell(row, 'Author'),
+      template: tpl,
+      subCategory: sub,
+      productType: cell(row, 'Product Type'),
+      imageShortCode: code,
+      imageName: cell(row, 'Image Name'),
+      qualityRating: cell(row, 'Quality Rating'),
+      prompt: prompt,
+      promptOrigin: 'Custom',
+      universalRow: cell(row, 'Universal row'),
+      priorEan: cell(row, 'Prior EAN'),
+      approvedAt: cell(row, 'Approved At'),
+      row: r + 1
+    });
+  }
+  return { version: SCRIPT_VERSION, rows: out, count: out.length };
+}
+
+/** Delete retired columns (e.g. redundant "Image input (Separate links)") from right to left. */
+function retireObsoleteColumns_(sheet) {
+  var lastCol = Math.max(sheet.getLastColumn(), 1);
+  if (sheet.getLastRow() < 1) return;
+  var header = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+  var retired = {};
+  RETIRED_COLUMNS.forEach(function (name) {
+    retired[norm_(name)] = true;
+  });
+  for (var c = header.length - 1; c >= 0; c--) {
+    if (retired[norm_(header[c])]) {
+      try { sheet.deleteColumn(c + 1); } catch (e) { /* ignore */ }
+    }
+  }
+}
+
 /** Ensure row 1 has every APPROVE_COLUMNS name (append missing headers only; never reorder). */
 function ensureHeaders_(sheet) {
+  retireObsoleteColumns_(sheet);
   var lastCol = Math.max(sheet.getLastColumn(), 1);
   var lastRow = sheet.getLastRow();
   var header = lastRow >= 1
@@ -218,6 +393,10 @@ function ensureHeaders_(sheet) {
   header.forEach(function (h) {
     var k = norm_(h);
     if (k) have[k] = true;
+  });
+  // Never re-add retired columns even if somehow listed elsewhere.
+  RETIRED_COLUMNS.forEach(function (name) {
+    have[norm_(name)] = true;
   });
   var missing = [];
   APPROVE_COLUMNS.forEach(function (name) {

@@ -300,13 +300,16 @@ async function runAnswerlyJob(job) {
         ? [{ buffer: job.buffer, name: job.imageName, mime: job.imageMime }]
         : []);
     // Krea / Grok accept at most 1 reference — never upload or attach a second image.
+    // Otherwise send prior + each product B as separate Answerly slots (2nd–5th).
     const modelLow = String(job.model || '').toLowerCase();
-    const maxRefs = /krea|grok|xai\//.test(modelLow) ? 1 : 4;
+    const maxRefs = /krea|grok|xai\//.test(modelLow) ? 1 : 5;
     if (maxRefs === 1 && images.length > 1) {
       const skipped = images.length - 1;
       images = images.slice(0, 1);
       job.stage = 'note · model max 1 ref (skipped ' + skipped + ')';
       ff.log('[answerly] ' + job.id + ': ' + job.model + ' max 1 reference — using INPUT IMAGE 1 only');
+    } else if (images.length > maxRefs) {
+      images = images.slice(0, maxRefs);
     }
     throwIfAnswerlyCancelled(job);
     if (meta.needsImage) {
@@ -323,11 +326,7 @@ async function runAnswerlyJob(job) {
       job.inputUrls = imageUrls;
     }
 
-    let prompt = job.prompt;
-    if (maxRefs > 1 && imageUrls.length > 2) {
-      prompt += '\n\nAdditional product reference images (INPUT IMAGE 3+):\n' +
-        imageUrls.slice(2).map((u, i) => 'INPUT IMAGE ' + (i + 3) + ': ' + u).join('\n');
-    }
+    const prompt = job.prompt;
 
     throwIfAnswerlyCancelled(job);
     job.stage = 'queued-remote';
@@ -338,6 +337,9 @@ async function runAnswerlyJob(job) {
       imageUrls: imageUrls.slice(0, maxRefs),
       imageUrl: imageUrls[0] || null
     });
+    const refKeys = Object.keys(input).filter((k) => /reference/i.test(k));
+    ff.log('[answerly] ' + job.id + ': refs=' + imageUrls.length +
+      ' keys=' + refKeys.map((k) => k + (Array.isArray(input[k]) ? '[' + input[k].length + ']' : '')).join(','));
     const queued = await answerly.queueWorkflow(job.workflow, input);
     throwIfAnswerlyCancelled(job);
     job.executionId = queued.execution_id;

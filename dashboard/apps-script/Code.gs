@@ -274,20 +274,23 @@ function formatAssignDate_(d) {
 
 /**
  * Update PDP Images (col D) for an existing Render Tracker EAN.
- * Used when the first Product Replacement image is generated → "In progress".
- * Does not create rows; skips Completed; only upgrades Not started / Blocked / blank.
+ * - First generate → "In progress" (does not overwrite Completed).
+ * - After zip + Drive link paste → "Completed" and optional Drive/output link column.
  */
 function writePdpStatus_(p) {
   const ean = lookupKey_(p.ean);
   if (!ean || !/^\d{8,}/.test(ean)) throw new Error('ean is required');
   const want = String(p.status || 'In progress').trim() || 'In progress';
+  const wantCompleted = /completed|complete|done|finished/i.test(want);
+  const outputLink = String(p.outputLink || p.driveLink || p.link || '').trim();
   const src = source_('assign');
   const ss = SpreadsheetApp.openById(src.id);
   const sheet = ss.getSheetByName(assignTabTitle_(src)) || ss.getSheets()[0];
   if (!sheet) throw new Error('No tab found in the assign sheet');
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) throw new Error('EAN not found on Render Tracker');
-  const values = sheet.getRange(1, 1, lastRow, 4).getDisplayValues();
+  const lastCol = Math.max(sheet.getLastColumn(), 4);
+  const values = sheet.getRange(1, 1, lastRow, lastCol).getDisplayValues();
   let rowIndex = -1;
   for (let i = 1; i < values.length; i++) {
     if (lookupKey_(values[i][0]) === ean) { rowIndex = i + 1; break; }
@@ -295,15 +298,50 @@ function writePdpStatus_(p) {
   if (rowIndex < 0) throw new Error('EAN ' + ean + ' not found on Render Tracker');
   const current = String(values[rowIndex - 1][3] || '').trim();
   const curNorm = current.toLowerCase().replace(/\s+/g, ' ');
-  if (/completed|complete|done|finished/.test(curNorm)) {
+  const alreadyCompleted = /completed|complete|done|finished/.test(curNorm);
+
+  // In-progress upgrades only — never downgrade Completed unless explicitly completing again with a link.
+  if (!wantCompleted && alreadyCompleted) {
     return { ean: ean, updated: false, skipped: 'completed', pdpImages: current, row: rowIndex };
   }
-  if (/in\s*-?\s*progress|\bwip\b/.test(curNorm) && /in\s*-?\s*progress/i.test(want)) {
+  if (!wantCompleted && /in\s*-?\s*progress|\bwip\b/.test(curNorm) && /in\s*-?\s*progress/i.test(want)) {
     return { ean: ean, updated: false, skipped: 'already', pdpImages: current, row: rowIndex };
   }
-  sheet.getRange(rowIndex, 4).setValue(want); // D PDP Images
+
+  const statusValue = wantCompleted ? 'Completed' : want;
+  sheet.getRange(rowIndex, 4).setValue(statusValue); // D PDP Images
+
+  let driveCol = -1;
+  let endDateCol = -1;
+  const headers = values[0] || [];
+  for (let c = 0; c < headers.length; c++) {
+    const h = String(headers[c] || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    if (driveCol < 0 && /^(drive link|gdrive|output folder|output link|drive folder)/.test(h)) {
+      driveCol = c + 1;
+    }
+    if (endDateCol < 0 && /^end date$/.test(h)) endDateCol = c + 1;
+  }
+  if (wantCompleted && outputLink && driveCol > 0) {
+    sheet.getRange(rowIndex, driveCol).setValue(outputLink);
+  }
+  if (wantCompleted && endDateCol > 0) {
+    const endDate = Utilities.formatDate(
+      new Date(),
+      Session.getScriptTimeZone() || 'Asia/Kolkata',
+      'dd-MMM-yyyy'
+    );
+    sheet.getRange(rowIndex, endDateCol).setValue(endDate);
+  }
   SpreadsheetApp.flush();
-  return { ean: ean, updated: true, pdpImages: want, row: rowIndex, previous: current };
+  return {
+    ean: ean,
+    updated: true,
+    pdpImages: statusValue,
+    row: rowIndex,
+    previous: current,
+    outputLink: wantCompleted && outputLink ? outputLink : '',
+    driveCol: driveCol
+  };
 }
 
 // Run once from the editor to grant write access (Authorize when prompted), then deploy a new version.

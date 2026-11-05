@@ -412,16 +412,26 @@ function buildInput(workflowMeta, opts) {
       ? opts.imageUrls.filter(Boolean)
       : (opts.imageUrl ? [opts.imageUrl] : []);
     if (!urls.length) throw new Error(workflowMeta.label + ' needs an input image');
-    // Image to Image: prior/master → reference_image_url, product → second_reference_url
-    // (matches Answerly Jobs UI; extra URLs are appended into the prompt by the bridge).
+    // Image to Image: one field per slot only — aliases duplicate rows in Answerly Jobs UI.
+    // Primary = reference_image_url; products = second/third/fourth/fifth_reference_url.
     if (workflowMeta.id === 'image-to-image-workflow') {
       input.reference_image_url = urls[0];
-      // Krea / Grok / xAI accept at most 1 reference — never set second_reference_url.
       const modelLow = String(opts.model || '').toLowerCase();
-      const maxRefs = /krea|grok|xai\//.test(modelLow) ? 1 : 2;
-      if (maxRefs > 1 && urls[1]) input.second_reference_url = urls[1];
-      // Ensure we never leave a stale second ref on 1-ref models.
-      if (maxRefs <= 1) delete input.second_reference_url;
+      // Krea / Grok / xAI accept at most 1 reference — never set extra slots.
+      const maxRefs = /krea|grok|xai\//.test(modelLow) ? 1 : 5; // A + up to 4 B
+      const take = urls.slice(0, maxRefs);
+      // Strip every multi-ref key (including legacy aliases) so Jobs UI stays clean.
+      [
+        'second_reference_url', 'third_reference_url', 'fourth_reference_url', 'fifth_reference_url',
+        'second_reference_image_url', 'third_reference_image_url', 'fourth_reference_image_url',
+        'fifth_reference_image_url', 'reference_image_urls'
+      ].forEach((k) => { delete input[k]; });
+      if (maxRefs > 1) {
+        if (take[1]) input.second_reference_url = take[1];
+        if (take[2]) input.third_reference_url = take[2];
+        if (take[3]) input.fourth_reference_url = take[3];
+        if (take[4]) input.fifth_reference_url = take[4];
+      }
     } else {
       input[workflowMeta.imageField] = urls[0];
     }
