@@ -1,9 +1,9 @@
 # 3D Playground: Overview
 
-**Live link (production V1.3):** https://vinayvarghese-livspace.github.io/3d-playground/
-**Preview link (V1.6 Tasks + Product Replacement):** https://vinayvarghese-livspace.github.io/3d-playground/preview.html
+**Live link (Beta V1.6):** https://vinayvarghese-livspace.github.io/3d-playground/ (or `#renamer` / `#available` / `#my`)
+**Preview link (Preview V1.6):** https://vinayvarghese-livspace.github.io/3d-playground/preview.html
 **Source code:** https://github.com/vinayvarghese-livspace/3d-playground
-**Current version:** Preview V1.6 on `preview.html` only. Production root stays V1.3 (not this release).
+**Current version:** Beta V1.6 on `index.html` (production root). Preview V1.6 stays on `preview.html` for the same feature set.
 
 ---
 
@@ -313,7 +313,7 @@ Adds Product Replacement on the Tasks preview shell.
 
 ### Preview V1.6: Multi-ref Answerly + Prompt DB + MAIN regen, 5 Nov 2026
 
-**Preview only** (`preview.html`). Production root stays V1.3.
+Shipped first on `preview.html`, then promoted to production root as **Beta V1.6**.
 
 **Changes:**
 
@@ -323,10 +323,14 @@ Adds Product Replacement on the Tasks preview shell.
 - MAIN Regenerate enabled after Hero Front / 01 D exists; manual MAIN uses hero D as A with chosen B.
 - Drive rail selection / approved-thumb styling clarified; stale blob URL console spam reduced.
 
+### Beta V1.6: Production cutover, 5 Nov 2026
+
+**Production root** (`index.html` / https://vinayvarghese-livspace.github.io/3d-playground/#renamer) now runs the same Tasks + Product Replacement shell as Preview V1.6, labeled **BETA V1.6**.
+
 ### Summary of changes
 
-| | Beta (V1.0) | Beta V1.1 | Preview V1.3 | Preview V1.6 |
+| | Beta (V1.0) | Beta V1.1 | Preview V1.3 | Beta V1.6 |
 |---|---|---|---|---|
 | Name | Image Renamer | 3D Playground | Tasks preview shell | Tasks + Product Replacement |
-| Where people open it | GitHub Pages | GitHub Pages | Preview = `preview.html` | Preview V1.6 only; production root V1.3 |
+| Where people open it | GitHub Pages | GitHub Pages | Preview = `preview.html` | Production root + `preview.html` |
 | Install needed | None | Setup.bat for AI upscale | Same + Google for Tasks | `Setup Answerly.bat` for PR; full Setup.bat only if Firefly upscale |

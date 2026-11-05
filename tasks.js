@@ -30,7 +30,9 @@
   const PROMPT_DB_URL = 'https://script.google.com/a/macros/livspace.com/s/AKfycbwjLPIuL9J_XtHmnEm7jdbnJHlUIEjscACqYiSIB3ISTQNXHDhKHAVyuOc9VuPaobHT/exec';
   const FEED_TIMEOUT_MS = 90000;
   const FEED_VERSION = 32;
-  const APP_VERSION = 'Preview V1.6';
+  const APP_VERSION = /preview\.html$/i.test(typeof location !== 'undefined' ? location.pathname : '')
+    ? 'Preview V1.6'
+    : 'Beta V1.6';
   // How often to re-read the assign sheet while this tab is visible (other users' picks).
   // ~2 reads/min per open browser — well under the Sheets ~60 reads/min/user cap.
   const ASSIGN_POLL_MS = 30000;
@@ -5929,7 +5931,7 @@
       frame.hidden = true;
     }
     const title = view === 'renamer' ? 'Renamer' : view === 'my' ? 'My Tasks' : 'Available Tasks';
-    const ver = /preview\.html$/i.test(location.pathname) ? 'PREVIEW V1.6' : 'V1.3';
+    const ver = /preview\.html$/i.test(location.pathname) ? 'PREVIEW V1.6' : 'BETA V1.6';
     document.title = title + ' · 3D Playground (' + ver + ')';
     const titleEl = $('view-title');
     if (titleEl) titleEl.textContent = title;
