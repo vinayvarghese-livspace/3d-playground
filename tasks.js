@@ -3006,20 +3006,26 @@
       assets.error = null;
       if (!state.workspace.outputs) state.workspace.outputs = {};
       state.workspace.outputs[shotIndex] = true;
-      // Keep export card in sync when D is (re)generated.
+      // Keep export card in sync when D is (re)generated — leave manual drops alone.
       if (state.workspace.exportImages) {
-        state.workspace.exportImages[String(shotIndex)] = {
-          url: outUrl,
-          _blobRef: outBlob,
-          name: assets.output.name,
-          blob: outBlob,
-          file: outBlob,
-          w: dims.w || 0,
-          h: dims.h || 0,
-          status: 'ready',
-          fromApproved: false,
-          upscale: null
-        };
+        const exKey = String(shotIndex);
+        const existingExport = state.workspace.exportImages[exKey] || state.workspace.exportImages[shotIndex];
+        if (!exportImageSkipsRating(existingExport)) {
+          state.workspace.exportImages[exKey] = {
+            url: outUrl,
+            _blobRef: outBlob,
+            name: assets.output.name,
+            blob: outBlob,
+            file: outBlob,
+            w: dims.w || 0,
+            h: dims.h || 0,
+            status: 'ready',
+            fromApproved: false,
+            manualDrop: false,
+            skipRating: false,
+            upscale: null
+          };
+        }
       }
       // Fresh generate → rating must start blank for this shot (do not carry prior stars).
       clearShotRating(shotIndex);
@@ -3804,10 +3810,17 @@
     const blob = (out && (out.blob || out.file)) || null;
     if (state.workspace.exportImages[key]) {
       const existing = state.workspace.exportImages[key];
+      // Keep manual wr-slot-drop fills as-is (e.g. dimension) — do not overwrite with D.
+      if (exportImageSkipsRating(existing)) {
+        ensureExportImageDims(existing, key);
+        return existing;
+      }
       // Refresh backing blob from live D so thumbs survive revoke / EAN switch.
       if (blob) {
         existing.blob = blob;
         existing.file = out.file || existing.file || null;
+        existing.manualDrop = false;
+        existing.skipRating = false;
       }
       if (!ensureExportDisplayUrl(existing)) {
         delete state.workspace.exportImages[key];
@@ -3828,6 +3841,8 @@
       h: (out && out.h) || 0,
       status: 'ready',
       fromApproved: !!approved,
+      manualDrop: false,
+      skipRating: false,
       upscale: null
     };
     entry.url = ensureExportDisplayUrl(entry) || liveUrl;
@@ -3978,6 +3993,19 @@
     showToast('Reset all Gen Img & Prompt — B, D, ratings cleared; prompts restored to Universal defaults.', false);
   }
 
+  /** Drag/drop onto export row (wr-slot-drop) — e.g. manual M-DIM — skip rating gate. */
+  function exportImageSkipsRating(img) {
+    return !!(img && (img.manualDrop || img.skipRating));
+  }
+
+  function exportRowNeedsRating(idx) {
+    const img = state.workspace && state.workspace.exportImages &&
+      (state.workspace.exportImages[String(idx)] || state.workspace.exportImages[idx]);
+    if (!img || !ensureExportDisplayUrl(img)) return false;
+    if (exportImageSkipsRating(img)) return false;
+    return shotRating(idx) < 1;
+  }
+
   async function addExportImageToShot(shotIndex, file) {
     if (!state.workspace || !isAcceptedImageFile(file)) {
       showToast('Use JPG or PNG images only.', false);
@@ -3990,6 +4018,7 @@
       delete state.workspace.exportCleared[String(shotIndex)];
       state.workspace.exportImages[String(shotIndex)] = {
         url: loaded.url,
+        _blobRef: loaded.blob || loaded.file,
         name: loaded.name,
         blob: loaded.blob || loaded.file,
         file: loaded.file || loaded.blob,
@@ -3997,6 +4026,9 @@
         h: loaded.h || 0,
         status: 'ready',
         fromApproved: false,
+        // Manual drop into export table — not Answerly-generated; do not block zip on stars.
+        manualDrop: true,
+        skipRating: true,
         upscale: null
       };
       renderWorkspace();
@@ -4113,7 +4145,7 @@
       health = await readHealth();
     } catch (_) {
       throw new Error(
-        'Local bridge offline. For AI upscale, start the Firefly upscaler (Settings → AI upscale setup). Or turn off AI upscale to export without Firefly.'
+        'Local bridge offline. For AI upscale, start the Firefly upscaler (Settings → Setup). Or turn off AI upscale to export without Firefly.'
       );
     }
     // Answerly-only process cannot run /jobs — start the full Firefly service.
@@ -4130,12 +4162,12 @@
     }
     if (!health || health.answerlyOnly || health.service !== 'firefly-upscaler') {
       throw new Error(
-        'AI upscale needs the Firefly upscaler. Start it from Settings → AI upscale setup, or turn off AI upscale to finish export without Firefly.'
+        'AI upscale needs the Firefly upscaler. Start it from Settings → Setup, or turn off AI upscale to finish export without Firefly.'
       );
     }
     if (!health.chrome) {
       throw new Error(
-        'Firefly Chrome is not open. Click Start in AI upscale setup (leave the Firefly window open), or turn off AI upscale to export without Firefly.'
+        'Firefly Chrome is not open. Click Start in Setup (leave the Firefly window open), or turn off AI upscale to export without Firefly.'
       );
     }
     return health;
@@ -4400,9 +4432,14 @@
       showToast('Add at least one image.', false, { error: true });
       return;
     }
-    const unrated = indexes.filter((idx) => shotRating(idx) < 1);
+    const unrated = indexes.filter((idx) => exportRowNeedsRating(idx));
     if (unrated.length) {
-      showToast('Rate every filled image before generating (1–5 stars). ' + unrated.length + ' still unrated.', false, { error: true });
+      showToast(
+        'Rate every generated/approved image before export (1–5 stars). ' +
+          unrated.length + ' still unrated. Manual drops (e.g. dimension) are skipped.',
+        false,
+        { error: true }
+      );
       return;
     }
     const upOn = upscaleOn();
@@ -4538,12 +4575,12 @@
       return !!(img && ensureExportDisplayUrl(img));
     });
     const filled = filledRows.length;
-    const unratedFilled = filledRows.filter(({ idx }) => shotRating(idx) < 1).length;
+    const unratedFilled = filledRows.filter(({ idx }) => exportRowNeedsRating(idx)).length;
     const canExport = filled > 0 && unratedFilled === 0 && !(state.workspace && state.workspace.exportBusy);
     const exportDisabledTitle = !filled
       ? 'Add at least one image'
       : (unratedFilled
-        ? 'Rate every filled image first (' + unratedFilled + ' unrated)'
+        ? 'Rate generated/approved images first (' + unratedFilled + ' unrated). Manual drops skip rating.'
         : '');
     const upOn = upscaleOn();
     const typeName = state.workspace.productTypeName || '';
@@ -4620,10 +4657,13 @@
                 ? String(parseInt(String(s.seq), 10) || 0).padStart(2, '0')
                 : String(idx).padStart(2, '0');
               const rated = shotRating(idx) >= 1;
+              const manualExport = !!(img && exportImageSkipsRating(img));
               const statusWithRate = !img ? '<span class="pill is-empty">Empty</span>'
-                : (!rated
-                  ? '<span class="pill is-empty" title="Rate this shot (stars above) before export">Needs rating</span>'
-                  : (approved ? '<span class="pill">Approved</span>' : '<span class="pill is-ready">Ready</span>'));
+                : (manualExport
+                  ? '<span class="pill is-ready" title="Manual drop — rating not required for export">Manual</span>'
+                  : (!rated
+                    ? '<span class="pill is-empty" title="Rate this shot (stars above) before export">Needs rating</span>'
+                    : (approved ? '<span class="pill">Approved</span>' : '<span class="pill is-ready">Ready</span>')));
               return '<tr data-export-row="' + idx + '">' +
                 '<td class="c-seq tp-mono">' + esc(seqDisp) + '</td>' +
                 '<td class="c-name">' + esc(s.name || '') + '</td>' +
@@ -4648,7 +4688,7 @@
       '<div class="wr-approved-actions">' +
         '<div class="wr-approved-save">' +
           '<span class="wr-approved-save-label">Save to: <strong class="tp-mono">' + esc((t.ean || 'EAN') + '.zip') + '</strong></span>' +
-          '<span class="muted">All PNGs download as one zip with a folder named after the EAN. Every filled image must be rated first.</span>' +
+          '<span class="muted">All PNGs download as one zip with a folder named after the EAN. Generated/approved rows need a rating; manual drops (e.g. dimension) do not.</span>' +
         '</div>' +
         '<button type="button" class="tp-btn tp-btn-primary" data-ws="export-generate"' +
           (canExport ? '' : ' disabled') +

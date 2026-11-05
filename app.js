@@ -988,7 +988,7 @@
       if (state.service === 'blocked') {
         return {
           level: 'error',
-          text: 'Chrome is blocking this page from reaching the upscaler on this PC. Click the icon left of the address bar, set "Local network access" to Allow, then reload the page. More help: ⚙ Settings › AI upscale setup.'
+          text: 'Chrome is blocking this page from reaching the upscaler on this PC. Click the icon left of the address bar, set "Local network access" to Allow, then reload the page. More help: ⚙ Settings › Setup.'
         };
       }
       return {
@@ -996,8 +996,8 @@
         text: state.service === 'nochrome'
           ? 'AI upscale: the Firefly Chrome window is not open. Click Start next to the upscaler status, or turn AI upscale off.'
           : state.startFailed
-            ? 'The AI upscaler did not respond. Click the "3D Playground upscaler" window on the taskbar to read its message, then click Start again. More help: ⚙ Settings › AI upscale setup.'
-            : 'AI upscale service is not running. Click Start next to "Upscaler offline", or turn AI upscale off. First time on this PC: open ⚙ Settings › AI upscale setup.' +
+            ? 'The AI upscaler did not respond. Click the "3D Playground upscaler" window on the taskbar to read its message, then click Start again. More help: ⚙ Settings › Setup.'
+            : 'AI upscale service is not running. Click Start next to "Upscaler offline", or turn AI upscale off. First time on this PC: open ⚙ Settings › Setup.' +
               (location.protocol === 'https:' ? ' If Chrome asks to access devices on your local network, click Allow.' : '')
       };
     }
