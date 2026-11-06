@@ -7519,9 +7519,9 @@
     const pdp = t.pdpLink
       ? '<a class="tw-chip tw-chip-link" href="' + esc(t.pdpLink) + '" target="_blank" rel="noopener">PDP guideline' + ICON.external + '</a>'
       : '';
-    // Replacement: active when a prior match is selected (Best match is pre-selected).
-    // Primary: always active — match list is irrelevant.
-    const canReplace = !!selected;
+    // Product Replacement is always available — with a selected prior, a typed EAN, or none
+    // (drop A in the workspace). Primary remains always available.
+    const canReplace = true;
 
     const draftMatchEan = (state.replaceDraftCache && state.replaceDraftCache[t.ean] &&
       state.replaceDraftCache[t.ean].matchEan) || (state.workspace && state.workspace.matchEan) || '';
@@ -7565,7 +7565,7 @@
               : '<span class="tw-empty-matches">No output link</span>') +
           '</div>';
         }).join('') + '</div>'
-      : '<p class="tw-empty-matches">No Completed work on the Render Tracker matches this Sub-category + Template yet. Primary workflow is recommended.</p>';
+      : '<p class="tw-empty-matches">No Completed work on the Render Tracker matches this Sub-category + Template yet. Primary is recommended — or continue with Product Replacement: enter a Completed EAN above, or drop prior images onto A in the workspace.</p>';
 
     const replaceSummary = selected
       ? 'Selected: <strong class="tp-mono">EAN ' + esc(selected.ean) + '</strong> (' + esc(selected.title) + ')' +
@@ -7574,13 +7574,13 @@
         (selected.artist ? ' <span class="tw-dot">·</span> by ' + esc(selected.artist) : '')
       : (matches.length
         ? 'Select a prior match to continue with Product Replacement.'
-        : 'No prior match available for Product Replacement.');
+        : 'No recommended prior match — enter a Completed EAN above, or continue and drop images onto A.');
     const summary = focus === 'primary'
       ? 'Primary workflow selected — start fresh with a clean plate and new prompts.'
       : replaceSummary;
     const continueAction = focus === 'primary' ? 'start-primary' : 'start-replace';
     const continueLabel = focus === 'primary' ? 'Continue with Primary workflow' : 'Continue with Product Replacement';
-    // Primary: always active. Replacement: active only when a match row is selected.
+    // Primary and Product Replacement are both always available (PR can start without a prior match).
     const continueDisabled = focus === 'replace' && !canReplace;
 
     return '<div class="tw-shell tw-shell-choose">' +
@@ -9270,11 +9270,9 @@
       if (action === 'start-replace' && state.workspace) {
         const task = taskByEan(state.workspace.ean);
         const resolved = resolveWorkspaceMatch(task);
-        if (!resolved.selected) {
-          showToast('No prior match available — enter a Completed EAN, choose Primary workflow, or wait for a Completed match.', false);
-          return;
-        }
-        const lockedMatch = String(resolved.selected.ean);
+        // Allow Product Replacement with or without a Completed prior match.
+        // No match → blank A rail; user drops priors or uses Choose → Or enter EAN later.
+        const lockedMatch = resolved.selected ? String(resolved.selected.ean) : '';
         const cachedMatch = state.replaceDraftCache && state.replaceDraftCache[state.workspace.ean]
           ? String(state.replaceDraftCache[state.workspace.ean].matchEan || '')
           : '';
@@ -9282,8 +9280,13 @@
         state.workspace.focus = 'replace';
         state.workspace.matchEan = lockedMatch;
         state.workspace.draftsLoaded = false;
-        if (cachedMatch && cachedMatch.replace(/\D/g, '') !== lockedMatch.replace(/\D/g, '')) {
+        if (lockedMatch && cachedMatch &&
+            cachedMatch.replace(/\D/g, '') !== lockedMatch.replace(/\D/g, '')) {
           // New prior EAN — reset Drive rail / prior fetch so A/B map to the manual prior.
+          state.workspace.driveImgIndex = null;
+          state.workspace.priorFetch = null;
+        }
+        if (!lockedMatch) {
           state.workspace.driveImgIndex = null;
           state.workspace.priorFetch = null;
         }
@@ -9295,12 +9298,17 @@
           state.workspace.matchEan = lockedMatch;
           if (!state.replaceDraftCache) state.replaceDraftCache = {};
           if (!state.replaceDraftCache[state.workspace.ean]) {
-            state.replaceDraftCache[state.workspace.ean] = { matchEan: lockedMatch, assets: {}, prompts: {}, outputs: {} };
+            state.replaceDraftCache[state.workspace.ean] = {
+              matchEan: lockedMatch,
+              assets: {},
+              prompts: {},
+              outputs: {}
+            };
           } else {
             state.replaceDraftCache[state.workspace.ean].matchEan = lockedMatch;
           }
           persistCurrentReplaceDraft();
-          prefetchSelectedDrivePrior();
+          if (lockedMatch) prefetchSelectedDrivePrior();
           renderWorkspace();
         });
         ensureUniversalPrompts(true).then(() => {
@@ -9316,6 +9324,9 @@
           if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
         });
         window.scrollTo(0, 0);
+        if (!lockedMatch) {
+          showToast('Product Replacement opened without a prior match — drop images onto A, or go back and enter a Completed EAN.', false);
+        }
         return;
       }
       if (action === 'reset-ean' && state.workspace && state.workspace.mode === 'replace') {
