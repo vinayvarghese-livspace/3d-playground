@@ -276,6 +276,8 @@ function publicAnswerlyJob(job) {
     model: job.model,
     executionId: job.executionId,
     resultUrl: job.resultUrl,
+    inputUrl: job.inputUrl || null,
+    inputUrls: Array.isArray(job.inputUrls) ? job.inputUrls.slice() : [],
     elapsedMs: job.startedAt ? (job.finishedAt || Date.now()) - job.startedAt : 0,
     error: job.error,
     cancelRequested: !!job.cancelRequested

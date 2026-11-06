@@ -20,13 +20,14 @@
 var PROMPT_DB_ID = '12NU2Ru7Jnxok4M0Ylva1n8CKBxScnOs3k4gPs35a4Ec';
 var UNIVERSAL_TAB = 'Universal';
 var ALL_USER_TAB = 'All user';
-var SCRIPT_VERSION = 11;
+var SCRIPT_VERSION = 14;
 
 /** Old headers that must never be re-created (and are deleted if still present). */
 var RETIRED_COLUMNS = [
   'Image input (Separate links)',
   'Image input (separate links)',
-  'Image input'
+  'Image input',
+  'Answerly input URLs'
 ];
 
 /** Columns written on Rate & Approve (header names must match All user row 1). */
@@ -53,6 +54,16 @@ var APPROVE_COLUMNS = [
   'Product image (B)',
   'Prompt origin',
   'Universal row',
+  'Answerly execution ID',
+  'Answerly job ID',
+  'Answerly result URL',
+  'Answerly workflow',
+  'Prior source',
+  'Answerly input URL A',
+  'Answerly input URL B1',
+  'Answerly input URL B2',
+  'Answerly input URL B3',
+  'Answerly input URL B4',
   'Approved At'
 ];
 
@@ -269,6 +280,18 @@ function writePromptApprove_(p) {
   // Intentionally do not write retired "Image input (Separate links)".
   set('Prompt origin', origin);
   set('Universal row', String(p.universalRow || '').trim());
+  set('Answerly execution ID', String(
+    p.answerlyExecutionId || p.executionId || p.answerlyId || ''
+  ).trim());
+  set('Answerly job ID', String(p.answerlyJobId || p.jobId || '').trim());
+  set('Answerly result URL', String(p.answerlyResultUrl || p.resultUrl || '').trim());
+  set('Answerly workflow', String(p.workflowTool || p.answerlyWorkflow || '').trim());
+  set('Prior source', String(p.priorSource || '').trim());
+  set('Answerly input URL A', String(p.answerlyInputUrlA || p.inputUrlA || '').trim());
+  set('Answerly input URL B1', String(p.answerlyInputUrlB1 || p.inputUrlB1 || '').trim());
+  set('Answerly input URL B2', String(p.answerlyInputUrlB2 || p.inputUrlB2 || '').trim());
+  set('Answerly input URL B3', String(p.answerlyInputUrlB3 || p.inputUrlB3 || '').trim());
+  set('Answerly input URL B4', String(p.answerlyInputUrlB4 || p.inputUrlB4 || '').trim());
   set('Approved At', approvedAt);
 
   var next = sheet.getLastRow() + 1;
@@ -294,6 +317,7 @@ function writePromptApprove_(p) {
     promptOrigin: origin,
     qualityRating: rating,
     generationCount: genCount,
+    answerlyExecutionId: String(p.answerlyExecutionId || p.executionId || '').trim(),
     promptChars: origin === 'Custom' ? String(prompt || '').length : 0,
     approvedAt: approvedAt
   };

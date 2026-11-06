@@ -9,6 +9,9 @@
   const ANSWERLY_MODEL_KEY = 'playground3d.replace.model';
   const PRODUCT_TYPE_KEY = 'playground3d.replace.productType';
   const ANSWERLY_SESSION_URL = 'https://answerly.livspace.com/api/auth/session';
+  // Marketing Visualization Team workspace — job pages end with the Answerly execution id.
+  const ANSWERLY_JOBS_BASE =
+    'https://answerly.livspace.com/w/marketing-visualization-team-9901bfd2/jobs/';
   const IDB_NAME = 'playground3d';
   const IDB_STORE = 'replaceDrafts'; // legacy per-shot output rows
   const IDB_STORE_EAN = 'eanDrafts'; // full per-EAN Replacement drafts (A/B/C/D)
@@ -20,6 +23,16 @@
   const SERVICE_CHECK_MS = 10000;
   // Pick / Assign controls are only for these authors (matched on first name or full name).
   const ASSIGN_AUTHORS = ['vinay', 'aman', 'ananyo'];
+  // Still appear in Artist history / past work; omitted from the Assign-to menu going forward.
+  const HIDDEN_ASSIGN_ARTISTS = ['mansoor'];
+  const RAIL_ZOOM_KEY = 'playground3d.replace.railZoom';
+  const RAIL_WIDTH_KEY = 'playground3d.replace.railWidth';
+  const RAIL_ZOOM_MIN = 0.4;
+  const RAIL_ZOOM_MAX = 1;
+  const RAIL_ZOOM_STEP = 0.1;
+  const RAIL_WIDTH_MIN = 140;
+  const RAIL_WIDTH_MAX = 360;
+  const RAIL_WIDTH_DEFAULT = 220;
   // Old local picks key — cleared on load; assignments now live only in the assign / Render Tracker sheet.
   try { localStorage.removeItem('tasks.picks'); } catch (e) { /* ignore */ }
 
@@ -31,8 +44,8 @@
   const FEED_TIMEOUT_MS = 90000;
   const FEED_VERSION = 32;
   const APP_VERSION = /preview\.html$/i.test(typeof location !== 'undefined' ? location.pathname : '')
-    ? 'Preview V1.6'
-    : 'Beta V1.6';
+    ? 'Preview V1.7'
+    : 'Beta V1.7';
   // How often to re-read the assign sheet while this tab is visible (other users' picks).
   // ~2 reads/min per open browser — well under the Sheets ~60 reads/min/user cap.
   const ASSIGN_POLL_MS = 30000;
@@ -43,8 +56,11 @@
     { category: 'Kitchen & Laundry', tab: 'Kitchen & Laundry' }
   ];
 
-  // Template reference images, keyed by template ID, e.g. T5: 'https://...'.
-  const TEMPLATE_IMAGES = {};
+  // Template reference images from Drive (thumbnails only). Keys are tidyTemplate ids: T2, T38, T2a…
+  // Folder: https://drive.google.com/drive/folders/1-Z-zDxQgUCI7AaPDcJCYveBihssvpEG1
+  const TEMPLATE_REF_FOLDER_ID = '1-Z-zDxQgUCI7AaPDcJCYveBihssvpEG1';
+  const TEMPLATE_IMAGES = {}; // tidy key → { id, name, thumb }
+  let templateImagesLoading = false;
   const NAMING_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1BCUOtOmzYyMcfxptuwpSNOtvyN7PC7k792pljITUM8w/edit?pli=1&gid=476653278#gid=476653278';
   // Open as a Google Sheet (not the Drive file page) when checking pasted prop images.
   const PROP_SHEET_URL = 'https://docs.google.com/spreadsheets/d/12ckZ3NVf2bF08A7Lq6rFf08qK-gIz5mdQL65C-3l--U/';
@@ -188,6 +204,17 @@
     nameModal: $('name-modal'),
     nameInput: $('name-input'),
     nameSave: $('name-save'),
+    cropModal: $('crop-modal'),
+    cropWindow: $('crop-window'),
+    cropHead: $('crop-head'),
+    cropTitle: $('crop-title'),
+    cropHint: $('crop-hint'),
+    cropStage: $('crop-stage'),
+    cropSource: $('crop-source'),
+    cropBox: $('crop-box'),
+    cropCancel: $('crop-cancel'),
+    cropConfirm: $('crop-confirm'),
+    cropReset: $('crop-reset'),
     workspace: $('task-workspace'),
     myCountActive: $('my-count-active'),
     myCountCompleted: $('my-count-completed')
@@ -234,6 +261,60 @@
     if (ASSIGN_AUTHORS.indexOf(n) >= 0) return true;
     const first = n.split(' ')[0];
     return ASSIGN_AUTHORS.indexOf(first) >= 0;
+  }
+
+  function isHiddenAssignArtist(name) {
+    const n = String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (!n) return false;
+    return HIDDEN_ASSIGN_ARTISTS.some((h) => n === h || n.indexOf(h + ' ') === 0);
+  }
+
+  function railZoomLevel() {
+    const v = Number(localStorage.getItem(RAIL_ZOOM_KEY));
+    if (!isFinite(v)) return RAIL_ZOOM_MAX;
+    return Math.min(RAIL_ZOOM_MAX, Math.max(RAIL_ZOOM_MIN, Math.round(v * 100) / 100));
+  }
+
+  function setRailZoomLevel(next) {
+    const v = Math.min(RAIL_ZOOM_MAX, Math.max(RAIL_ZOOM_MIN, Math.round(Number(next) * 100) / 100));
+    localStorage.setItem(RAIL_ZOOM_KEY, String(v));
+    applyRailLayoutPrefs();
+    return v;
+  }
+
+  function railWidthPx() {
+    const v = Number(localStorage.getItem(RAIL_WIDTH_KEY));
+    if (!isFinite(v)) return RAIL_WIDTH_DEFAULT;
+    return Math.min(RAIL_WIDTH_MAX, Math.max(RAIL_WIDTH_MIN, Math.round(v)));
+  }
+
+  function setRailWidthPx(next) {
+    const v = Math.min(RAIL_WIDTH_MAX, Math.max(RAIL_WIDTH_MIN, Math.round(Number(next) || RAIL_WIDTH_DEFAULT)));
+    localStorage.setItem(RAIL_WIDTH_KEY, String(v));
+    applyRailLayoutPrefs();
+    return v;
+  }
+
+  function applyRailLayoutPrefs() {
+    const zoom = railZoomLevel();
+    const width = railWidthPx();
+    const root = document.documentElement;
+    root.style.setProperty('--wr-rail-zoom', String(zoom));
+    root.style.setProperty('--wr-rail-w', width + 'px');
+    if (!els || !els.workspace) return;
+    const rail = els.workspace.querySelector('.wr-rail');
+    if (rail) {
+      rail.style.setProperty('--wr-rail-zoom', String(zoom));
+      rail.dataset.railZoom = zoom <= 0.55 ? 'dense' : (zoom <= 0.8 ? 'compact' : 'full');
+    }
+    const grid = els.workspace.querySelector('.wr-grid');
+    if (grid) grid.style.setProperty('--wr-rail-w', width + 'px');
+    const zoomLabel = els.workspace.querySelector('[data-wr-rail-zoom-label]');
+    if (zoomLabel) zoomLabel.textContent = Math.round(zoom * 100) + '%';
+    const zoomOut = els.workspace.querySelector('[data-ws="rail-zoom-out"]');
+    const zoomIn = els.workspace.querySelector('[data-ws="rail-zoom-in"]');
+    if (zoomOut) zoomOut.disabled = zoom <= RAIL_ZOOM_MIN + 0.001;
+    if (zoomIn) zoomIn.disabled = zoom >= RAIL_ZOOM_MAX - 0.001;
   }
 
   // Hash routes: #renamer | #available | #my
@@ -575,6 +656,7 @@
 
   // Template mapping values: "T4", "T 4", "T2a", "T61a", "T7 set", "T7 Set of 2".
   // Letter suffixes and "set" / "set of N" are kept. Bare titles with no T-number count as empty.
+  // Same rules map Drive file stems ("T38.jpg", "T 38.png", "T02", "T2") → T38 / T2.
   function tidyTemplate(s) {
     const raw = String(s || '').trim();
     if (!raw) return '';
@@ -584,6 +666,113 @@
     if (m[2]) out += m[2].toLowerCase();
     if (m[3]) out += ' ' + m[3].toLowerCase().replace(/\s+/g, ' ');
     return out;
+  }
+
+  function templateCodeFromFileName(name) {
+    // Ignore nested paths (subfolders); only top-level image stems like "T38.jpg" / "T 02.png".
+    const base = String(name || '').replace(/\\/g, '/').split('/').pop() || '';
+    if (!base || base.indexOf('/') >= 0) return '';
+    const stem = base.replace(/\.[^.]+$/, '').trim();
+    return tidyTemplate(stem);
+  }
+
+  function rebuildTemplateImageMap(list) {
+    Object.keys(TEMPLATE_IMAGES).forEach((k) => { delete TEMPLATE_IMAGES[k]; });
+    (Array.isArray(list) ? list : []).forEach((img) => {
+      if (!img || !img.id) return;
+      if (String(img.name || '').indexOf('/') >= 0) return; // skip subfolder files
+      const key = templateCodeFromFileName(img.name);
+      if (!key) return; // ignore non-template files
+      if (!TEMPLATE_IMAGES[key]) TEMPLATE_IMAGES[key] = img;
+    });
+  }
+
+  // Resolve Drive thumb for a sheet template id (T7 set → try T7 set, then T7).
+  function templateRefImage(template) {
+    const key = tidyTemplate(template) || String(template || '').trim();
+    if (!key) return null;
+    if (TEMPLATE_IMAGES[key]) return TEMPLATE_IMAGES[key];
+    const base = key.replace(/\s+set(?:\s+of\s+\d+)?$/i, '').trim();
+    if (base && base !== key && TEMPLATE_IMAGES[base]) return TEMPLATE_IMAGES[base];
+    return null;
+  }
+
+  async function loadTemplateRefImages() {
+    if (templateImagesLoading) return;
+    const cached = state.images[TEMPLATE_REF_FOLDER_ID];
+    if (Array.isArray(cached)) {
+      if (!Object.keys(TEMPLATE_IMAGES).length) rebuildTemplateImageMap(cached);
+      return;
+    }
+    if (cached === 'error') return;
+    templateImagesLoading = true;
+    state.images[TEMPLATE_REF_FOLDER_ID] = 'loading';
+    try {
+      const found = await jsonp('action=thumbs&ids=' + encodeURIComponent(TEMPLATE_REF_FOLDER_ID), 60000);
+      const list = (found && found[TEMPLATE_REF_FOLDER_ID]) || [];
+      state.images[TEMPLATE_REF_FOLDER_ID] = list;
+      rebuildTemplateImageMap(list);
+      applyTemplateImages();
+    } catch (err) {
+      console.error(err);
+      state.images[TEMPLATE_REF_FOLDER_ID] = 'error';
+    } finally {
+      templateImagesLoading = false;
+    }
+  }
+
+  function applyTemplateImages() {
+    if (els.list) {
+      els.list.querySelectorAll('.tp-tpl-thumb[data-tpl]').forEach((el) => {
+        const tpl = el.getAttribute('data-tpl') || '';
+        const next = templateThumb(tpl);
+        if (el.outerHTML !== next) el.outerHTML = next;
+      });
+    }
+    if (els.drawerBody && !els.drawer.hidden && state.selectedEan) {
+      const t = taskByEan(state.selectedEan);
+      const ref = els.drawerBody.querySelector('.tp-tpl-ref');
+      if (t && ref) ref.innerHTML = templateRefBody(t.template);
+    }
+  }
+
+  function templateRefBody(template) {
+    const img = templateRefImage(template);
+    if (img) {
+      const fileId = img.id || '';
+      const fileName = img.name || ((template || 'template') + '.png');
+      return '<img src="' + esc(thumbUrl(img, 480)) + '" alt="Template ' + esc(template || '') +
+        ' reference" loading="lazy" referrerpolicy="no-referrer">' +
+        (fileId
+          ? '<button type="button" class="wr-out-download tp-tpl-download" data-ws-download-tpl="' +
+              esc(fileId) + '" data-ws-download-name="' + esc(fileName) +
+              '" title="Download original high-quality template" aria-label="Download original template">' +
+              ICON.download +
+            '</button>'
+          : '');
+    }
+    if (state.images[TEMPLATE_REF_FOLDER_ID] === 'loading') {
+      return 'Loading template reference…';
+    }
+    if (template) return 'No reference image mapped for ' + esc(template) + ' yet.';
+    return 'No template mapped for this product.';
+  }
+
+  async function downloadTemplateRefOriginal(fileId, fileName) {
+    const id = String(fileId || '').trim();
+    if (!id) {
+      showToast('No template file to download.', false, { error: true });
+      return;
+    }
+    showToast('Downloading original template…', false);
+    try {
+      const asset = await fetchDriveFileAsset(id);
+      const name = (asset && asset.name) || fileName || (id + '.png');
+      downloadBlobFile(asset.blob || asset.file, name);
+      showToast('Downloading ' + esc(name) + '…', false);
+    } catch (err) {
+      showToast((err && err.message) || 'Could not download template.', false, { error: true });
+    }
   }
 
   function tidySet(s) {
@@ -1665,7 +1854,7 @@
       persistCurrentReplaceDraft();
       showToast(
         'Added ' + loaded.length + ' product image' + (loaded.length === 1 ? '' : 's') +
-          ' to B · ' + assets.inputs.length + '/4',
+          ' to B · ' + assets.inputs.length + '/4 · click tile to crop',
         false
       );
     } catch (err) {
@@ -1705,11 +1894,548 @@
     persistCurrentReplaceDraft();
   }
 
+  /** Drop onto an existing B tile replaces that slot (then opens crop). */
+  async function replaceShotInput(shotIndex, inputIndex, file) {
+    if (!state.workspace || !isAcceptedImageFile(file)) {
+      showToast('Use JPG or PNG images only.', false);
+      return;
+    }
+    warnIfOverAnswerlyLimit(file, file.name || 'Product image');
+    const assets = shotAssets(shotIndex);
+    if (!assets.inputs || !assets.inputs[inputIndex]) {
+      return addLocalFilesToShot(shotIndex, [file]);
+    }
+    try {
+      persistReplacePromptFromDom();
+      const loaded = await readLocalImageFile(file);
+      revokeAssetUrl(assets.inputs[inputIndex]);
+      assets.inputs[inputIndex] = loaded;
+      syncShotInputNames(shotIndex);
+      renderWorkspace();
+      persistCurrentReplaceDraft();
+      showToast('Replaced B image · click tile to crop', false);
+    } catch (err) {
+      showToast(err.message || 'Could not replace image.', false, { error: true });
+    }
+  }
+
   function clearPriorOverride(shotIndex) {
     const assets = shotAssets(shotIndex);
     revokeAssetUrl(assets.priorOverride);
     assets.priorOverride = null;
     persistCurrentReplaceDraft();
+  }
+
+  /* ---------- Square crop (B product inputs) ---------- */
+
+  let cropSession = null;
+  let cropDrag = null;
+  let cropWinDrag = null;
+
+  function placeCropWindow(preferRight) {
+    if (!els.cropWindow) return;
+    const w = Math.min(420, window.innerWidth - 24);
+    const margin = 12;
+    let left = preferRight
+      ? Math.max(margin, window.innerWidth - w - margin)
+      : margin;
+    let top = Math.max(margin, Math.min(88, window.innerHeight - 120));
+    // Keep last dragged position if still on-screen.
+    if (cropSession && cropSession.winLeft != null && cropSession.winTop != null) {
+      left = cropSession.winLeft;
+      top = cropSession.winTop;
+    }
+    left = Math.max(margin, Math.min(window.innerWidth - 80, left));
+    top = Math.max(margin, Math.min(window.innerHeight - 80, top));
+    els.cropWindow.style.left = left + 'px';
+    els.cropWindow.style.top = top + 'px';
+    els.cropWindow.style.right = 'auto';
+    els.cropWindow.style.bottom = 'auto';
+  }
+
+  function cropMinSize(nw, nh) {
+    return Math.max(32, Math.round(Math.min(nw, nh) * 0.08));
+  }
+
+  function defaultCropSquare(nw, nh) {
+    const size = Math.min(nw, nh);
+    return {
+      x: Math.round((nw - size) / 2),
+      y: Math.round((nh - size) / 2),
+      size: size
+    };
+  }
+
+  function clampCropBox(box, nw, nh) {
+    const min = cropMinSize(nw, nh);
+    let size = Math.min(Math.max(min, Math.round(box.size)), Math.min(nw, nh));
+    let x = Math.round(box.x);
+    let y = Math.round(box.y);
+    x = Math.max(0, Math.min(nw - size, x));
+    y = Math.max(0, Math.min(nh - size, y));
+    return { x: x, y: y, size: size };
+  }
+
+  function cropImageLayout() {
+    if (!els.cropStage || !els.cropSource) return null;
+    const img = els.cropSource;
+    const nw = img.naturalWidth || 0;
+    const nh = img.naturalHeight || 0;
+    if (!nw || !nh) return null;
+    const sw = els.cropStage.clientWidth;
+    const sh = els.cropStage.clientHeight;
+    const scale = Math.min(sw / nw, sh / nh);
+    const dw = nw * scale;
+    const dh = nh * scale;
+    return {
+      nw: nw,
+      nh: nh,
+      scale: scale,
+      left: (sw - dw) / 2,
+      top: (sh - dh) / 2,
+      dw: dw,
+      dh: dh
+    };
+  }
+
+  function paintCropBox() {
+    if (!cropSession || !els.cropBox) return;
+    const layout = cropImageLayout();
+    if (!layout) return;
+    const box = cropSession.box;
+    els.cropBox.hidden = false;
+    els.cropBox.style.left = (layout.left + box.x * layout.scale) + 'px';
+    els.cropBox.style.top = (layout.top + box.y * layout.scale) + 'px';
+    els.cropBox.style.width = (box.size * layout.scale) + 'px';
+    els.cropBox.style.height = (box.size * layout.scale) + 'px';
+  }
+
+  function stagePointToNatural(clientX, clientY) {
+    const layout = cropImageLayout();
+    if (!layout || !els.cropStage) return null;
+    const rect = els.cropStage.getBoundingClientRect();
+    const sx = clientX - rect.left - layout.left;
+    const sy = clientY - rect.top - layout.top;
+    return {
+      x: sx / layout.scale,
+      y: sy / layout.scale,
+      layout: layout
+    };
+  }
+
+  function cropModalCopy(kind) {
+    if (els.cropTitle) {
+      els.cropTitle.textContent = kind === 'prior'
+        ? 'Crop prior (A)'
+        : (kind === 'export' ? 'Crop before upscale' : 'Crop product image');
+    }
+    if (els.cropHint) {
+      els.cropHint.textContent = kind === 'export'
+        ? 'Adjust the square to frame the product. Confirm updates this image for export / upscale'
+        : 'Adjust the square to frame the product. Confirm sends this cropped image to Generate';
+    }
+  }
+
+  function exportImageAt(shotIndex) {
+    if (!state.workspace || !state.workspace.exportImages) return null;
+    return state.workspace.exportImages[String(shotIndex)] || state.workspace.exportImages[shotIndex] || null;
+  }
+
+  /**
+   * target: { kind:'input', shotIndex, inputIndex }
+   *       | { kind:'prior', shotIndex }
+   *       | { kind:'export', shotIndex }
+   */
+  async function openCropModal(target) {
+    if (!els.cropModal || !els.cropSource || !state.workspace) return;
+    if (typeof target === 'number') {
+      // Legacy: openCropModal(shotIndex, inputIndex)
+      target = { kind: 'input', shotIndex: arguments[0], inputIndex: arguments[1] || 0 };
+    }
+    const kind = target && target.kind;
+    const shotIndex = Number(target && target.shotIndex) || 0;
+    const inputIndex = Number(target && target.inputIndex) || 0;
+    if (!kind) return;
+
+    let sourceAsset = null;
+    let url = '';
+    try {
+      if (kind === 'input') {
+        sourceAsset = shotAssets(shotIndex).inputs && shotAssets(shotIndex).inputs[inputIndex];
+        url = ensureAssetDisplayUrl(sourceAsset);
+      } else if (kind === 'prior') {
+        const assets = shotAssets(shotIndex);
+        if (assets.priorOverride && (assets.priorOverride.blob || assets.priorOverride.file)) {
+          sourceAsset = assets.priorOverride;
+          url = ensureAssetDisplayUrl(sourceAsset);
+        } else {
+          showToast('Loading prior for crop…', false);
+          const resolved = await resolvePriorAsset(shotIndex, {});
+          if (!resolved || !resolved.asset) {
+            showToast('No prior image available to crop.', false, { error: true });
+            return;
+          }
+          sourceAsset = resolved.asset;
+          url = ensureAssetDisplayUrl(sourceAsset);
+        }
+      } else if (kind === 'export') {
+        sourceAsset = exportImageAt(shotIndex);
+        url = ensureExportDisplayUrl(sourceAsset);
+      }
+    } catch (err) {
+      showToast((err && err.message) || 'Could not load image for crop.', false, { error: true });
+      return;
+    }
+    if (!sourceAsset || !url) {
+      showToast('Image is not ready to crop yet.', false, { error: true });
+      return;
+    }
+
+    const prevPos = cropSession
+      ? { winLeft: cropSession.winLeft, winTop: cropSession.winTop }
+      : (els.cropWindow && els.cropWindow.dataset.winLeft
+        ? { winLeft: Number(els.cropWindow.dataset.winLeft), winTop: Number(els.cropWindow.dataset.winTop) }
+        : null);
+    cropSession = {
+      kind: kind,
+      shotIndex: shotIndex,
+      inputIndex: inputIndex,
+      assetId: sourceAsset.id || '',
+      sourceAsset: sourceAsset,
+      box: null,
+      winLeft: prevPos && isFinite(prevPos.winLeft) ? prevPos.winLeft : null,
+      winTop: prevPos && isFinite(prevPos.winTop) ? prevPos.winTop : null
+    };
+    cropDrag = null;
+    cropWinDrag = null;
+    cropModalCopy(kind);
+    els.cropBox.hidden = true;
+    els.cropModal.hidden = false;
+    placeCropWindow(true);
+    const onReady = () => {
+      if (!cropSession) return;
+      const nw = els.cropSource.naturalWidth;
+      const nh = els.cropSource.naturalHeight;
+      cropSession.box = clampCropBox(defaultCropSquare(nw, nh), nw, nh);
+      paintCropBox();
+    };
+    els.cropSource.onload = onReady;
+    els.cropSource.onerror = () => {
+      showToast('Could not load image for crop.', false, { error: true });
+      closeCropModal();
+    };
+    if (els.cropSource.src === url && els.cropSource.complete && els.cropSource.naturalWidth) {
+      onReady();
+    } else {
+      els.cropSource.src = url;
+    }
+  }
+
+  function closeCropModal() {
+    if (cropSession && els.cropWindow) {
+      els.cropWindow.dataset.winLeft = String(cropSession.winLeft != null ? cropSession.winLeft : '');
+      els.cropWindow.dataset.winTop = String(cropSession.winTop != null ? cropSession.winTop : '');
+    }
+    cropDrag = null;
+    cropWinDrag = null;
+    cropSession = null;
+    if (els.cropModal) els.cropModal.hidden = true;
+    if (els.cropBox) els.cropBox.hidden = true;
+    if (els.cropSource) {
+      els.cropSource.onload = null;
+      els.cropSource.onerror = null;
+      els.cropSource.removeAttribute('src');
+    }
+  }
+
+  function startCropWindowDrag(e) {
+    if (!els.cropWindow || !els.cropModal || els.cropModal.hidden) return;
+    if (e.button != null && e.button !== 0) return;
+    if (e.target.closest('button') || e.target.closest('.wr-crop-stage') || e.target.closest('.tp-modal-actions')) return;
+    if (!e.target.closest('#crop-head')) return;
+    e.preventDefault();
+    const r = els.cropWindow.getBoundingClientRect();
+    cropWinDrag = {
+      startX: e.clientX,
+      startY: e.clientY,
+      left: r.left,
+      top: r.top
+    };
+  }
+
+  function moveCropWindowDrag(e) {
+    if (!cropWinDrag || !els.cropWindow) return;
+    e.preventDefault();
+    const margin = 8;
+    let left = cropWinDrag.left + (e.clientX - cropWinDrag.startX);
+    let top = cropWinDrag.top + (e.clientY - cropWinDrag.startY);
+    left = Math.max(margin, Math.min(window.innerWidth - 80, left));
+    top = Math.max(margin, Math.min(window.innerHeight - 80, top));
+    els.cropWindow.style.left = left + 'px';
+    els.cropWindow.style.top = top + 'px';
+    if (cropSession) {
+      cropSession.winLeft = left;
+      cropSession.winTop = top;
+    }
+  }
+
+  function endCropWindowDrag() {
+    cropWinDrag = null;
+  }
+
+  function resetCropBox() {
+    if (!cropSession) return;
+    const layout = cropImageLayout();
+    if (!layout) return;
+    cropSession.box = clampCropBox(defaultCropSquare(layout.nw, layout.nh), layout.nw, layout.nh);
+    paintCropBox();
+  }
+
+  function startCropDrag(e) {
+    if (!cropSession || !els.cropModal || els.cropModal.hidden) return;
+    if (e.button != null && e.button !== 0) return;
+    const handle = e.target.closest('[data-handle]');
+    const onBox = e.target.closest('#crop-box');
+    const pt = stagePointToNatural(e.clientX, e.clientY);
+    if (!pt) return;
+    e.preventDefault();
+    const box = cropSession.box || defaultCropSquare(pt.layout.nw, pt.layout.nh);
+    if (handle) {
+      cropDrag = {
+        mode: 'resize',
+        handle: handle.getAttribute('data-handle'),
+        startX: pt.x,
+        startY: pt.y,
+        orig: Object.assign({}, box)
+      };
+    } else if (onBox) {
+      cropDrag = {
+        mode: 'move',
+        startX: pt.x,
+        startY: pt.y,
+        orig: Object.assign({}, box)
+      };
+    } else {
+      // Drag on image → create a new square from this corner.
+      const x = Math.max(0, Math.min(pt.layout.nw, pt.x));
+      const y = Math.max(0, Math.min(pt.layout.nh, pt.y));
+      cropDrag = {
+        mode: 'create',
+        anchorX: x,
+        anchorY: y
+      };
+      cropSession.box = clampCropBox({ x: x, y: y, size: cropMinSize(pt.layout.nw, pt.layout.nh) }, pt.layout.nw, pt.layout.nh);
+      paintCropBox();
+    }
+  }
+
+  function moveCropDrag(e) {
+    if (!cropDrag || !cropSession) return;
+    const pt = stagePointToNatural(e.clientX, e.clientY);
+    if (!pt) return;
+    e.preventDefault();
+    const nw = pt.layout.nw;
+    const nh = pt.layout.nh;
+    const min = cropMinSize(nw, nh);
+
+    if (cropDrag.mode === 'move') {
+      const dx = pt.x - cropDrag.startX;
+      const dy = pt.y - cropDrag.startY;
+      cropSession.box = clampCropBox({
+        x: cropDrag.orig.x + dx,
+        y: cropDrag.orig.y + dy,
+        size: cropDrag.orig.size
+      }, nw, nh);
+      paintCropBox();
+      return;
+    }
+
+    if (cropDrag.mode === 'create') {
+      const ax = cropDrag.anchorX;
+      const ay = cropDrag.anchorY;
+      const dx = pt.x - ax;
+      const dy = pt.y - ay;
+      let size = Math.max(min, Math.max(Math.abs(dx), Math.abs(dy)));
+      let x = dx < 0 ? ax - size : ax;
+      let y = dy < 0 ? ay - size : ay;
+      // Keep square inside image by shrinking if needed.
+      if (x < 0) { size += x; x = 0; }
+      if (y < 0) { size += y; y = 0; }
+      if (x + size > nw) size = nw - x;
+      if (y + size > nh) size = nh - y;
+      size = Math.max(min, Math.min(size, Math.min(nw, nh)));
+      cropSession.box = clampCropBox({ x: x, y: y, size: size }, nw, nh);
+      paintCropBox();
+      return;
+    }
+
+    if (cropDrag.mode === 'resize') {
+      const o = cropDrag.orig;
+      const h = cropDrag.handle;
+      const dx = pt.x - cropDrag.startX;
+      const dy = pt.y - cropDrag.startY;
+      let x = o.x;
+      let y = o.y;
+      let size = o.size;
+      // Keep opposite corner/edge anchored; grow as a square.
+      if (h === 'se') {
+        size = Math.max(min, o.size + Math.max(dx, dy));
+      } else if (h === 'nw') {
+        size = Math.max(min, o.size - Math.min(dx, dy));
+        x = o.x + o.size - size;
+        y = o.y + o.size - size;
+      } else if (h === 'ne') {
+        size = Math.max(min, o.size + Math.max(dx, -dy));
+        y = o.y + o.size - size;
+      } else if (h === 'sw') {
+        size = Math.max(min, o.size + Math.max(-dx, dy));
+        x = o.x + o.size - size;
+      } else if (h === 'e') {
+        size = Math.max(min, o.size + dx);
+        y = o.y + (o.size - size) / 2;
+      } else if (h === 'w') {
+        size = Math.max(min, o.size - dx);
+        x = o.x + o.size - size;
+        y = o.y + (o.size - size) / 2;
+      } else if (h === 's') {
+        size = Math.max(min, o.size + dy);
+        x = o.x + (o.size - size) / 2;
+      } else if (h === 'n') {
+        size = Math.max(min, o.size - dy);
+        x = o.x + (o.size - size) / 2;
+        y = o.y + o.size - size;
+      }
+      cropSession.box = clampCropBox({ x: x, y: y, size: size }, nw, nh);
+      paintCropBox();
+    }
+  }
+
+  function endCropDrag() {
+    cropDrag = null;
+  }
+
+  function canvasToBlob(canvas, type, quality) {
+    return new Promise((resolve, reject) => {
+      if (!canvas.toBlob) {
+        try {
+          const data = canvas.toDataURL(type || 'image/png');
+          const bin = atob(data.split(',')[1] || '');
+          const arr = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+          resolve(new Blob([arr], { type: type || 'image/png' }));
+        } catch (err) {
+          reject(err);
+        }
+        return;
+      }
+      canvas.toBlob((blob) => {
+        if (!blob) reject(new Error('Crop export failed'));
+        else resolve(blob);
+      }, type || 'image/png', quality);
+    });
+  }
+
+  function buildCroppedAsset(sourceAsset, blob, size) {
+    const base = String((sourceAsset && sourceAsset.name) || 'image').replace(/\.[^.]+$/, '');
+    const cropName = base.replace(/_crop$/i, '') + '_crop.png';
+    return {
+      id: ((sourceAsset && sourceAsset.id) || 'local') + '_crop_' + Date.now().toString(36),
+      name: cropName,
+      source: (sourceAsset && sourceAsset.source) || 'local',
+      blob: blob,
+      file: blob,
+      mime: 'image/png',
+      w: size,
+      h: size,
+      cropped: true,
+      url: '',
+      _blobRef: null
+    };
+  }
+
+  async function confirmCropModal() {
+    if (!cropSession || !cropSession.box) return;
+    const kind = cropSession.kind || 'input';
+    const shotIndex = cropSession.shotIndex;
+    const inputIndex = cropSession.inputIndex;
+    const layout = cropImageLayout();
+    if (!layout) return;
+    const box = clampCropBox(cropSession.box, layout.nw, layout.nh);
+    const src = els.cropSource;
+    const size = Math.max(1, Math.round(box.size));
+    const sx = Math.max(0, Math.round(box.x));
+    const sy = Math.max(0, Math.round(box.y));
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, sx, sy, size, size, 0, 0, size, size);
+    try {
+      const blob = await canvasToBlob(canvas, 'image/png');
+      const sourceAsset = cropSession.sourceAsset;
+      const cropped = buildCroppedAsset(sourceAsset, blob, size);
+      ensureAssetDisplayUrl(cropped);
+
+      if (kind === 'input') {
+        const assets = shotAssets(shotIndex);
+        const asset = assets.inputs && assets.inputs[inputIndex];
+        if (!asset) {
+          closeCropModal();
+          return;
+        }
+        revokeAssetUrl(asset);
+        assets.inputs[inputIndex] = cropped;
+        syncShotInputNames(shotIndex);
+        closeCropModal();
+        renderWorkspace();
+        persistCurrentReplaceDraft();
+        showToast('Cropped B · ' + size + '×' + size + ' · ready for Generate', false);
+        return;
+      }
+
+      if (kind === 'prior') {
+        const assets = shotAssets(shotIndex);
+        revokeAssetUrl(assets.priorOverride);
+        assets.priorOverride = cropped;
+        closeCropModal();
+        renderWorkspace();
+        persistCurrentReplaceDraft();
+        showToast('Cropped A · ' + size + '×' + size + ' · ready for Generate', false);
+        return;
+      }
+
+      if (kind === 'export') {
+        if (!state.workspace.exportImages) state.workspace.exportImages = {};
+        const key = String(shotIndex);
+        const prev = exportImageAt(shotIndex);
+        if (prev && prev.url && String(prev.url).indexOf('blob:') === 0 && prev.url !== cropped.url) {
+          try { URL.revokeObjectURL(prev.url); } catch (_) { /* ignore */ }
+        }
+        state.workspace.exportImages[key] = Object.assign({}, prev || {}, {
+          url: cropped.url,
+          _blobRef: cropped.blob,
+          name: cropped.name,
+          blob: cropped.blob,
+          file: cropped.blob,
+          w: size,
+          h: size,
+          cropped: true,
+          status: (prev && prev.status) || 'ready',
+          upscale: null
+        });
+        closeCropModal();
+        renderWorkspace();
+        persistCurrentReplaceDraft();
+        showToast('Cropped export image · ' + size + '×' + size + ' · ready for upscale', false);
+        return;
+      }
+
+      closeCropModal();
+    } catch (err) {
+      showToast((err && err.message) || 'Crop failed.', false, { error: true });
+    }
   }
 
   /* ---------- Answerly bridge (local firefly-upscaler :5175) ---------- */
@@ -2066,6 +2792,13 @@
       workflow: asset.workflow || '',
       source: asset.source || '',
       id: asset.id || '',
+      cropped: !!asset.cropped,
+      jobId: asset.jobId || '',
+      executionId: asset.executionId || '',
+      priorSource: asset.priorSource || '',
+      resultUrl: asset.resultUrl || '',
+      inputUrl: asset.inputUrl || '',
+      inputUrls: Array.isArray(asset.inputUrls) ? asset.inputUrls.slice() : [],
       blob: blob
     };
   }
@@ -2083,6 +2816,13 @@
       workflow: row.workflow || '',
       source: row.source || 'draft',
       id: row.id || '',
+      cropped: !!row.cropped,
+      jobId: row.jobId || '',
+      executionId: row.executionId || '',
+      priorSource: row.priorSource || '',
+      resultUrl: row.resultUrl || '',
+      inputUrl: row.inputUrl || '',
+      inputUrls: Array.isArray(row.inputUrls) ? row.inputUrls.slice() : [],
       blob: row.blob,
       file: row.blob,
       url: url,
@@ -2090,6 +2830,21 @@
       fromDraft: true,
       approved: false
     };
+  }
+
+  function answerlyJobUrl(executionId) {
+    const id = String(executionId || '').trim();
+    if (!id) return '';
+    return ANSWERLY_JOBS_BASE + encodeURIComponent(id);
+  }
+
+  function shotExecutionId(shotIndex) {
+    const assets = shotAssets(shotIndex);
+    const out = assets && assets.output;
+    if (out && out.executionId) return String(out.executionId).trim();
+    const approved = state.workspace && state.workspace.approved && state.workspace.approved[shotIndex];
+    if (approved && approved.executionId) return String(approved.executionId).trim();
+    return '';
   }
 
   function buildEanDraftRecord() {
@@ -2998,7 +3753,13 @@
         size: imageSize,
         workflow: source.workflow,
         approved: false,
-        jobId: job.id,
+        jobId: job.id || '',
+        executionId: job.executionId || '',
+        resultUrl: job.resultUrl || '',
+        inputUrl: job.inputUrl || (Array.isArray(job.inputUrls) && job.inputUrls[0]) || '',
+        inputUrls: Array.isArray(job.inputUrls)
+          ? job.inputUrls.filter(Boolean).map(String)
+          : (job.inputUrl ? [String(job.inputUrl)] : []),
         priorSource: (resolvedPrior && resolvedPrior.source) || '',
         w: dims.w || 0,
         h: dims.h || 0
@@ -4644,7 +5405,9 @@
                 imageCell = '<button type="button" class="wr-slot-drop" data-ws-drop-export="' + idx + '">+ Drop image</button>';
               } else {
                 imageCell =
-                  '<div class="wr-export-img-cell" data-ws-drop-export="' + idx + '">' +
+                  '<div class="wr-export-img-cell' + (img.cropped ? ' is-cropped' : '') +
+                    '" data-ws-drop-export="' + idx + '" data-ws-crop-export="' + idx +
+                    '" title="Click thumb to crop before upscale">' +
                     '<img class="wr-approved-thumb" draggable="false" src="' + esc(imgUrl) + '" alt="">' +
                     '<div class="wr-export-img-meta">' +
                       '<span class="dims">' + (img.w && img.h ? (img.w + ' × ' + img.h) : '—') + '</span>' +
@@ -4831,7 +5594,17 @@
       'universalRow=' + encodeURIComponent(payload.universalRow || ''),
       'generationCount=' + encodeURIComponent(
         payload.generationCount != null ? payload.generationCount : (payload.regenCount != null ? payload.regenCount : '')
-      )
+      ),
+      'answerlyExecutionId=' + encodeURIComponent(payload.answerlyExecutionId || ''),
+      'answerlyJobId=' + encodeURIComponent(payload.answerlyJobId || ''),
+      'answerlyResultUrl=' + encodeURIComponent(payload.answerlyResultUrl || ''),
+      'workflowTool=' + encodeURIComponent(payload.workflowTool || ''),
+      'priorSource=' + encodeURIComponent(payload.priorSource || ''),
+      'answerlyInputUrlA=' + encodeURIComponent(payload.answerlyInputUrlA || ''),
+      'answerlyInputUrlB1=' + encodeURIComponent(payload.answerlyInputUrlB1 || ''),
+      'answerlyInputUrlB2=' + encodeURIComponent(payload.answerlyInputUrlB2 || ''),
+      'answerlyInputUrlB3=' + encodeURIComponent(payload.answerlyInputUrlB3 || ''),
+      'answerlyInputUrlB4=' + encodeURIComponent(payload.answerlyInputUrlB4 || '')
     ].join('&');
     const data = await jsonp(q, 60000, PROMPT_DB_URL);
     if (data && !data.promptOrigin) data.promptOrigin = origin;
@@ -5971,7 +6744,7 @@
       frame.hidden = true;
     }
     const title = view === 'renamer' ? 'Renamer' : view === 'my' ? 'My Tasks' : 'Available Tasks';
-    const ver = /preview\.html$/i.test(location.pathname) ? 'PREVIEW V1.6' : 'BETA V1.6';
+    const ver = /preview\.html$/i.test(location.pathname) ? 'PREVIEW V1.7' : 'BETA V1.7';
     document.title = title + ' · 3D Playground (' + ver + ')';
     const titleEl = $('view-title');
     if (titleEl) titleEl.textContent = title;
@@ -6117,8 +6890,14 @@
   }
 
   function templateThumb(template) {
-    const img = TEMPLATE_IMAGES[template];
-    return '<span class="tp-tpl-thumb">' + (img ? '<img src="' + esc(img) + '" alt="">' : esc(template || '—')) + '</span>';
+    const img = templateRefImage(template);
+    const label = template || '—';
+    if (!img) {
+      return '<span class="tp-tpl-thumb" data-tpl="' + esc(template || '') + '">' + esc(label) + '</span>';
+    }
+    return '<span class="tp-tpl-thumb has-img" data-tpl="' + esc(template || '') + '" title="' + esc(label) + '">' +
+      '<img src="' + esc(thumbUrl(img, 128)) + '" alt="' + esc(label) + '" loading="lazy" referrerpolicy="no-referrer">' +
+      '</span>';
   }
 
   function rowHtml(t) {
@@ -6219,6 +6998,7 @@
   // Lists the images in each task's Drive folder, the selected task first, in batches.
   let imagesRunning = false;
   async function loadImages() {
+    loadTemplateRefImages();
     if (imagesRunning || !state.model) return;
     imagesRunning = true;
     try {
@@ -6344,10 +7124,7 @@
         propBody + '</div>'
       : '';
 
-    const tplImg = TEMPLATE_IMAGES[t.template];
-    const tplBody = tplImg
-      ? '<img src="' + esc(tplImg) + '" alt="Template ' + esc(t.template) + ' reference">'
-      : (t.template ? 'No reference image mapped for ' + esc(t.template) + ' yet.' : 'No template mapped for this product.');
+    const tplBody = templateRefBody(t.template);
 
     const shotCount = t.shots ? t.shots.length : 0;
     const shots = shotCount
@@ -6667,6 +7444,7 @@
       : mode === 'replace' ? workspaceReplaceHtml(t)
       : workspaceChooseHtml(t);
     if (mode === 'replace') {
+      applyRailLayoutPrefs();
       restoreRailScroll();
       prefetchSelectedDrivePrior();
       const compare = els.workspace.querySelector('[data-ws-compare]');
@@ -7223,7 +8001,8 @@
           const thumbUrl = ensureAssetDisplayUrl(asset);
           // Answerly slots: A = INPUT IMAGE 1, first B = 2, second B = 3, …
           const answerlyNum = n + 2;
-          return '<div class="wr-in-tile">' +
+          return '<div class="wr-in-tile' + (asset.cropped ? ' is-cropped' : '') +
+            '" data-ws-crop-input="' + n + '" title="Click to crop">' +
             '<span class="wr-in-num" title="Answerly INPUT IMAGE ' + answerlyNum + ' (product B' + (n + 1) + ')">' +
               answerlyNum +
             '</span>' +
@@ -7300,6 +8079,21 @@
                 (prior.artist ? '<span class="tw-dot">·</span><span>by ' + esc(prior.artist) + '</span>' : '')
               : '<span>No prior match selected</span>') +
           '</div>' +
+          (function () {
+            const execId = shotExecutionId(i);
+            const jobHref = answerlyJobUrl(execId);
+            if (!execId || !jobHref) return '';
+            const shortId = String(execId).split('-')[0] || execId.slice(0, 8);
+            return '<span class="wr-answerly-job-wrap">' +
+              '<span class="wr-answerly-id tp-mono" title="' + esc(execId) + '">' + esc(shortId) + '</span>' +
+              '<button type="button" class="tp-copy wr-answerly-copy" data-ws-copy-exec="' + esc(execId) +
+                '" title="Copy Answerly id" aria-label="Copy Answerly id">' + ICON.copy + '</button>' +
+              '<a class="wr-answerly-job" href="' + esc(jobHref) +
+                '" target="_blank" rel="noopener" title="Open in Answerly · ' + esc(execId) + '">' +
+                'Open in answerly' +
+              '</a>' +
+            '</span>';
+          }()) +
           '<div class="wr-prior-actions">' +
             '<button type="button" class="wr-token-chip ' + tokenChipClass(state.answerlyToken) +
               '" data-ws="answerly-token" title="' +
@@ -7312,9 +8106,17 @@
       '</section>' +
 
       '<div class="wr-grid' + (panelOpen && !panelMax ? '' : ' is-panel-closed') + '">' +
-        '<aside class="wr-rail" data-ws-drop="rail">' +
+        '<aside class="wr-rail" data-ws-drop="rail" data-rail-zoom="' +
+          (railZoomLevel() <= 0.55 ? 'dense' : (railZoomLevel() <= 0.8 ? 'compact' : 'full')) + '">' +
           '<div class="wr-rail-head">' +
-            '<div class="wr-rail-title">Drive images (' + (driveImgs.length || shots.length) + ')</div>' +
+            '<div class="wr-rail-title-row">' +
+              '<div class="wr-rail-title">Drive images (' + (driveImgs.length || shots.length) + ')</div>' +
+              '<div class="wr-rail-zoom" role="group" aria-label="Thumbnail size">' +
+                '<button type="button" class="wr-rail-zoom-btn" data-ws="rail-zoom-out" title="Smaller thumbnails" aria-label="Zoom out">−</button>' +
+                '<span class="wr-rail-zoom-label" data-wr-rail-zoom-label>' + Math.round(railZoomLevel() * 100) + '%</span>' +
+                '<button type="button" class="wr-rail-zoom-btn" data-ws="rail-zoom-in" title="Larger thumbnails (max = default)" aria-label="Zoom in">+</button>' +
+              '</div>' +
+            '</div>' +
             (canGenerate
               ? '<div class="wr-rail-sub">' + codeMap.mapped.length + ' mapped' +
                   (codeMap.unmappedPrior.length ? ' · ' + codeMap.unmappedPrior.length + ' no match' : '') + '</div>'
@@ -7343,6 +8145,7 @@
                   'Generate all pending</button>') +
           '</div>' +
         '</aside>' +
+        '<div class="wr-rail-splitter" data-ws-rail-split title="Drag to resize Drive images panel" role="separator" aria-orientation="vertical" aria-label="Resize Drive images panel"></div>' +
 
         '<div class="wr-main-wrap">' +
         '<section class="wr-main">' +
@@ -7391,7 +8194,11 @@
               '</div>' +
               '<div class="wr-frame wr-frame-prior' + (priorOverride ? ' has-override' : '') +
                 (shotNeedsPriorOverride && !priorOverride ? ' is-blank-prior' : '') +
-                '" data-ws-drop="prior" data-folder="' +
+                (priorOverride && priorOverride.cropped ? ' is-cropped' : '') +
+                ((priorOverride || shotHasPriorDrive) ? ' is-croppable' : '') +
+                '" data-ws-drop="prior"' +
+                ((priorOverride || shotHasPriorDrive) ? ' data-ws-crop-prior="1" title="Click to crop prior (A)"' : '') +
+                ' data-folder="' +
                 esc((prior && prior.folderId) || '') + '" data-drive-img="' +
                 (shotHasPriorDrive && activeMap ? activeMap.imgIdx : driveImgIndex) + '">' +
                 (priorOverride
@@ -7591,9 +8398,15 @@
                       : '<div class="wr-compare-ph">Generate to compare</div>') +
                 '</div>' +
                 '<div class="wr-compare-overlay" style="width:' + comparePos + '%">' +
-                  '<div class="wr-compare-overlay-inner" data-folder="' + esc((prior && prior.folderId) || '') + '" data-drive-img="' + driveImgIndex + '">' +
-                    priorImgAt(prior, driveImgIndex, 640) +
-                  '</div>' +
+                  (priorOverride && ensureAssetDisplayUrl(priorOverride)
+                    ? '<div class="wr-compare-overlay-inner is-override" title="A · Local override">' +
+                        '<img class="tp-img wr-compare-img" src="' + esc(ensureAssetDisplayUrl(priorOverride)) +
+                          '" alt="' + esc(priorOverride.name || 'Prior override') + '">' +
+                      '</div>'
+                    : '<div class="wr-compare-overlay-inner" data-folder="' + esc((prior && prior.folderId) || '') +
+                        '" data-drive-img="' + driveImgIndex + '">' +
+                        priorImgAt(prior, driveImgIndex, 640) +
+                      '</div>') +
                 '</div>' +
                 '<input class="wr-compare-range" type="range" min="0" max="100" value="' + comparePos + '" aria-label="Compare slider">' +
                 '<div class="wr-compare-handle" style="left:' + comparePos + '%" aria-hidden="true"></div>' +
@@ -7652,12 +8465,13 @@
     function addName(n) {
       const t = String(n || '').trim();
       if (!t) return;
+      if (isHiddenAssignArtist(t)) return; // history stays; Assign menu hides retired artists
       const k = t.toLowerCase();
       if (seen.has(k)) return;
       seen.add(k);
       ordered.push(t);
     }
-    if (suggestion) addName(suggestion.name);
+    if (suggestion && !isHiddenAssignArtist(suggestion.name)) addName(suggestion.name);
     addName(state.author);
     (state.model.artists || []).forEach(addName);
     if (!ordered.length) {
@@ -7809,6 +8623,16 @@
       navigator.clipboard.writeText(ean).then(() => showToast('Copied EAN <span class="tp-mono">' + esc(ean) + '</span>', false));
       return;
     }
+    const tplDl = e.target.closest('[data-ws-download-tpl]');
+    if (tplDl) {
+      e.preventDefault();
+      e.stopPropagation();
+      downloadTemplateRefOriginal(
+        tplDl.getAttribute('data-ws-download-tpl'),
+        tplDl.getAttribute('data-ws-download-name')
+      );
+      return;
+    }
     const pick = e.target.closest('[data-photo]');
     if (!pick) return;
     state.photoIndex = Number(pick.dataset.photo);
@@ -7837,7 +8661,8 @@
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (!els.nameModal.hidden) closeNameModal();
+    if (els.cropModal && !els.cropModal.hidden) closeCropModal();
+    else if (!els.nameModal.hidden) closeNameModal();
     else if (els.answerlyModal && !els.answerlyModal.hidden) closeAnswerlyModal();
     else if (els.setupModal && !els.setupModal.hidden) closeSetupModal();
     else if (!els.menu.hidden) closeMenu();
@@ -8111,6 +8936,28 @@
 
   if (els.workspace) {
     els.workspace.addEventListener('mousedown', (e) => {
+      const split = e.target.closest('[data-ws-rail-split]');
+      if (split && state.workspace && state.workspace.mode === 'replace') {
+        e.preventDefault();
+        const grid = els.workspace.querySelector('.wr-grid');
+        const startX = e.clientX;
+        const startW = railWidthPx();
+        if (grid) grid.classList.add('is-rail-resizing');
+        document.body.classList.add('is-rail-resizing');
+        function onMove(ev) {
+          setRailWidthPx(startW + (ev.clientX - startX));
+        }
+        function onUp() {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          if (grid) grid.classList.remove('is-rail-resizing');
+          document.body.classList.remove('is-rail-resizing');
+          syncRailToMainHeight();
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        return;
+      }
       const ptPick = e.target.closest('[data-ws-pt-pick]');
       if (!ptPick || !state.workspace || state.workspace.mode !== 'replace') return;
       e.preventDefault();
@@ -8169,6 +9016,17 @@
     });
 
     els.workspace.addEventListener('click', (e) => {
+      const copyExec = e.target.closest('[data-ws-copy-exec]');
+      if (copyExec) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = copyExec.getAttribute('data-ws-copy-exec') || '';
+        if (!id) return;
+        navigator.clipboard.writeText(id).then(() =>
+          showToast('Copied Answerly id <span class="tp-mono">' + esc(id) + '</span>', false)
+        );
+        return;
+      }
       const copyMatch = e.target.closest('[data-action="copy-match"]');
       if (copyMatch) {
         e.preventDefault();
@@ -8281,6 +9139,38 @@
         renderWorkspace();
         return;
       }
+      const cropTile = e.target.closest('[data-ws-crop-input]');
+      if (cropTile && state.workspace && state.workspace.mode === 'replace' &&
+          !e.target.closest('[data-ws-remove-input]')) {
+        e.preventDefault();
+        e.stopPropagation();
+        openCropModal({
+          kind: 'input',
+          shotIndex: state.workspaceShot || 0,
+          inputIndex: Number(cropTile.dataset.wsCropInput) || 0
+        });
+        return;
+      }
+      const cropPrior = e.target.closest('[data-ws-crop-prior]');
+      if (cropPrior && state.workspace && state.workspace.mode === 'replace' &&
+          !e.target.closest('[data-ws="clear-prior"]')) {
+        e.preventDefault();
+        e.stopPropagation();
+        openCropModal({ kind: 'prior', shotIndex: state.workspaceShot || 0 });
+        return;
+      }
+      const cropExport = e.target.closest('[data-ws-crop-export]');
+      if (cropExport && state.workspace && state.workspace.mode === 'replace' &&
+          !e.target.closest('[data-ws-clear-export]') &&
+          e.target.closest('.wr-approved-thumb')) {
+        e.preventDefault();
+        e.stopPropagation();
+        openCropModal({
+          kind: 'export',
+          shotIndex: Number(cropExport.dataset.wsCropExport) || 0
+        });
+        return;
+      }
       // Prefer explicit shot clicks over Drive-index remapping so only one rail item stays active.
       const shotBtn = e.target.closest('[data-ws-shot]');
       if (shotBtn) {
@@ -8347,6 +9237,14 @@
       const actionEl = e.target.closest('[data-ws]');
       if (!actionEl || actionEl.hasAttribute('disabled') || actionEl.disabled) return;
       const action = actionEl.dataset.ws;
+      if (action === 'rail-zoom-out' && state.workspace && state.workspace.mode === 'replace') {
+        setRailZoomLevel(railZoomLevel() - RAIL_ZOOM_STEP);
+        return;
+      }
+      if (action === 'rail-zoom-in' && state.workspace && state.workspace.mode === 'replace') {
+        setRailZoomLevel(railZoomLevel() + RAIL_ZOOM_STEP);
+        return;
+      }
       if (action === 'close') { closeWorkspace(); render(); return; }
       if (action === 'choose' && state.workspace) {
         if (state.workspace.mode === 'replace') {
@@ -8562,7 +9460,21 @@
           productImage: productImageNames.join(', '),
           promptOrigin: origin,
           universalRow: compiled.universalLabel || 'master',
-          generationCount: shotGenerationCount(idx)
+          generationCount: shotGenerationCount(idx),
+          answerlyExecutionId: (assets.output && assets.output.executionId) || '',
+          answerlyJobId: (assets.output && assets.output.jobId) || '',
+          answerlyResultUrl: (assets.output && assets.output.resultUrl) || '',
+          workflowTool: (assets.output && assets.output.workflow) || '',
+          priorSource: (assets.output && assets.output.priorSource) ||
+            (assets.priorOverride ? 'override' : ''),
+          answerlyInputUrlA: (function () {
+            const urls = (assets.output && assets.output.inputUrls) || [];
+            return urls[0] || (assets.output && assets.output.inputUrl) || '';
+          }()),
+          answerlyInputUrlB1: ((assets.output && assets.output.inputUrls) || [])[1] || '',
+          answerlyInputUrlB2: ((assets.output && assets.output.inputUrls) || [])[2] || '',
+          answerlyInputUrlB3: ((assets.output && assets.output.inputUrls) || [])[3] || '',
+          answerlyInputUrlB4: ((assets.output && assets.output.inputUrls) || [])[4] || ''
         }).then((data) => {
           if (!state.workspace) return;
           if (!state.workspace.approved) state.workspace.approved = {};
@@ -8575,7 +9487,9 @@
             url: liveOutUrl,
             rating: rating,
             promptOrigin: origin,
-            approvedAt: Date.now()
+            approvedAt: Date.now(),
+            executionId: (assets.output && assets.output.executionId) || '',
+            jobId: (assets.output && assets.output.jobId) || ''
           };
           if (assets.output) assets.output.approved = true;
           if (state.workspace.rejected) delete state.workspace.rejected[idx];
@@ -8983,6 +9897,15 @@
       }
       const prior = el.closest('[data-ws-drop="prior"]');
       if (prior) return { kind: 'prior', shotIndex: state.workspaceShot || 0, highlight: prior };
+      const inputTile = el.closest('[data-ws-crop-input]');
+      if (inputTile && inputTile.getAttribute('data-ws-crop-input') !== '') {
+        return {
+          kind: 'inputs-replace',
+          shotIndex: state.workspaceShot || 0,
+          inputIndex: Number(inputTile.getAttribute('data-ws-crop-input')) || 0,
+          highlight: inputTile
+        };
+      }
       const shotBtn = el.closest('[data-ws-drop-shot]');
       if (shotBtn && shotBtn.getAttribute('data-ws-drop-shot') !== '') {
         return {
@@ -9054,6 +9977,8 @@
       }
       if (dest.kind === 'prior') {
         setPriorOverrideFromFile(dest.shotIndex, files[0]);
+      } else if (dest.kind === 'inputs-replace') {
+        replaceShotInput(dest.shotIndex, dest.inputIndex, files[0]);
       } else if (dest.kind === 'export') {
         addExportImageToShot(dest.shotIndex, files[0]);
       } else if (dest.kind === 'export-fill') {
@@ -9301,6 +10226,34 @@
       if (e.target === els.answerlyModal) closeAnswerlyModal();
     });
   }
+
+  if (els.cropModal) {
+    if (els.cropCancel) els.cropCancel.addEventListener('click', closeCropModal);
+    if (els.cropConfirm) els.cropConfirm.addEventListener('click', () => { confirmCropModal(); });
+    if (els.cropReset) els.cropReset.addEventListener('click', resetCropBox);
+    if (els.cropHead) els.cropHead.addEventListener('pointerdown', startCropWindowDrag);
+    if (els.cropStage) {
+      els.cropStage.addEventListener('pointerdown', startCropDrag);
+    }
+    window.addEventListener('pointermove', (e) => {
+      moveCropWindowDrag(e);
+      moveCropDrag(e);
+    });
+    window.addEventListener('pointerup', () => {
+      endCropWindowDrag();
+      endCropDrag();
+    });
+    window.addEventListener('pointercancel', () => {
+      endCropWindowDrag();
+      endCropDrag();
+    });
+    window.addEventListener('resize', () => {
+      if (els.cropModal && !els.cropModal.hidden) {
+        placeCropWindow(true);
+        paintCropBox();
+      }
+    });
+  }
   if (els.answerlyForm) {
     els.answerlyForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -9394,6 +10347,7 @@
     }
     // Drive thumbs only when needed for the open EAN workspace / list — avoid extra full reloads mid-edit.
     if (!opts.skipImages) loadImages();
+    loadTemplateRefImages();
   }
 
   async function load() {

@@ -1,9 +1,9 @@
 # 3D Playground: Overview
 
-**Live link (Beta V1.6):** https://vinayvarghese-livspace.github.io/3d-playground/ (or `#renamer` / `#available` / `#my`)
-**Preview link (Preview V1.6):** https://vinayvarghese-livspace.github.io/3d-playground/preview.html
-**Source code:** https://github.com/vinayvarghese-livspace/3d-playground
-**Current version:** Beta V1.6 on `index.html` (production root). Preview V1.6 stays on `preview.html` for the same feature set.
+**Live link (Beta V1.7):** https://vinayvarghese-livspace.github.io/3d-playground/ (or `#renamer` / `#available` / `#my`)  
+**Preview:** https://vinayvarghese-livspace.github.io/3d-playground/preview.html  
+**Source code:** https://github.com/vinayvarghese-livspace/3d-playground  
+**Current version:** Beta V1.7 on `index.html` (production root); Preview V1.7 on `preview.html`.
 
 ---
 
@@ -11,14 +11,14 @@
 
 ### In one line
 
-3D Playground turns a folder of product photos or renders into a ready-to-upload set of marketplace images: correctly named, correctly sized, in the correct order, in one click. Preview V1.6 also shows which products are ready to work, who should take them, Product Replacement via Answerly, and what each person already has on their plate.
+3D Playground turns product photos or renders into marketplace-ready images: correctly named, correctly sized, in the correct order. It also shows which products are ready to work, who should take them, and (with Product Replacement) generates new shot images from a prior completed product via Answerly — then exports one EAN zip.
 
 ### The problem before
 
 Every product we list on a marketplace needs a set of images, and every set has to follow strict rules:
 
 - **Exact file names.** Each image must be named `EAN_Sequence_ShotCode.png`, for example `8909327036353_02_H-FR.png`. The main image is `8909327036353_MAIN.png`.
-- **A different shot list for every product type.** A vase needs different shots from a bedsheet or a pressure cooker. The naming sheet lists 216 product types across Decor, Soft Furnishing, Bath, Laundry, Kitchen, Bakeware and Tableware, and 24 of them have variants with their own shot lists.
+- **A different shot list for every product type.** A vase needs different shots from a bedsheet or a pressure cooker. The naming sheet lists 227 product types across Decor, Soft Furnishing, Bath, Laundry, Kitchen, Bakeware and Tableware, and 23 of them have variants with their own shot lists.
 - **Exact image specifications.** 3000 × 3000 px, square, PNG, white background.
 - **Traceability.** Who prepared the image, and when.
 
@@ -34,47 +34,53 @@ Doing this by hand meant:
 | Every person did it slightly differently | Inconsistent workflow across the team |
 | Finding the next ready product meant hunting across Shoot Tracker tabs, Drive folders and the Render Tracker | Double-assigns, missed ready work, and no shared view of what was available |
 | Assigning work meant typing into the Render Tracker by hand | Slow, easy to skip a row, and hard for the team to see what each person owned |
+| Building a new product from a similar completed one meant recreating every shot manually | Slow Product Replacement, inconsistent prompts, and no shared prompt history |
 
 ### What 3D Playground does
 
-#### Renamer (live for everyone since V1.0 / V1.1)
+On one live page there are three tabs: **Renamer**, **Available Tasks** and **My Tasks**.
 
-The user does three things:
+#### Renamer
 
 1. **Types the EAN** (the tool checks it is exactly 13 digits).
-2. **Picks the product type** from a searchable list (and a variant, if the product has one). The tool instantly shows the exact shot list for that product: sequence, shot name, shot code and the final file name for each row.
+2. **Picks the product type** from a searchable list (and a variant, if the product has one). The tool instantly shows the exact shot list: sequence, shot name, shot code and the final file name for each row.
 3. **Drops in the images.** Drag a whole batch onto the table and they fill the rows in order, or drop a single image on a specific row.
 
 Then they click **Generate**, and the tool:
 
 - Checks every image (JPG or PNG, big enough, square) and clearly flags any that are wrong, with the reason, before anything is produced.
-- Upscales small images automatically with Adobe Firefly AI (V1.1, optional).
+- Upscales small images automatically with Adobe Firefly AI (optional).
 - Converts every image to a 3000 × 3000 PNG.
 - Names every file correctly.
-- Stamps each file with the author's name, the software and the creation time, so anyone can see who made it (visible in Windows file Properties).
+- Stamps each file with the author's name, the software and the creation time (visible in Windows file Properties).
 - Downloads everything as one zip named after the EAN, with a folder inside it named after the EAN.
 
-#### Tasks (Preview V1.3)
+#### Tasks
 
-On the preview page, three tabs sit in one shell: **Renamer**, **Available Tasks** and **My Tasks**.
+1. **Available Tasks** shows products from the Shoot Tracker that already have a Drive folder and a template mapping, and are not yet assigned on the Render Tracker. Search, filter (category / template / Set or PCs / artist history), group and sort.
+2. **Assign** (Vinay, Aman or Ananyo) puts a product onto the live Render Tracker in one click: Artist, PDP Images = Blocked, Start Date = today. Anyone else can browse but cannot assign.
+3. **My Tasks** shows products assigned to the author, split into **Active** (Not started / In progress / Blocked) and **Completed**. The drawer shows shots, Drive folder, PDP guideline, props and data warnings. Header also shows **Data last updated** and **Data last sync**.
 
-1. **Available Tasks** shows products from the Shoot Tracker that already have a Drive folder and a template mapping, and are not yet assigned on the Render Tracker. The user can search, filter by category / template / Set or PCs / artist history, group the list, and sort it.
-2. **Assign** (Vinay, Aman or Ananyo) puts a product onto the live Render Tracker in one click: Artist, PDP Images set to Blocked, and today's Start Date. Anyone else can browse Available Tasks but cannot assign.
-3. **My Tasks** shows the products assigned to the signed-in author, split into **Active** and **Completed**, with status from the Render Tracker's PDP Images column. Opening a task shows a preview drawer (shots, Drive folder, PDP guideline, props, warnings). **Start** opens a workflow chooser for Primary vs Product Replacement (UI mock in this preview; see version history).
+#### Product Replacement (My Tasks › Start)
+
+1. Choose **Primary** (start fresh) or **Product Replacement** (reuse a prior Completed match). Replacement is recommended when another Completed EAN shares the same Sub-category + Template; prior matches list with Best match pre-selected.
+2. Map each shot: prior plate (A) + product reference images (B, up to 4 extra slots). Prompts come from the **Prompt Database** Universal templates (editable).
+3. **Generate** via Answerly through a local bridge on the PC (no Adobe required for this path). Rate and **Approve** successful prompts; they are written to the Prompt DB All user tab (including Generation count).
+4. **MAIN** can regenerate after Hero Front / seq 01 D exists (uses that angle as A, with chosen product B).
+5. **Export** downloads one EAN zip of approved / rated PNGs. Manual drops on the export table (for example dimension shots) skip the star rating gate. Firefly AI upscale runs on export only when images need it.
 
 ### How it helps
 
-- **4x manual worktime saving per product.** Looking things up, renaming, resizing and upscaling are all automatic.
-- **No naming mistakes.** File names are generated from the official naming sheet, never typed.
-- **Problems are caught before upload, not after.** Wrong size, wrong shape or wrong file type are shown on the row, with a plain explanation.
-- **Smaller images are no longer a dead end.** With AI upscale on, images from 2000 px up are enlarged by Firefly and used directly.
-- **Everyone produces the same output.** Same rules, same names, same specs, whoever runs it.
-- **Accountability.** Every file carries its author and creation time. Assign also writes the Artist and Start Date onto the live Render Tracker.
-- **One place to see ready work.** Available Tasks pulls Shoot Tracker + Drive + Render Tracker together, so people stop hunting across sheets.
-- **No double-assigns.** A product already on the Render Tracker with an Artist drops out of Available Tasks for everyone.
-- **Private by default for images.** Without AI upscale, images never leave the computer. Task data is read from the team's Google Sheets; Assign only writes the assignment fields back to the Render Tracker.
-- **Nothing to install for basic use.** It is just a web link. AI upscale needs a one-time, roughly 10 minute setup per PC, with no admin rights needed.
-- **No extra expense in using.** It uses free Firefly upscaler with no cost which comes from Photoshop subscription.
+- **4x manual worktime saving per product** on rename / resize / upscale.
+- **No naming mistakes.** File names come from the official naming sheet.
+- **Problems are caught before upload.** Wrong size, shape or file type are flagged on the row.
+- **Smaller images are usable** with optional Firefly 2x upscale (from 2000 px).
+- **One place to see ready work** and **no double-assigns** via Available Tasks + live Assign.
+- **Product Replacement is assisted end-to-end:** prior match → multi-ref Answerly generate → rate / approve → Prompt DB history → EAN zip export.
+- **Accountability.** Files carry author metadata; Assign writes Artist and Start Date; Approve writes prompt rows with author and app version.
+- **Private by default for Renamer images.** Without AI upscale, images never leave the PC. Product Replacement sends only the images needed for that shot to Answerly through the local bridge. Task / prompt metadata uses the team's Google Sheets via Apps Script.
+- **Nothing to install for basic Renamer / Tasks browsing.** Product Replacement needs a one-time **Setup Answerly.bat** (no Adobe). Full **Setup.bat** is only needed if Firefly AI upscale is required.
+- **No extra Firefly cost** beyond the Photoshop / Adobe plan when upscale is used.
 
 ---
 
@@ -82,134 +88,114 @@ On the preview page, three tabs sit in one shell: **Renamer**, **Available Tasks
 
 ### Architecture at a glance
 
-There are three parts:
+There are four parts:
 
-1. **The web page** (hosted on GitHub Pages). Renamer runs entirely in the browser. Preview V1.2 adds the Tasks shell on `preview.html`.
-2. **The local upscaler** (V1.1, optional). A small Node.js program on the user's PC that drives Adobe Firefly on the user's behalf.
-3. **The Google Apps Script feed** (V1.2). A web app that reads the Shoot Tracker, Naming sheet and Render Tracker, resolves Drive folder previews, and writes Assign rows to the live Render Tracker.
+1. **The web page** (GitHub Pages `index.html`). Renamer, Tasks and Product Replacement UI in plain HTML / CSS / JS.
+2. **The local bridge** on the PC (`127.0.0.1:5175`):
+   - **Answerly-only** (`Setup Answerly.bat` / `answerly-server.js`) for Product Replacement — no Adobe.
+   - **Full Firefly upscaler** (`Setup.bat` / `server.js`) optional, for AI upscale on Renamer or export when images are under size.
+3. **HH Multi Sheet Reader** (Google Apps Script): Shoot Tracker, Naming, Render Tracker feed + Assign write-back + Drive thumbs.
+4. **Prompt Database** (separate Google Apps Script): Universal prompt templates + All user Rate & Approve rows.
 
 | Where | What runs there | Role |
 |---|---|---|
-| GitHub | Repository and GitHub Pages | Stores the code and version history; publishes the production Renamer, the preview Tasks page, and the setup zip |
-| User's PC: Chrome | Production `index.html` (V1.1 Renamer) or Preview `preview.html` (V1.2 shell) | Renamer checks, resizes, names, adds metadata and zips images. Preview also shows Available / My Tasks |
-| User's PC: local service (optional) | Node.js upscaler on 127.0.0.1:5175 | Receives only the images that need upscaling and queues them |
-| User's PC: dedicated Chrome window (optional) | Chrome signed in to the user's Adobe account | Controlled by the service to upload images to Firefly and download the upscaled results |
-| Adobe | Firefly upscale | Performs the 2x AI upscale |
-| Google Apps Script | HH Multi Sheet Reader web app | Serves the task feed (JSONP) and writes Assign rows |
-| Google Sheets / Drive | Shoot Tracker - HH, LSH-HH-Naming Convention, LSH-HH-Render Tracker, product Drive folders | Source of truth for ready work, naming rules, assignments and folder previews |
+| GitHub | Repository and GitHub Pages | Version history; publishes the live page and `dist/3d-playground.zip` |
+| User's PC: Chrome | `index.html` (Beta V1.7) | Renamer, Available / My Tasks, Product Replacement workspace |
+| User's PC: local bridge | Node on `127.0.0.1:5175` | Answerly jobs and/or Firefly upscale |
+| Answerly | Image-to-image generation | Product Replacement shot generation |
+| Adobe Firefly | Optional 2x upscale | Only when AI upscale is needed |
+| Apps Script (task feed) | HH Multi Sheet Reader | Task feed (JSONP), thumbs, Assign |
+| Apps Script (Prompt DB) | Prompt Database API | Universal read + promptApprove / Generation count |
+| Google Sheets / Drive | Shoot Tracker, Naming, Render Tracker, Prompt Database, product folders | Source of truth |
 
-**Flow:** GitHub Pages delivers the page to Chrome. The Renamer does image work itself. If an image is too small and AI upscale is on, the page sends it to the local service, which uses the dedicated Chrome window to run it through Firefly and returns the upscaled image to the page. On Preview V1.2, Tasks loads the Apps Script feed (Shoot + Naming + Render Tracker), shows Available / My Tasks, and Assign appends rows to the live Render Tracker.
+**Flow:** The live page loads Tasks from the sheet reader. Assign appends to the Render Tracker. Product Replacement talks to the local Answerly bridge; prompts load from / write to the Prompt DB. Renamer (and optional export upscale) can use the Firefly path on the same port when installed.
 
 ### Part A: The web page
 
-**Technology:** plain HTML, CSS and JavaScript. No frameworks, no build step, and no external libraries apart from Google Fonts.
+**Technology:** plain HTML, CSS and JavaScript. No frameworks, no build step, no external libraries apart from Google Fonts.
 
 | File | Role |
 |---|---|
-| `index.html` + `app.js` + `styles.css` + `data.js` | Production V1.1 Renamer (what everyone uses today) |
-| `preview.html` + `tasks.js` + `tasks.css` + `renamer.html` (iframe) | Preview V1.3 shell: Renamer tab plus Available / My Tasks |
-| `dist/3d-playground.zip` | One-time AI upscale installer, linked from the Renamer Settings guide |
+| `index.html` + `tasks.js` + `tasks.css` | Live Beta V1.7 shell (tabs + Tasks + Product Replacement) |
+| `renamer.html` (iframe) + `app.js` + `styles.css` + `data.js` | Renamer workbench inside `#renamer` |
+| `dist/3d-playground.zip` | Installer for Answerly bridge and/or Firefly upscaler |
+| `dashboard/apps-script/` | Task feed + Assign |
+| `dashboard/apps-script-prompt-db/` | Prompt Database web app |
 
 | Concern | How it is done | Why |
 |---|---|---|
-| Naming rules | The Excel naming sheet is converted to `data.js` by `tools/convert-naming-data.ps1` (it reads the .xlsx directly, no Excel needed). The Renamer shows "Data last updated" from the sheet's timestamp. Preview Tasks can also read naming data from the Apps Script feed. | The sheet stays the single source of truth; updating the rules is "re-run the script, push". |
-| Image checks | The browser reads each image's width and height and checks the file type, the minimum size and the 1:1 ratio. | Problems are caught before generation, per row, with a reason. |
-| Resize and convert | An HTML canvas draws the image centred on a white 3000 × 3000 square. | Built into every browser, nothing to install. |
-| PNG encoding | Custom 24-bit RGB PNG encoder using the browser's built-in `CompressionStream`, with 72 DPI set. | The browser's own export always writes 32-bit RGBA with no DPI (shown as 96 DPI), which doesn't match the spec. |
-| Metadata | Writes Author, Title, Description, Software and Creation Time as PNG `tEXt` chunks **and** XMP. | Windows Explorer and most photo tools read XMP, other tools read `tEXt`; writing both covers both. |
-| Zip download | A small zip writer built into `app.js` ("stored", no compression, because PNGs are already compressed). | One clean download, no library needed. |
-| Memory | The author name, the AI upscale on/off choice, a batch counter and the last generation summary are saved in the browser's `localStorage`. Author is shared with Tasks. | No login or database needed for these per-user preferences. |
-| Preview routes | Hash routes `#renamer`, `#available`, `#my` on `preview.html`. Renamer loads in an iframe (`renamer.html`). | One URL for testing V1.2 without changing production. |
+| Naming rules | Excel/CSV → `data.js` via convert scripts; Tasks can also use feed naming. Header shows Data last updated + Data last sync. | Sheet stays source of truth |
+| Image checks / PNG / zip / metadata | Same client-side Renamer pipeline as V1.1 (canvas, custom PNG, tEXt + XMP, stored zip) | No server for rename path |
+| Routes | Hash routes `#renamer`, `#available`, `#my` | One URL for the whole app |
+| Author | `localStorage`, shared across Renamer and Tasks | No login for author name |
+| Product Replacement | Workspace in `tasks.js`: Choose → Primary / Replace → generate → rate/approve → export | End-to-end on one page |
+| Answerly calls | Page → local bridge → Answerly API with saved token | Token never goes through GitHub Pages |
+| Prompt DB | JSONP to separate Apps Script (`PROMPT_DB_URL`) | Same pattern as the task feed |
 
-**Backend readiness:** Renamer naming data is still loaded through `loadNamingData` from `data.js` (ready to swap for a live query later). Tasks already use a live Apps Script feed for Shoot / Render Tracker / Assign.
+### Part B: Local bridge — Answerly and optional Firefly
 
-### Part B: The AI upscaler (V1.1)
+**Answerly bridge (Product Replacement, preferred install):**
 
-Adobe Firefly has no simple public upscale API we can use with a normal Adobe subscription. So, instead of an API, the upscaler **operates the Firefly website the same way a person would**, using the user's own Adobe login.
+- `Setup Answerly.bat` copies files, installs Node for this user if needed, starts `answerly-server.js` on port 5175.
+- No Adobe sign-in. Settings → **Answerly token**: Connect bridge, paste session JSON, Save token.
+- Page uses `/answerly/health`, `/answerly/token`, `/answerly/models`, `/answerly/jobs`.
+- Multi-ref jobs send prior as INPUT IMAGE 1 (A) and each product B as its own Answerly reference slot (up to 4 extra B tiles, slots 2–5). No packing / duplicate alias fields.
+- Chrome must **Allow** local / loopback network access for the GitHub Pages origin once.
 
-**Components (folder `firefly-upscaler`):**
+**Firefly upscaler (optional AI upscale):**
 
-- **A dedicated Chrome window** (`start-chrome.bat`). It uses its own Chrome profile, so the Adobe sign-in is kept separate from the user's everyday browser and survives restarts. It is opened with a local-only remote-control port (`127.0.0.1:9222`).
-- **Firefly automation** (`firefly.js`). Uses `playwright-core` (the only dependency) to connect to that Chrome window, open the Firefly upscale page, upload the image, choose 2x, wait for the result and download it. It detects Firefly's "too many requests" pop-ups and HTTP 429 responses, waits 15 seconds and retries the same image (up to 3 times). If the Firefly window was closed or lost, it reconnects once automatically.
-- **Local service** (`server.js`). A small web server that only listens on the PC itself (`127.0.0.1:5175`). The page talks to it with four calls:
-  - `GET /health`: is the service running and is the Firefly Chrome window open?
-  - `POST /jobs`: send an image, get back a job ID.
-  - `GET /jobs/:id`: job progress from 0 to 100, its stage and its place in the queue.
-  - `GET /jobs/:id/result`: the upscaled image.
+- Full `Setup.bat` when Firefly 2x upscale is needed (Adobe account + dedicated Chrome profile).
+- Same port 5175; starting Firefly can replace an Answerly-only process — use Answerly-only when PR does not need upscale.
+- Renamer upscale and PR export upscale only when images are under the output size.
 
-**How a generate run works with AI upscale on:**
+### Part C: Tasks and Assign
 
-1. Any image smaller than 3000 px (2000 px minimum) is marked for upscaling.
-2. All those images are sent to the local service at once; the service processes them one at a time with a 5 second gap, to stay friendly with Firefly's limits.
-3. While Firefly works on the next image, the page is already converting finished ones, so the waiting overlaps.
-4. Each row has its own progress ring in the Upscale column, and the main progress bar gives AI upscales more weight because they take far longer than conversion.
-5. The upscaled 2x result (for example 4000 px) is scaled to exactly 3000 × 3000 and goes through the same PNG, metadata and zip steps as any other image.
+**Available** = Shoot Tracker row with real GDRIVE folder link + template mapping, and not already on the Render Tracker with an Artist.
 
-**Safety:**
+**Assign (live):** appends EAN, Artist, PDP Images = Blocked, Start Date. Skips EANs already present. Poll ~30s while the tab is visible.
 
-- The service only accepts connections from the PC itself, and only from approved pages (GitHub Pages, localhost or a local file), so other websites can't use it.
-- Images under 80 MB only; temporary results are deleted after download or after 15 minutes.
-- Images only leave the PC when AI upscale is on, and only the images that need it, going straight to the user's own Adobe Firefly account.
-- Network logs remove login tokens before writing.
+**My Tasks:** Active vs Completed from PDP Images. Templates such as `T2a` / `T7 set` recognised. Artist matching accepts first-name forms.
 
-**Live status on the page:** a status pill shows *Upscaler connected* (green), *starting* or *Firefly Chrome not open* (amber), or *offline* or *blocked by Chrome* (red). When something is wrong, the Generate button explains exactly what to do instead of failing silently. The page also detects Chrome's newer "local network access" permission block and tells the user how to allow it.
+**Data sources:** Shoot Tracker tabs (Decor and Garden, Table Top & Bath, Kitchen & Laundry), Naming sheet, Render Tracker, Drive thumbs via Apps Script JSONP.
 
-### Part C: Tasks and Assign (Preview V1.2)
+### Part D: Product Replacement and Prompt Database
 
-**What "available" means:** a Shoot Tracker product is shown in Available Tasks only when it has a real Google Drive folder link **and** a template mapping, and it is **not** already on the Render Tracker with an Artist. Photoshoot / Upload Status are not used as gates (Upload can say Done with no folder link).
+**Workflow:** Start → choose Primary or Product Replacement → map shots → Generate (Answerly) → Rate 4–5★ → Approve → Export zip.
 
-**Data sources (via Apps Script):**
+**Prompt Database (separate Apps Script, v11+):**
 
-| Sheet / Drive | Used for |
+| Action | Purpose |
 |---|---|
-| Shoot Tracker - HH (Decor and Garden, Table Top & Bath, Kitchen & Laundry) | Product rows, shot lists, GDRIVE links, template mapping, props, PDP guideline |
-| LSH-HH-Naming Convention | Shot naming rules (also still embedded in Renamer as `data.js`) |
-| LSH-HH-Render Tracker (Tracker tab) | Who is assigned, PDP Images status, Start / End Date, output Drive folder, Marketing QC |
-| Product Drive folders | Thumbnail previews for the list and drawer |
+| `universal` | Read Universal prompt templates |
+| `promptApprove` | Append Rate & Approve row to All user (includes Generation count, prior/product refs, app version) |
+| `approvedCustoms` | Reuse latest Custom prompts for Sub-category + Template |
+| `promptChunk` | Stash long Custom prompt slices before approve |
 
-**Assign write-back (live):** clicking Assign appends a new row on the Render Tracker for that EAN (if it is not already there): EAN Number, Artist, PDP Images = Blocked, Start Date = today. Photoshoot Status, End Date, Drive / QC columns are left untouched. Only authors Vinay, Aman and Ananyo see the Assign controls (matched on first name or full name). The page re-reads assignments about every 30 seconds while the tab is visible, so other people's picks show up without a full reload.
+Retired "Image input" columns are removed on deploy. MAIN prompts always prefer the Universal MAIN row; MAIN regen uses Hero Front / seq 01 D as A after that shot exists.
 
-**My Tasks:** products assigned to the current author. Active = Not started / In progress / Blocked. Completed = Completed on PDP Images. Completed rows can open the Render Tracker output folder. The drawer surfaces warnings (bad EAN, missing template, empty shot list, re-shoot remarks, odd upload status) and prop text or pasted prop images.
-
-**Workflow workspace (UI mock in this preview):** from My Tasks › Active › **Start**, the user chooses **Primary** (start fresh) or **Product Replacement** (reuse a prior Completed match). Replacement is recommended when another Completed EAN shares the same Sub-category + Template; the chooser lists prior matches with a Best match pre-selected. The Replacement / Primary workbench screens are interactive mocks only — no generate, save or upload yet.
-
-**How the page talks to Apps Script:** the hosted page cannot call a Google Apps Script URL with a normal cross-origin `fetch` that carries the user's Google sign-in, so Tasks loads the feed with JSONP (a `<script>` tag + callback). Actions: `tasks` (full feed), `thumbs` (folder image previews), `assign` (write), `assigns` (poll).
+**Export:** one `EAN.zip`. Generated/approved rows need a rating; **manual drops** on the export table skip rating (follow-up in V1.6). Firefly upscale only if needed.
 
 ### Why the simple hosting and distribution approach
 
-We deliberately avoided servers, app stores and installers.
-
 | Choice | Why it was chosen |
 |---|---|
-| **GitHub repository** | Free version history. Every change is a commit, so we can see what changed and roll back. |
-| **GitHub Pages for the page** | Free, HTTPS by default, no server to run or patch. Pushing to `main` publishes the new version. A single link works for everyone. |
-| **Production vs preview URLs** | `index.html` stays the stable V1.1 Renamer. `preview.html` is the V1.3 Tasks shell for testing before cutting everyone over. |
-| **GitHub Pages for the setup zip too** | The same push that updates the page updates the download (`dist/3d-playground.zip`). There is no separate file share, email attachment or Drive link to keep in sync. |
-| **Processing images in the browser** | No server costs, no upload wait, and images stay private. Scales to any number of users at no cost. |
-| **Local upscaler instead of a cloud server** | Each user's own Adobe subscription and login are used. No shared credentials, no hosting costs, and Adobe's limits apply per user rather than to one shared account. |
-| **Google Apps Script for Tasks** | Reads and writes the sheets the team already uses. No new database to host. Deploy once; the preview page points at the `/exec` URL. |
-| **Plain HTML, CSS and JS** | Nothing to build, nothing to upgrade, and anyone on the team can read and edit it. |
-| **Version numbers on file links** | Each file link carries a version number that is increased whenever the file changes, so browsers always fetch the latest copy after a release. |
+| **GitHub Pages** | Free HTTPS host; push to `main` publishes. One live link for everyone. |
+| **Production on `index.html`** | Beta V1.7 on the root URL; Preview V1.7 on `preview.html`. |
+| **Setup zip on the same host** | Page and installer stay in sync. |
+| **Answerly bridge local, separate from Firefly** | PR does not require Adobe; Connect bridge is enough. |
+| **Two Apps Script web apps** | Uses sheets the team already owns; no new database server. |
+| **Plain HTML / CSS / JS** | No build step; easy to read and edit. |
+| **Version numbers on file links** | Cache bust after each release (`?v=`). |
 
 ### How the link and the required pieces reach each user
 
-**Everyone (basic Renamer use):** just the production link, https://vinayvarghese-livspace.github.io/3d-playground/. Nothing else is needed.
+**Everyone:** https://vinayvarghese-livspace.github.io/3d-playground/ — Renamer and Tasks browsing need only a browser and Google sign-in for the sheet feed. Enter the author name (same as Renamer).
 
-**Preview V1.6 testers:** open https://vinayvarghese-livspace.github.io/3d-playground/preview.html (or `#available` / `#my`). Sign in to Google in the same browser so the Apps Script feed can read the sheets. Enter the same author name used in the Renamer. For Product Replacement, run `Setup Answerly.bat` from the latest zip (Firefly/`Setup.bat` only if AI upscale is needed). Redeploy Prompt DB Apps Script (v11+) for Generation count and retired Image input column cleanup.
+**Product Replacement:** download `3d-playground.zip` from Settings → **Setup**, run **`Setup Answerly.bat`**, then Settings → **Answerly token** → Connect bridge → paste session → Save. Allow Chrome local/loopback access if asked.
 
-**AI upscale (one time per PC, about 10 minutes, no admin rights):**
+**AI upscale (optional):** full **`Setup.bat`** (Adobe / Firefly) only if Renamer or export needs 2x upscale.
 
-1. In the Renamer, open **Settings › AI upscale setup** (gear icon). The guide is built into the page and shows live status as the user goes.
-2. Download `3d-playground.zip` from the button in the guide (hosted on the same GitHub Pages site).
-3. Unblock and extract the zip, then double-click **`Setup.bat`**, which:
-   - Copies everything to `D:\3d-playground` (or the user's own folder if the PC has no usable D drive), and unblocks the files.
-   - Installs Node.js **for this user only** through Windows' built-in `winget` if it's missing, then installs the upscaler.
-   - Registers a `playground3d://` link for the current user only, so the page's **Start** button can launch the upscaler.
-   - Opens Chrome on Adobe Firefly for a one-time sign-in (including Google 2-Step Verification for company accounts).
-   - Starts the upscaler, waits until it is actually connected, then opens 3D Playground with a green *Upscaler connected* status, and closes by itself.
-4. **Every day after that:** open the link. If it says *Upscaler offline*, click **Start**.
-
-**Shipping an update:** the developer runs `tools/make-package.ps1` when the upscaler package changed, then pushes. The production Renamer and/or preview Tasks page update for everyone straight away. Apps Script changes need a new web-app deployment (and a matching `FEED_VERSION` bump in `tasks.js`). For upscaler updates on a PC, users repeat the setup with a fresh download; their Adobe sign-in is kept.
+**Shipping an update:** push updates the live page. Rebuild the zip with `tools/make-package.ps1` when bridge files change. Apps Script changes need a new web-app deployment (and matching feed / Prompt DB version bumps in `tasks.js`).
 
 ---
 
@@ -217,120 +203,58 @@ We deliberately avoided servers, app stores and installers.
 
 ### Beta (V1.0): "Image Renamer", 8 Oct 2026
 
-The first release. It covered the core renaming and conversion job, entirely in the browser.
-
-- EAN entry with 13-digit validation.
-- Searchable product type list with variants, generated from the Excel naming sheet (216 product types, 7 categories).
-- A live shot list showing the final output file name for every row.
-- Drag-and-drop images onto the table (a batch fills the rows in order, or drop one on a specific row).
-- Checks for file type (JPG/PNG), minimum 3000 × 3000 px and a square ratio, with per-row status.
-- Converts to 3000 × 3000, 24-bit, 72 DPI PNG with a white background.
-- Author, Software and Creation Time metadata; the author name is remembered in the browser.
-- "Last generation" summary.
-- **Files were downloaded one at a time**, one download per image.
-- 100% client-side: nothing was uploaded, and there was nothing to install.
-
-**Limits of the beta:** images smaller than 3000 px were simply rejected, and a full product meant many separate downloads that had to be gathered into a folder by hand.
+Core rename / convert in the browser: EAN validation, product types from the naming sheet, drag-and-drop shots, 3000×3000 PNG + metadata, one download per image. Nothing uploaded.
 
 ### Beta V1.1: "3D Playground", 12 to 13 Oct 2026
 
-Renamed to **3D Playground**, with AI upscaling and a much smoother output and setup.
+AI upscale via local Firefly service, Upscale column, one `EAN.zip`, Settings setup guide, hosted setup zip, `Setup.bat`. Reliability fixes for Chrome local network, Node PATH, D: install folder, sign-in Chrome recovery, remembered upscale switch.
 
-**New features:**
+### Preview V1.2 → production path: Tasks + Assign, 27 to 29 Oct 2026
 
-- **AI upscale with Adobe Firefly.** An on/off switch (remembered in the browser). When it's on, the minimum accepted size drops from 3000 px to 2000 px, and smaller images are upscaled 2x by Firefly before conversion.
-- **Upscale column** with a per-image progress ring, queue position and timing.
-- **Live upscaler status** with a one-click **Start** button.
-- **One `EAN.zip` download** containing an `EAN` folder with all the images, instead of separate files.
-- **Settings menu** (gear icon) with *Change author name* and a step-by-step **AI upscale setup guide** built into the page, with live status, troubleshooting answers and a "copy folder path" button.
-- **Hosted setup zip**: the installer is downloaded straight from the page.
-- **`Setup.bat`**: a guided 5-step, no-admin installer, plus `Start 3D Playground.bat` and `Sign in to Adobe.bat` shortcuts.
-
-**Reliability fixes after the V1.1 release (12 to 13 Oct):**
-
-- Clear message when Chrome blocks the hosted page from reaching the local upscaler (Chrome's local network access permission).
-- Finds Node.js even when Chrome was already open before Node.js was installed.
-- `.bat` files are kept in Windows line endings so they always run correctly.
-- Installs to `D:\3d-playground` when possible, otherwise the user folder.
-- Recovers automatically from a sign-in Chrome window left running in the background.
-- No need to click Start after setup: setup starts the upscaler itself, and opens the page only once the upscaler is actually connected.
-- The guide explains the second Firefly Chrome window (leave it open, don't use it) and covers Google 2-Step Verification.
-- The AI upscale switch setting is remembered between visits.
-
-### Preview V1.2: Tasks + Assign, 27 to 28 Oct 2026
-
-Adds a task board on top of the Renamer, backed by the team's live Google Sheets. Production `index.html` stays on V1.1 Renamer; testers use `preview.html`.
-
-**New features:**
-
-- **Unified preview shell** with tabs Renamer | Available Tasks | My Tasks (`#renamer` / `#available` / `#my`). Renamer loads in an iframe so the existing V1.1 tool stays intact.
-- **Available Tasks** built from Shoot Tracker tabs (Decor and Garden, Table Top & Bath, Kitchen & Laundry): only rows with a real GDRIVE folder link + template mapping, excluding EANs already assigned on the Render Tracker.
-- **Search, filters and grouping:** search by EAN or product name; filter by category, template, Set / PCs, artist history; group by Sub-category + Template, Product + Template, or Template; sort oldest / newest / most shots. Suggested artists per group based on past Render Tracker work.
-- **Assign to live Render Tracker:** one click writes EAN, Artist, PDP Images = Blocked, and Start Date. Assign controls limited to Vinay, Aman and Ananyo. Toast + undo affordance; sheet is the source of truth (no local picks).
-- **My Tasks** with Active / Completed buckets, status from PDP Images, output folder link for completed work, and a preview drawer (shots, Drive, PDP guideline, props, data warnings).
-- **Drive folder thumbnails** via the Apps Script `thumbs` action.
-- **Live refresh:** full Refresh control, plus a quiet poll of assignments about every 30 seconds while the tab is visible.
-- **Author name shared** with the Renamer (`localStorage`).
-
-**Workflow workspace (UI mock in this preview):**
-
-- **Start** on an Active My Task opens Choose workflow: **Primary** vs **Product Replacement**.
-- Replacement is recommended when a Completed prior EAN shares Sub-category + Template; prior matches are listed with Best match pre-selected.
-- Replacement / Primary workbench screens (shot mapping, compare slider, product-type picker, generate UI) are interactive mocks only — no AI generate, save or upload yet.
-
-**Hosting / safety choices for V1.2:**
-
-- Production Renamer URL unchanged so day-to-day work is not interrupted.
-- Apps Script feed uses JSONP so the hosted GitHub Pages origin can read sheet data with the user's Google session.
-- Assign skips EANs already present on the Render Tracker instead of overwriting them.
-
-### Preview V1.3: My Tasks status + Assign UX, 28 Oct 2026
-
-Refines the V1.2 Tasks preview.
-
-**Changes:**
-
-- **Assign to** opens the artist menu only (no self-assign on the main button; no caret). Errors show in a red toast.
-- **My Tasks Active** shows Not started, In progress and Blocked; **Completed** shows Completed only (PDP Images column — not Photoshoot Status "Done").
-- **Active sort priority:** groups and rows ordered In progress → Not started → Blocked.
-- **Templates** such as `T2a`, `T61a`, `T7 set` are recognised (letter suffixes and set variants).
-- Artist matching accepts first-name forms (e.g. Naveen ≈ Naveen Kumar). Tracker status refreshes on poll so sheet Completed / In progress updates appear without a full reload.
+Available / My Tasks shell, Assign to live Render Tracker, Drive thumbs, filters / grouping, author shared with Renamer. Workflow chooser started as a UI mock. V1.3 refined Assign menu, Active/Completed PDP buckets, Active sort priority, template variants, then shipped the Tasks shell to production `index.html` with Data last sync (29 Oct).
 
 ### Preview V1.4: Product Replacement + Answerly, 3 Nov 2026
 
-Adds Product Replacement on the Tasks preview shell.
+Live Product Replacement workbench: Answerly bridge in the setup zip, prompt compile from Universal templates, generate / rate / approve, Prompt DB Apps Script, export path.
 
-### Preview V1.5: Answerly bridge split + Firefly optional, 4 Nov 2026
+### Preview V1.5: Answerly bridge split, 4 Nov 2026
 
-**Preview only** (`preview.html`). Production root stays V1.3.
+Answerly-only bridge (`Setup Answerly.bat` / Connect bridge) with no Adobe. Firefly optional for upscale. Chrome Allow/Block local network documented; Start Node before Chrome; self-healing port 5175 / Repair.
 
-**Changes:**
+### Beta V1.6: Production cutover + multi-ref PR, 5 Nov 2026
 
-- **Answerly-only bridge** (`Setup Answerly.bat` / Connect bridge) — no Adobe/Firefly required for Product Replacement.
-- **Firefly upscaler** optional for AI upscale on export; Start replaces Answerly-only on port 5175 when needed.
-- Chrome local/loopback Allow flow; simplified Answerly token steps.
-- Setup zip includes `answerly-server.js`, `Setup Answerly.bat`, and updated Start scripts.
+**Production root** runs Tasks + Product Replacement as **BETA V1.6**.
 
-### Preview V1.6: Multi-ref Answerly + Prompt DB + MAIN regen, 5 Nov 2026
+**Included:**
 
-Shipped first on `preview.html`, then promoted to production root as **Beta V1.6**.
+- Multi-ref Answerly: A + up to 4 B as separate reference slots; B tiles show slot badges (2–5); Browse B file picker fix.
+- Generation count on Prompt DB Approve; retired Image input columns cleaned on deploy (Prompt DB script v11+).
+- MAIN Regenerate after Hero Front / 01 D exists; manual MAIN uses hero D as A with chosen B.
+- Manual export drops skip the star rating gate; Settings menu item renamed to **Setup**.
+- Drive rail / approved-thumb styling; fewer stale blob URL console warnings.
 
-**Changes:**
+### Preview / Beta V1.7: Crop, template refs, Answerly IDs, 6 Nov 2026
 
-- Answerly Jobs sends A + up to 4 B as separate reference slots (no packing / no duplicate alias fields).
-- Browse B file picker fix; B tiles show Answerly slot badges (2–5).
-- Generation count written to Prompt DB on Approve; retired Image input column removed on deploy.
-- MAIN Regenerate enabled after Hero Front / 01 D exists; manual MAIN uses hero D as A with chosen B.
-- Drive rail selection / approved-thumb styling clarified; stale blob URL console spam reduced.
+**Preview V1.7** and **Beta V1.7** ship together on `preview.html` and `index.html`.
 
-### Beta V1.6: Production cutover, 5 Nov 2026
+**Included:**
 
-**Production root** (`index.html` / https://vinayvarghese-livspace.github.io/3d-playground/#renamer) now runs the same Tasks + Product Replacement shell as Preview V1.6, labeled **BETA V1.6**.
+- Square crop for B / A / export thumbs before Generate or upscale; movable crop window.
+- Drive template reference thumbs + original download on Template Reference.
+- Rail thumbnail zoom (40–100%) and resizable Drive rail; favicon / brand logo.
+- Mansoor removed from Assign menu (history kept).
+- Answerly execution id link + copy; Prompt DB stores execution / job / result / input URL A–B4 (script v14+).
+- Detail & Compare uses A override when set.
 
 ### Summary of changes
 
-| | Beta (V1.0) | Beta V1.1 | Preview V1.3 | Beta V1.6 |
+| | Beta (V1.0) | Beta V1.1 | V1.3 Tasks | Beta V1.7 |
 |---|---|---|---|---|
-| Name | Image Renamer | 3D Playground | Tasks preview shell | Tasks + Product Replacement |
-| Where people open it | GitHub Pages | GitHub Pages | Preview = `preview.html` | Production root + `preview.html` |
-| Install needed | None | Setup.bat for AI upscale | Same + Google for Tasks | `Setup Answerly.bat` for PR; full Setup.bat only if Firefly upscale |
+| Name | Image Renamer | 3D Playground | Tasks on live root | Tasks + Product Replacement |
+| Where people open it | GitHub Pages | GitHub Pages | `index.html` | Live link (Beta V1.7) root |
+| Renamer | Yes | + AI upscale + zip | Same | Same |
+| Task board | None | None | Available + My Tasks | Same + Product Replacement |
+| Assignments | Manual sheet | Manual sheet | One-click Assign | Same |
+| Product Replacement | None | None | Chooser mock only | Answerly + crop + Prompt DB IDs/URLs + export |
+| Install for PR | — | — | — | `Setup Answerly.bat` (Firefly Setup.bat only if upscale needed) |
+| Prompt history | None | None | None | Prompt Database All user (+ gen count, Answerly ids/URLs) |

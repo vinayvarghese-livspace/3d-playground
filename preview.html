@@ -3,20 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Playground (PREVIEW · V1.6)</title>
+  <title>3D Playground (PREVIEW · V1.7)</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="images/3d-view_32px.png">
+  <link rel="apple-touch-icon" href="images/3d-view_128px.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="tasks.css?v=120">
+  <link rel="stylesheet" href="tasks.css?v=129">
 </head>
 <body class="view-renamer">
 
   <header class="app-header">
     <div class="header-inner">
       <div class="brand">
-        <div class="brand-logo" aria-hidden="true">3D</div>
+        <div class="brand-logo" aria-hidden="true"><img src="images/3d-view_128px.png" alt="" width="32" height="32"></div>
         <h1 class="brand-title">3D Playground</h1>
-        <span class="badge badge-beta">PREVIEW V1.6</span>
+        <span class="badge badge-beta">PREVIEW V1.7</span>
       </div>
       <nav class="app-nav" aria-label="Sections">
         <a class="app-nav-tab is-active" href="#renamer" id="tab-renamer" aria-current="page">Renamer</a>
@@ -180,6 +182,41 @@
     </form>
   </div>
 
+  <div class="tp-modal-backdrop wr-crop-backdrop" id="crop-modal" hidden>
+    <div class="tp-modal wr-crop-modal" id="crop-window" role="dialog" aria-modal="true" aria-labelledby="crop-title">
+      <div class="wr-crop-head" id="crop-head" title="Drag to move">
+        <div>
+          <h2 id="crop-title">Crop image</h2>
+          <p id="crop-hint">Adjust the square to frame the product. Confirm sends this cropped image to Generate</p>
+        </div>
+        <button type="button" class="wr-crop-reset" id="crop-reset" title="Reset to full square" aria-label="Reset crop">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>
+            <rect x="8" y="8" width="8" height="8" rx="1" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      <div class="wr-crop-stage" id="crop-stage">
+        <img id="crop-source" alt="Image to crop" draggable="false">
+        <div class="wr-crop-box" id="crop-box" hidden>
+          <div class="wr-crop-grid" aria-hidden="true"></div>
+          <span class="wr-crop-handle" data-handle="nw"></span>
+          <span class="wr-crop-handle" data-handle="n"></span>
+          <span class="wr-crop-handle" data-handle="ne"></span>
+          <span class="wr-crop-handle" data-handle="e"></span>
+          <span class="wr-crop-handle" data-handle="se"></span>
+          <span class="wr-crop-handle" data-handle="s"></span>
+          <span class="wr-crop-handle" data-handle="sw"></span>
+          <span class="wr-crop-handle" data-handle="w"></span>
+        </div>
+      </div>
+      <div class="tp-modal-actions wr-crop-actions">
+        <button type="button" class="tp-btn tp-btn-ghost" id="crop-cancel">Cancel</button>
+        <button type="button" class="tp-btn tp-btn-primary" id="crop-confirm">Confirm crop</button>
+      </div>
+    </div>
+  </div>
+
   <div class="tp-modal-backdrop" id="answerly-modal" hidden>
     <form class="tp-modal tp-modal-wide" id="answerly-form" role="dialog" aria-modal="true" aria-labelledby="answerly-title">
       <h2 id="answerly-title">Answerly token</h2>
@@ -317,6 +354,6 @@
 
   <script src="data.js"></script>
   <script src="prompts/universal-replace.js"></script>
-  <script src="tasks.js?v=122"></script>
+  <script src="tasks.js?v=132"></script>
 </body>
 </html>
