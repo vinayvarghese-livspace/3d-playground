@@ -1,6 +1,24 @@
+# Local / generated tooling
 firefly-upscaler-extension/
 tools/shoot-sync/node_modules/
 tools/shoot-sync/.credentials/credentials.json
 tools/shoot-sync/.credentials/token.json
-Data/Shoot Tracker - HH/versions/
-Data/3D playground_Shoot Tracker - HH/backups/
+tools/shoot-sync.zip
+tools/shoot-sync/*.lnk
+
+# Spreadsheet / CSV / PDF working data (never commit)
+Data/
+data/
+data points/
+@Data/
+@data/
+
+# Common data file types outside app source
+*.xlsx
+*.xls
+*.csv
+*.pdf
+
+# Runtime / local artifacts
+firefly-upscaler/jobs-answerly/
+*.lnk
