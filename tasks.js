@@ -42,7 +42,7 @@
   // Prompt Database Apps Script (Universal read + All user Rate & Approve). Separate from FEED_URL.
   const PROMPT_DB_URL = 'https://script.google.com/a/macros/livspace.com/s/AKfycbwjLPIuL9J_XtHmnEm7jdbnJHlUIEjscACqYiSIB3ISTQNXHDhKHAVyuOc9VuPaobHT/exec';
   const FEED_TIMEOUT_MS = 90000;
-  const FEED_VERSION = 32;
+  const FEED_VERSION = 35;
   const APP_VERSION = /preview\.html$/i.test(typeof location !== 'undefined' ? location.pathname : '')
     ? 'Preview V1.7'
     : 'Beta V1.7';
@@ -3298,9 +3298,19 @@
       mime: mime,
       size: data.size || blob.size,
       w: 0,
-      h: 0
+      h: 0,
+      downscaled: !!data.downscaled,
+      originalSize: data.originalSize || 0,
+      previewWidth: data.previewWidth || 0
     };
     cache[id] = asset;
+    if (asset.downscaled) {
+      const from = asset.originalSize ? formatBytes(asset.originalSize) : 'over 12 MB';
+      showToast(
+        'Prior was ' + from + ' on Drive — using a high-res preview for A (same base64 workflow).',
+        false
+      );
+    }
     warnIfOverAnswerlyLimit(asset, asset.name || 'Drive prior');
     return asset;
   }

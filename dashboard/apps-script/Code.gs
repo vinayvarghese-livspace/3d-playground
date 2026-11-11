@@ -28,7 +28,7 @@ const CACHE_CHUNK = 30000;
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const XLSX_MEMO = {};
 // tasks.js warns when the deployed web app is older than this; raise both together.
-const FEED_VERSION = 32;
+const FEED_VERSION = 35;
 // Written by tools/shoot-sync (key/value tab). Used for "Data last sync" in the playground.
 const SYNC_META_TAB = 'Sync Meta';
 
@@ -640,10 +640,12 @@ const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const MAX_FOLDERS_PER_CALL = 50;
 const MAX_IMAGES_PER_FOLDER = 40;
 const FOLDER_CACHE_SECONDS = 1800;
-// Full-res file fetch for Product Replacement prior (A). JSONP response size stays practical.
+// Full-res file fetch for Product Replacement prior (A). JSONP + base64 stays under this payload cap.
+// ≤12 MB: original file (unchanged). >12 MB: one parallel high-res preview, same response shape.
 const MAX_DRIVE_FILE_BYTES = 12 * 1024 * 1024;
+const DRIVE_PREVIEW_WIDTHS = [2048, 1280];
 
-// Returns { id, name, mimeType, size, base64 } for one image file the caller can already see via thumbs.
+// Returns { id, name, mimeType, size, base64 [, downscaled, originalSize, previewWidth] }.
 function getDriveFile_(id) {
   id = String(id || '').trim();
   if (!/^[\w-]{10,100}$/.test(id)) throw new Error('Invalid Drive file id');
@@ -651,7 +653,7 @@ function getDriveFile_(id) {
   try {
     meta = Drive.Files.get(id, {
       supportsAllDrives: true,
-      fields: 'id,name,mimeType,size,trashed'
+      fields: 'id,name,mimeType,size,trashed,thumbnailLink'
     });
   } catch (err) {
     throw new Error('Could not read Drive file: ' + ((err && err.message) || err));
@@ -659,22 +661,155 @@ function getDriveFile_(id) {
   if (!meta || meta.trashed) throw new Error('Drive file not found');
   const mime = String(meta.mimeType || '');
   if (!/^image\//i.test(mime)) throw new Error('Drive file is not an image');
-  const size = Number(meta.size || 0);
-  if (size > MAX_DRIVE_FILE_BYTES) {
-    throw new Error('Image is too large (' + Math.round(size / (1024 * 1024)) + ' MB). Max 12 MB.');
-  }
-  const blob = DriveApp.getFileById(id).getBlob();
-  const bytes = blob.getBytes();
-  if (bytes.length > MAX_DRIVE_FILE_BYTES) {
-    throw new Error('Image is too large (' + Math.round(bytes.length / (1024 * 1024)) + ' MB). Max 12 MB.');
-  }
-  return {
+
+  const packed = packDriveImageUnderLimit_(id, meta);
+  const out = {
     id: meta.id,
     name: meta.name || 'drive-image',
-    mimeType: blob.getContentType() || mime || 'image/jpeg',
-    size: bytes.length,
-    base64: Utilities.base64Encode(bytes)
+    mimeType: packed.mimeType || mime || 'image/jpeg',
+    size: packed.bytes.length,
+    base64: Utilities.base64Encode(packed.bytes)
   };
+  if (packed.downscaled) {
+    out.downscaled = true;
+    out.originalSize = packed.originalSize || 0;
+    if (packed.previewWidth) out.previewWidth = packed.previewWidth;
+  }
+  return out;
+}
+
+// ≤12 MB → original bytes. >12 MB → fast parallel Drive preview (w2048, then w1280).
+function packDriveImageUnderLimit_(id, meta) {
+  const reported = Number(meta.size || 0);
+
+  if (!reported || reported <= MAX_DRIVE_FILE_BYTES) {
+    try {
+      const blob = DriveApp.getFileById(id).getBlob();
+      const bytes = blob.getBytes();
+      if (bytes.length && bytes.length <= MAX_DRIVE_FILE_BYTES) {
+        return {
+          bytes: bytes,
+          mimeType: blob.getContentType() || meta.mimeType || 'image/jpeg',
+          downscaled: false,
+          originalSize: reported || bytes.length
+        };
+      }
+    } catch (err) {
+      // Only fall through to preview when the file is (or may be) over the JSONP cap.
+      if (reported && reported <= MAX_DRIVE_FILE_BYTES) {
+        throw new Error('Could not read Drive file: ' + ((err && err.message) || err));
+      }
+    }
+  }
+
+  const preview = fetchDrivePreviewFast_(id, meta, reported);
+  if (preview) return preview;
+
+  const mb = reported ? Math.round(reported / (1024 * 1024)) : '?';
+  throw new Error(
+    'Image is too large to send through the sheet reader (' + mb +
+    ' MB). High-res Drive preview also failed.'
+  );
+}
+
+function fetchDrivePreviewFast_(id, meta, reported) {
+  let lastErr = null;
+  for (let i = 0; i < DRIVE_PREVIEW_WIDTHS.length; i++) {
+    const width = DRIVE_PREVIEW_WIDTHS[i];
+    try {
+      const preview = fetchDrivePreviewParallel_(id, meta, width);
+      if (preview && preview.bytes && preview.bytes.length >= 256 &&
+          preview.bytes.length <= MAX_DRIVE_FILE_BYTES) {
+        return {
+          bytes: preview.bytes,
+          mimeType: preview.mimeType || 'image/jpeg',
+          downscaled: true,
+          originalSize: reported || 0,
+          previewWidth: width
+        };
+      }
+      if (preview && preview.bytes && preview.bytes.length > MAX_DRIVE_FILE_BYTES) {
+        lastErr = new Error('Preview at w' + width + ' still too large');
+      }
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  if (lastErr) throw lastErr;
+  return null;
+}
+
+function looksLikeImageBytes_(bytes, mime) {
+  if (/^image\//i.test(String(mime || ''))) return true;
+  if (!bytes || bytes.length < 4) return false;
+  // JPEG / PNG / GIF / WEBP(RIFF....WEBP) / BMP
+  const b0 = bytes[0] & 255;
+  const b1 = bytes[1] & 255;
+  const b2 = bytes[2] & 255;
+  const b3 = bytes[3] & 255;
+  if (b0 === 0xFF && b1 === 0xD8) return true;
+  if (b0 === 0x89 && b1 === 0x50 && b2 === 0x4E && b3 === 0x47) return true;
+  if (b0 === 0x47 && b1 === 0x49 && b2 === 0x46) return true;
+  if (b0 === 0x42 && b1 === 0x4D) return true;
+  if (b0 === 0x52 && b1 === 0x49 && b2 === 0x46 && b3 === 0x46) return true;
+  return false;
+}
+
+function previewUrlsForWidth_(id, meta, width) {
+  const urls = [];
+  const seen = {};
+  function add(url) {
+    url = String(url || '');
+    if (!url || seen[url]) return;
+    seen[url] = true;
+    urls.push(url);
+  }
+  const thumb = String((meta && meta.thumbnailLink) || '');
+  if (thumb) {
+    let bumped = thumb.replace(/=s\d+(-[^=]*)?/, '=s' + width + '$1');
+    bumped = bumped.replace(/=w\d+(-[^=]*)?/, '=w' + width + '$1');
+    if (bumped !== thumb) add(bumped);
+  }
+  add('https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w' + width);
+  add('https://lh3.googleusercontent.com/d/' + encodeURIComponent(id) + '=w' + width);
+  return urls;
+}
+
+// One round-trip: try all candidate preview URLs in parallel; keep the first valid under the JSONP cap.
+function fetchDrivePreviewParallel_(id, meta, width) {
+  const urls = previewUrlsForWidth_(id, meta, width);
+  if (!urls.length) throw new Error('No Drive preview URLs for w' + width);
+  const token = ScriptApp.getOAuthToken();
+  const responses = UrlFetchApp.fetchAll(urls.map(function (url) {
+    return {
+      url: url,
+      headers: { Authorization: 'Bearer ' + token },
+      muteHttpExceptions: true,
+      followRedirects: true
+    };
+  }));
+
+  let lastCode = 0;
+  let best = null;
+  for (let i = 0; i < responses.length; i++) {
+    const res = responses[i];
+    lastCode = res.getResponseCode();
+    if (lastCode < 200 || lastCode >= 300) continue;
+    const blob = res.getBlob();
+    const bytes = blob.getBytes();
+    const headers = res.getHeaders() || {};
+    const mime = blob.getContentType() || headers['Content-Type'] || headers['content-type'] || 'image/jpeg';
+    if (!looksLikeImageBytes_(bytes, mime)) continue;
+    if (bytes.length < 256 || bytes.length > MAX_DRIVE_FILE_BYTES) continue;
+    const candidate = {
+      bytes: bytes,
+      mimeType: /^image\//i.test(mime) ? String(mime).split(';')[0].trim() : 'image/jpeg'
+    };
+    // Prefer the largest under-cap preview (usually the CDN thumb link).
+    if (!best || candidate.bytes.length > best.bytes.length) best = candidate;
+  }
+  if (best) return best;
+  throw new Error('Could not fetch Drive preview at w' + width + (lastCode ? ' (HTTP ' + lastCode + ')' : ''));
 }
 
 // Returns { folderId: [{ id, name, thumb }] }. thumb is Drive's short-lived thumbnail link, which loads in the
