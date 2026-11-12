@@ -10089,13 +10089,8 @@
         const taskNow = taskByEan(state.workspace.ean);
         const shotsNow = shotListFor(taskNow || {});
         const clickIdx = Number(shotBtn.dataset.wsShot) || 0;
-        const curIdx = state.workspaceShot || 0;
-        // On Product Dimension: clicking another rail thumb uses that image as override (stay on M-DIM).
-        if (isDimensionShot(shotsNow[curIdx]) && clickIdx !== curIdx &&
-            e.target.closest('.wr-shot-thumb')) {
-          setMdimOverrideFromShotIndex(clickIdx);
-          return;
-        }
+        // Always switch to the clicked shot. M-DIM editor only shows when M-DIM is selected;
+        // base overrides are via drop / base select, not rail clicks.
         state.workspaceShot = clickIdx;
         // Sync Drive prior index to this shot's mapped prior when available.
         const priorNow = resolveWorkspaceMatch(taskNow).selected;
@@ -10123,11 +10118,7 @@
         const task = taskByEan(state.workspace.ean);
         const shotsNow = shotListFor(task || {});
         const curShot = shotsNow[state.workspaceShot || 0];
-        // MAIN: pick Drive image as A, stay on MAIN. M-DIM: use as base override.
-        if (isDimensionShot(curShot)) {
-          setMdimOverrideFromDriveIndex(imgIdx);
-          return;
-        }
+        // MAIN: pick Drive image as A, stay on MAIN. Otherwise switch to the mapped shot.
         if (!isMainShot(curShot)) {
           const prior = resolveWorkspaceMatch(task).selected;
           const imgs = priorDriveImages(prior);
