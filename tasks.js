@@ -44,7 +44,7 @@
   const FEED_TIMEOUT_MS = 90000;
   const FEED_VERSION = 35;
   const APP_VERSION = /preview\.html$/i.test(typeof location !== 'undefined' ? location.pathname : '')
-    ? 'Preview V1.7'
+    ? 'Preview V1.8'
     : 'Beta V1.7';
   // How often to re-read the assign sheet while this tab is visible (other users' picks).
   // ~2 reads/min per open browser — well under the Sheets ~60 reads/min/user cap.
@@ -1631,6 +1631,15 @@
       if (state.workspace.panelOpen == null) state.workspace.panelOpen = true;
       if (state.workspace.panelMax == null) state.workspace.panelMax = false;
       if (state.workspace.dimSeparate == null) state.workspace.dimSeparate = false;
+      if (state.workspace.mdimShowAbcd == null) state.workspace.mdimShowAbcd = false;
+      if (!state.workspace.mdimDraft) state.workspace.mdimDraft = null;
+      if (state.workspace.mdimBaseKey == null) state.workspace.mdimBaseKey = '';
+      if (!state.workspace.mdimWorkspaceUrl) state.workspace.mdimWorkspaceUrl = null;
+      if (state.workspace.mdimOverride === undefined) state.workspace.mdimOverride = null;
+      if (state.workspace.mdimMainMax == null) state.workspace.mdimMainMax = false;
+      if (state.workspace.mdimDbChecked == null) state.workspace.mdimDbChecked = false;
+      if (state.workspace.mdimDbAvailable == null) state.workspace.mdimDbAvailable = false;
+      if (state.workspace.mdimDbDoc === undefined) state.workspace.mdimDbDoc = null;
       if (state.workspace.rating == null) state.workspace.rating = 0;
       if (!state.workspace.ratings) state.workspace.ratings = {};
       if (!state.workspace.promptBaselines) state.workspace.promptBaselines = {};
@@ -2880,6 +2889,10 @@
       approved: Object.assign({}, state.workspace.approved || {}),
       rejected: Object.assign({}, state.workspace.rejected || {}),
       dimSeparate: !!state.workspace.dimSeparate,
+      mdimShowAbcd: !!state.workspace.mdimShowAbcd,
+      mdimDraft: state.workspace.mdimDraft || null,
+      mdimBaseKey: state.workspace.mdimBaseKey || '',
+      mdimOverride: serializeAssetForIdb(state.workspace.mdimOverride),
       rating: Number(state.workspace.rating) || 0,
       ratings: Object.assign({}, state.workspace.ratings || {}),
       promptBaselines: Object.assign({}, state.workspace.promptBaselines || {}),
@@ -2908,11 +2921,15 @@
       approved: Object.assign({}, state.workspace.approved || {}),
       rejected: Object.assign({}, state.workspace.rejected || {}),
       dimSeparate: !!state.workspace.dimSeparate,
+      mdimShowAbcd: !!state.workspace.mdimShowAbcd,
+      mdimDraft: state.workspace.mdimDraft || null,
+      mdimBaseKey: state.workspace.mdimBaseKey || '',
+      mdimOverride: state.workspace.mdimOverride || null,
+      assets: state.workspace.assets || {},
       rating: Number(state.workspace.rating) || 0,
       ratings: Object.assign({}, state.workspace.ratings || {}),
       promptBaselines: Object.assign({}, state.workspace.promptBaselines || {}),
       genCounts: Object.assign({}, state.workspace.genCounts || {}),
-      assets: state.workspace.assets || {},
       savedAt: Date.now()
     };
     // Detach so closeWorkspace revoke does not wipe the cache.
@@ -2939,6 +2956,10 @@
     state.workspace.productTypeVariant = draft.productTypeVariant || state.workspace.productTypeVariant || '';
     state.workspace.productTypeQuery = draft.productTypeQuery || state.workspace.productTypeName || '';
     state.workspace.dimSeparate = !!draft.dimSeparate;
+    state.workspace.mdimShowAbcd = !!draft.mdimShowAbcd;
+    state.workspace.mdimDraft = draft.mdimDraft || null;
+    state.workspace.mdimBaseKey = draft.mdimBaseKey || '';
+    state.workspace.mdimOverride = draft.mdimOverride || null;
     state.workspace.ratings = Object.assign({}, draft.ratings || {});
     state.workspace.promptBaselines = Object.assign({}, draft.promptBaselines || {});
     state.workspace.genCounts = Object.assign({}, draft.genCounts || {});
@@ -3105,6 +3126,10 @@
     else if (row.matchEan) state.workspace.matchEan = row.matchEan;
     if (row.workspaceShot != null) state.workspaceShot = row.workspaceShot || 0;
     state.workspace.dimSeparate = !!row.dimSeparate;
+    state.workspace.mdimShowAbcd = !!row.mdimShowAbcd;
+    state.workspace.mdimDraft = row.mdimDraft || null;
+    state.workspace.mdimBaseKey = row.mdimBaseKey || '';
+    state.workspace.mdimOverride = reviveAssetFromIdb(row.mdimOverride);
     state.workspace.ratings = Object.assign({}, row.ratings || {});
     state.workspace.promptBaselines = Object.assign({}, row.promptBaselines || {});
     state.workspace.genCounts = Object.assign({}, row.genCounts || {});
@@ -3802,6 +3827,8 @@
       clearShotRating(shotIndex);
       bumpShotGenerationCount(shotIndex);
       saveReplaceOutputDraft(state.workspace.ean, shotIndex, assets.output);
+      // Keep Product Dimension base in sync when any shot D is (re)generated.
+      mdimOnShotOutputChanged(shotIndex);
       // First successful generate for this EAN → Render Tracker "In progress".
       markRenderInProgress(state.workspace.ean);
       return { job: job, source: source, output: assets.output };
@@ -4211,6 +4238,729 @@
     const family = String(shot.family || '');
     return /dimension/i.test(name) || /^M-DIM/i.test(code) || /^Size$/i.test(family) ||
       isDimensionShotName(name);
+  }
+
+  /** Prefer 3/4 when 3 dims; else Hero Front / Lifestyle. */
+  function mdimBaseOptions(t, shots, dimIndex) {
+    const opts = [];
+    const prefer = (shot) => {
+      const code = String((shot && shot.code) || '');
+      const name = String((shot && shot.name) || '').toLowerCase();
+      if (/3\/4|three.?quarter|3-4|34/i.test(name) || /3\/4|H-34|H-3-4/i.test(code)) return 0;
+      if (/^H-FR/i.test(code) || /hero\s*front/.test(name)) return 1;
+      if (/^L-CTX/i.test(code) || /lifestyle/.test(name)) return 2;
+      if (/close\s*up|top/i.test(name) || /^H-/i.test(code)) return 3;
+      return 5;
+    };
+    const ranked = shots.map((s, idx) => ({ s, idx, p: prefer(s) }))
+      .filter((x) => x.idx !== dimIndex && !isDimensionShot(x.s))
+      .sort((a, b) => a.p - b.p || a.idx - b.idx);
+    ranked.forEach((x) => {
+      const assets = shotAssets(x.idx);
+      const out = assets && assets.output;
+      const exp = state.workspace.exportImages && state.workspace.exportImages[x.idx];
+      if (!out && !exp) return;
+      const code = shotCodeOf(x.s, x.idx);
+      const name = x.s.name || code;
+      opts.push({
+        value: 'shot:' + x.idx,
+        label: code && name && code !== name ? (code + ' · ' + name) : (name || code),
+        shotIndex: x.idx,
+        asset: out || exp
+      });
+    });
+    // Custom is a single hardcoded option in the M-DIM select — do not duplicate here.
+    return opts;
+  }
+
+  function mdimRevokeCacheKey(key) {
+    const cache = mdimWorkspaceCache();
+    const hit = cache[key];
+    if (!hit) return;
+    if (hit.url && String(hit.url).indexOf('blob:') === 0) {
+      try { URL.revokeObjectURL(hit.url); } catch (_) { /* */ }
+    }
+    delete cache[key];
+  }
+
+  /** Drop cached M-DIM workspace when a shot’s D is (re)generated; auto-load into empty editor. */
+  function mdimOnShotOutputChanged(shotIndex) {
+    if (!state.workspace) return;
+    const key = 'shot:' + shotIndex;
+    const t = taskByEan(state.workspace.ean);
+    const shots = shotListFor(t);
+    const isDim = isDimensionShot(shots[shotIndex]);
+    const cur = String(state.workspace.mdimBaseKey || '');
+    const dimSi = Math.min(state.workspaceShot, Math.max(0, shots.length - 1));
+    const onDimEditor = state.workspace.mode === 'replace' &&
+      isDimensionShot(shots[dimSi]) &&
+      !state.workspace.mdimShowAbcd;
+    const empty = !state.workspace.mdimOverride && !state.workspace.mdimWorkspaceUrl;
+    const optionsPreview = mdimBaseOptions(t, shots, dimSi);
+    const curMissing = !state.workspace.mdimOverride &&
+      (!cur || cur === '__custom__' || !mdimAssetForBaseKey(cur, optionsPreview));
+    const watching = cur === key || (isDim && cur === '__custom__');
+
+    // Always invalidate this shot’s cache entry.
+    const cache = mdimWorkspaceCache();
+    const stale = watching ? (cache[cur] || cache[key]) : cache[key];
+    mdimRevokeCacheKey(key);
+    if (isDim) mdimRevokeCacheKey('__custom__');
+    if (watching && cur && cur !== key) delete cache[cur];
+
+    if (!onDimEditor) return;
+    // Adopt newly generated image when editor has no usable base yet, or when that base was regenerated.
+    if (!watching && !empty && !curMissing) return;
+
+    const adoptKey = (watching && cur && cur !== '__custom__') ? cur : key;
+    state.workspace.mdimBaseKey = adoptKey;
+
+    const options = mdimBaseOptions(t, shots, dimSi);
+    const asset = mdimAssetForBaseKey(adoptKey, options) || shotAssets(shotIndex).output;
+    if (!asset) {
+      state.workspace.mdimWorkspaceUrl = null;
+      state.workspace.mdimWorkspaceBlob = null;
+      return;
+    }
+    mdimEnsureWorkspaceFromAsset(asset, asset.name, adoptKey).then(function (wsUrl) {
+      if (empty || curMissing || !els.workspace || !els.workspace.querySelector('[data-mdim-img]')) {
+        persistCurrentReplaceDraft();
+        renderWorkspace();
+      } else if (wsUrl && window.MdimPlayground && window.MdimPlayground.setWorkspaceUrl) {
+        window.MdimPlayground.setWorkspaceUrl(wsUrl);
+        const root = els.workspace.querySelector('[data-mdim-root]');
+        mdimRefreshWarnDom(root);
+        const selectEl = root && root.querySelector('[data-mdim-base]');
+        if (selectEl) selectEl.value = adoptKey;
+        persistCurrentReplaceDraft();
+      } else {
+        persistCurrentReplaceDraft();
+        renderWorkspace();
+      }
+      if (stale && stale.url && stale.url !== wsUrl && String(stale.url).indexOf('blob:') === 0) {
+        try { URL.revokeObjectURL(stale.url); } catch (_) { /* */ }
+      }
+    }).catch(function () { /* next render retries */ });
+  }
+
+  function clearMdimWorkspaceState() {
+    if (!state.workspace) return;
+    if (state.workspace.mdimOverride) revokeAssetUrl(state.workspace.mdimOverride);
+    state.workspace.mdimOverride = null;
+    const cache = state.workspace.mdimWsCache || {};
+    Object.keys(cache).forEach(function (k) { mdimRevokeCacheKey(k); });
+    state.workspace.mdimWsCache = {};
+    state.workspace.mdimWorkspaceUrl = null;
+    state.workspace.mdimWorkspaceBlob = null;
+    state.workspace.mdimSourceAsset = null;
+    state.workspace.mdimBaseKey = '';
+    state.workspace.mdimDraft = null;
+    state.workspace.mdimShowAbcd = false;
+    state.workspace.mdimMainMax = false;
+    state.workspace.mdimDbChecked = false;
+    state.workspace.mdimDbAvailable = false;
+    state.workspace.mdimDbDoc = null;
+  }
+
+  function mdimPrefetchBaseOptions(options) {
+    (options || []).forEach(function (o) {
+      if (!o || !o.asset || !o.value) return;
+      mdimEnsureWorkspaceFromAsset(o.asset, o.asset.name, o.value).catch(function () { /* quiet */ });
+    });
+  }
+
+  function mdimLinearDimCount(t) {
+    if (!window.MdimCore || !t) return 0;
+    const packed = window.MdimCore.collectLabelsFromFields({
+      productSize: t.size || '',
+      productDimensions: t.dimensions || '',
+      productWeightKg: t.weight || '',
+      productCapacity: t.capacity || ''
+    }, { includeVolume: false });
+    return (packed.labels || []).filter(function (lab) {
+      return !window.MdimCore.isVolumeLabel(lab) && !window.MdimCore.isWeightLabel(lab);
+    }).length;
+  }
+
+  function mdimDefaultBaseKey(options, t) {
+    if (!options || !options.length) return '';
+    const dims = mdimLinearDimCount(t);
+    if (dims >= 3) {
+      const threeQ = options.find((o) => /3\/4|three.?quarter|3-4|34/i.test(o.label));
+      if (threeQ) return threeQ.value;
+    }
+    const hero = options.find((o) => /hero\s*front|^H-FR/i.test(o.label));
+    const life = options.find((o) => /lifestyle|^L-CTX/i.test(o.label));
+    return (hero || life || options[0]).value;
+  }
+
+  function mdimAssetForBaseKey(key, options) {
+    if (!key) return null;
+    const hit = (options || []).find((o) => String(o.value) === String(key));
+    return hit ? hit.asset : null;
+  }
+
+  function mdimWorkspaceCache() {
+    if (!state.workspace.mdimWsCache) state.workspace.mdimWsCache = {};
+    return state.workspace.mdimWsCache;
+  }
+
+  async function mdimEnsureWorkspaceFromAsset(asset, fileNameHint, cacheKey) {
+    if (!window.MdimCore || !asset) return null;
+    const key = cacheKey || fileNameHint || asset.name || 'base';
+    const cache = mdimWorkspaceCache();
+    if (cache[key] && cache[key].url && cache[key].blob) {
+      state.workspace.mdimWorkspaceUrl = cache[key].url;
+      state.workspace.mdimWorkspaceBlob = cache[key].blob;
+      const draft = window.MdimPlayground
+        ? window.MdimPlayground.ensureDraft(state.workspace, taskByEan(state.workspace.ean))
+        : (state.workspace.mdimDraft || window.MdimCore.emptyDoc());
+      if (cache[key].meta) Object.assign(draft.sourceImage || (draft.sourceImage = {}), cache[key].meta);
+      state.workspace.mdimDraft = draft;
+      return state.workspace.mdimWorkspaceUrl;
+    }
+    const url = ensureAssetDisplayUrl(asset) || ensureExportDisplayUrl(asset);
+    if (!url) return null;
+    const built = await window.MdimCore.buildWorkspaceBitmap(url);
+    const detected = window.MdimCore.detectSourceFromFileName(
+      fileNameHint || asset.name || '',
+      state.workspace && state.workspace.ean
+    );
+    const wsUrl = URL.createObjectURL(built.blob);
+    const meta = {
+      kind: detected.kind,
+      shotCode: detected.shotCode || '',
+      shotSeq: detected.shotSeq || '',
+      fileName: detected.fileName || fileNameHint || asset.name || '',
+      originalWidth: built.originalWidth,
+      originalHeight: built.originalHeight,
+      isSquare: built.isSquare,
+      needsUpscale: built.needsUpscale,
+      workspaceSize: window.MdimCore.WORKSPACE_SIZE
+    };
+    cache[key] = { url: wsUrl, blob: built.blob, meta: meta, sourceAsset: asset };
+    state.workspace.mdimWorkspaceUrl = wsUrl;
+    state.workspace.mdimWorkspaceBlob = built.blob;
+    state.workspace.mdimSourceAsset = asset;
+    const draft = window.MdimPlayground
+      ? window.MdimPlayground.ensureDraft(state.workspace, taskByEan(state.workspace.ean))
+      : (state.workspace.mdimDraft || window.MdimCore.emptyDoc());
+    draft.sourceImage = Object.assign(draft.sourceImage || {}, meta);
+    state.workspace.mdimDraft = draft;
+    return state.workspace.mdimWorkspaceUrl;
+  }
+
+  function mountMdimWorkbench() {
+    if (!window.MdimPlayground || !els.workspace || !state.workspace) return;
+    const root = els.workspace.querySelector('[data-mdim-root]');
+    if (!root) return;
+    const t = taskByEan(state.workspace.ean);
+    const shots = shotListFor(t);
+    const i = Math.min(state.workspaceShot, Math.max(0, shots.length - 1));
+    const options = mdimBaseOptions(t, shots, i);
+    window.MdimPlayground.unmount();
+    window.MdimPlayground.mount(root, {
+      workspace: state.workspace,
+      task: t,
+      workspaceUrl: state.workspace.mdimWorkspaceUrl || null,
+      host: {
+        persist: function () { persistCurrentReplaceDraft(); },
+        rerender: function () { renderWorkspace(); },
+        onBaseChange: function (key) {
+          state.workspace.mdimBaseKey = key;
+          // Custom always opens A·B·C·D — never auto-load a previous D into the editor.
+          if (key === '__custom__') {
+            state.workspace.mdimShowAbcd = true;
+            persistCurrentReplaceDraft();
+            renderWorkspace();
+            return;
+          }
+          // Switching to a generated shot clears a local drop override.
+          if (state.workspace.mdimOverride) {
+            revokeAssetUrl(state.workspace.mdimOverride);
+            state.workspace.mdimOverride = null;
+            mdimRevokeCacheKey('__override__');
+          }
+          const asset = mdimAssetForBaseKey(key, options);
+          if (!asset) {
+            showToast('No image for that base yet.', false);
+            return;
+          }
+          const selectEl = root.querySelector('[data-mdim-base]');
+          if (selectEl) selectEl.disabled = true;
+          const cache = mdimWorkspaceCache();
+          const cached = cache[key] && cache[key].url;
+          const applyWs = function (wsUrl) {
+            if (selectEl) selectEl.disabled = false;
+            persistCurrentReplaceDraft();
+            if (wsUrl && window.MdimPlayground && window.MdimPlayground.setWorkspaceUrl) {
+              window.MdimPlayground.setWorkspaceUrl(wsUrl);
+              mdimRefreshWarnDom(root);
+              return;
+            }
+            renderWorkspace();
+          };
+          if (cached) {
+            state.workspace.mdimWorkspaceUrl = cache[key].url;
+            state.workspace.mdimWorkspaceBlob = cache[key].blob;
+            state.workspace.mdimSourceAsset = cache[key].sourceAsset || asset;
+            const draft = window.MdimPlayground
+              ? window.MdimPlayground.ensureDraft(state.workspace, t)
+              : (state.workspace.mdimDraft || window.MdimCore.emptyDoc());
+            if (cache[key].meta) Object.assign(draft.sourceImage || (draft.sourceImage = {}), cache[key].meta);
+            state.workspace.mdimDraft = draft;
+            applyWs(cache[key].url);
+            return;
+          }
+          mdimEnsureWorkspaceFromAsset(asset, asset.name, key).then(applyWs).catch(function (err) {
+            if (selectEl) selectEl.disabled = false;
+            showToast('M-DIM base failed: ' + (err && err.message ? err.message : err), false);
+          });
+        },
+        toggleMainMax: function () {
+          state.workspace.mdimMainMax = !state.workspace.mdimMainMax;
+          // Large editor is for Product Dimension itself — never open Detail & Compare.
+          if (state.workspace.mdimMainMax) {
+            state.workspace.panelOpen = false;
+            state.workspace.panelMax = false;
+          }
+          persistCurrentReplaceDraft();
+          renderWorkspace();
+        },
+        clearOverride: function () {
+          clearMdimBaseOverride();
+        },
+        rebuildFromTracker: function () {
+          rebuildMdimFromShootTracker(t);
+          persistCurrentReplaceDraft();
+          renderWorkspace();
+          showToast('Labels rebuilt from Shoot Tracker.', false);
+        },
+        loadFromDb: function () {
+          if (!state.workspace.mdimDbDoc && !state.workspace.mdimDbAvailable) {
+            showToast('No Prompt DB dimension for this EAN.', false);
+            return;
+          }
+          const applyDoc = function (doc) {
+            if (!doc) {
+              showToast('No Prompt DB dimension for this EAN.', false);
+              return;
+            }
+            applyMdimDocToWorkspace(doc, t);
+            persistCurrentReplaceDraft();
+            renderWorkspace();
+            showToast('Loaded dimension from Prompt DB.', false);
+          };
+          if (state.workspace.mdimDbDoc) {
+            applyDoc(state.workspace.mdimDbDoc);
+            return;
+          }
+          fetchMdimJsonFromPromptDb(state.workspace.ean).then(function (doc) {
+            state.workspace.mdimDbAvailable = !!doc;
+            state.workspace.mdimDbDoc = doc;
+            applyDoc(doc);
+          }).catch(function (err) {
+            showToast('Could not load from Prompt DB: ' + ((err && err.message) || err), false, { error: true });
+          });
+        },
+        applyExport: function () {
+          applyMdimToExport(i).catch(function (err) {
+            showToast('M-DIM export failed: ' + (err && err.message ? err.message : err), false);
+          });
+        }
+      }
+    });
+    // Warm cache for other bases so dropdown switches stay instant.
+    mdimPrefetchBaseOptions(options);
+  }
+
+  function mdimRefreshWarnDom(root) {
+    if (!root) return;
+    let warnHost = root.querySelector('.mdim-warns');
+    const src = (state.workspace.mdimDraft && state.workspace.mdimDraft.sourceImage) || {};
+    const msgs = [];
+    if (src.originalWidth && !src.isSquare) {
+      msgs.push('Source ' + src.originalWidth + '×' + src.originalHeight + ' is not 1:1 — fitted into 3000×3000 with white margins.');
+    }
+    if (src.needsUpscale) {
+                  msgs.push('Source below 3000px. Editor uses a fitted 3000 preview. Apply burns at native size; Firefly upscale runs with Upscale & generate images.');
+    }
+    if (!warnHost && msgs.length) {
+      const tb = root.querySelector('.mdim-toolbar');
+      warnHost = document.createElement('div');
+      warnHost.className = 'mdim-warns';
+      if (tb && tb.parentNode) tb.parentNode.insertBefore(warnHost, tb.nextSibling);
+    }
+    if (warnHost) {
+      warnHost.innerHTML = msgs.map(function (m) {
+        return '<div class="mdim-warn">' + esc(m) + '</div>';
+      }).join('');
+      warnHost.hidden = !msgs.length;
+    }
+  }
+
+  async function applyMdimOverrideAsset(loaded, toastName) {
+    if (!state.workspace || !loaded) return;
+    if (state.workspace.mdimOverride) revokeAssetUrl(state.workspace.mdimOverride);
+    mdimRevokeCacheKey('__override__');
+    state.workspace.mdimOverride = loaded;
+    state.workspace.mdimBaseKey = '__override__';
+    state.workspace.mdimShowAbcd = false;
+    state.workspace.mdimMainMax = !!state.workspace.mdimMainMax;
+    const wsUrl = await mdimEnsureWorkspaceFromAsset(loaded, loaded.name, '__override__');
+    persistCurrentReplaceDraft();
+    renderWorkspace();
+    if (wsUrl && window.MdimPlayground && window.MdimPlayground.setWorkspaceUrl) {
+      requestAnimationFrame(function () {
+        window.MdimPlayground.setWorkspaceUrl(wsUrl);
+      });
+    }
+    showToast('M-DIM base override set · ' + esc(toastName || loaded.name || 'image'), false);
+  }
+
+  async function setMdimBaseOverrideFromFile(file) {
+    if (!state.workspace || !window.MdimCore) return;
+    if (!isAcceptedImageFile(file)) {
+      showToast('Use JPG or PNG images only.', false);
+      return;
+    }
+    try {
+      const loaded = await readLocalImageFile(file);
+      await applyMdimOverrideAsset(loaded, loaded.name);
+    } catch (err) {
+      showToast(err.message || 'Could not set M-DIM override.', false, { error: true });
+    }
+  }
+
+  /** Use a Drive prior rail image as M-DIM override (stay on Product Dimension). */
+  async function setMdimOverrideFromDriveIndex(imgIdx) {
+    if (!state.workspace) return;
+    const task = taskByEan(state.workspace.ean);
+    const prior = resolveWorkspaceMatch(task).selected;
+    const imgs = priorDriveImages(prior);
+    const img = imgs[imgIdx];
+    if (!img || !img.id) {
+      showToast('No Drive image for that rail item.', false);
+      return;
+    }
+    try {
+      showToast('Loading Drive image for M-DIM…', false);
+      const asset = await fetchDriveFileAsset(img.id);
+      await applyMdimOverrideAsset(asset, img.name || asset.name);
+    } catch (err) {
+      showToast('Could not load Drive image: ' + ((err && err.message) || err), false, { error: true });
+    }
+  }
+
+  /** Use another shot’s D (or its Drive prior) as M-DIM override. */
+  async function setMdimOverrideFromShotIndex(shotIndex) {
+    if (!state.workspace) return;
+    const task = taskByEan(state.workspace.ean);
+    const shots = shotListFor(task);
+    const out = shotAssets(shotIndex).output;
+    if (out && (out.blob || out.file || out.url)) {
+      try {
+        await applyMdimOverrideAsset(out, out.name);
+      } catch (err) {
+        showToast('Could not use shot output: ' + ((err && err.message) || err), false, { error: true });
+      }
+      return;
+    }
+    const prior = resolveWorkspaceMatch(task).selected;
+    const map = priorTargetCodeMap(prior, shots);
+    const mapped = (map.mapped || []).find((m) => m.shotIdx === shotIndex);
+    if (mapped && mapped.imgIdx != null) {
+      await setMdimOverrideFromDriveIndex(mapped.imgIdx);
+      return;
+    }
+    showToast('That rail item has no generated D or Drive prior to use as override.', false);
+  }
+
+  function clearMdimBaseOverride() {
+    if (!state.workspace) return;
+    if (state.workspace.mdimOverride) revokeAssetUrl(state.workspace.mdimOverride);
+    state.workspace.mdimOverride = null;
+    mdimRevokeCacheKey('__override__');
+    state.workspace.mdimWorkspaceUrl = null;
+    state.workspace.mdimWorkspaceBlob = null;
+    state.workspace.mdimSourceAsset = null;
+    const t = taskByEan(state.workspace.ean);
+    const shots = shotListFor(t);
+    const si = Math.min(state.workspaceShot, Math.max(0, shots.length - 1));
+    const options = mdimBaseOptions(t, shots, si);
+    state.workspace.mdimBaseKey = mdimDefaultBaseKey(options, t);
+    const asset = mdimAssetForBaseKey(state.workspace.mdimBaseKey, options);
+    persistCurrentReplaceDraft();
+    if (asset) {
+      mdimEnsureWorkspaceFromAsset(asset, asset.name, state.workspace.mdimBaseKey).then(function () {
+        renderWorkspace();
+      }).catch(function () { renderWorkspace(); });
+    } else {
+      renderWorkspace();
+    }
+    showToast('M-DIM override cleared.', false);
+  }
+
+  function mdimWorkbenchSectionHtml(t, shot, shotIndex) {
+    if (!window.MdimPlayground || !window.MdimCore) {
+      return '<div class="mdim-workbench"><p class="muted">M-DIM modules failed to load (mdim-core.js / mdim-playground.js).</p></div>';
+    }
+    const options = mdimBaseOptions(t, shotListFor(t), shotIndex);
+    if (!state.workspace.mdimBaseKey) {
+      state.workspace.mdimBaseKey = mdimDefaultBaseKey(options, t);
+    }
+    if (state.workspace.mdimBaseKey === '__override__' && !state.workspace.mdimOverride) {
+      state.workspace.mdimBaseKey = mdimDefaultBaseKey(options, t) || '';
+    }
+    window.MdimPlayground.ensureDraft(state.workspace, t);
+    return window.MdimPlayground.mainHtml({
+      workspace: state.workspace,
+      task: t,
+      baseOptions: options,
+      selectedBase: state.workspace.mdimBaseKey || '',
+      hasWorkspace: !!state.workspace.mdimWorkspaceUrl,
+      hasOverride: !!state.workspace.mdimOverride,
+      mainMax: !!state.workspace.mdimMainMax,
+      hasDb: !!state.workspace.mdimDbAvailable
+    });
+  }
+
+  async function applyMdimToExport(shotIndex) {
+    if (!window.MdimCore || !state.workspace) return;
+    const draft = state.workspace.mdimDraft;
+    if (!draft) {
+      showToast('Load a base image in M-DIM first.', false);
+      return;
+    }
+    const options = mdimBaseOptions(taskByEan(state.workspace.ean), shotListFor(taskByEan(state.workspace.ean)), shotIndex);
+    let sourceAsset = state.workspace.mdimOverride ||
+      state.workspace.mdimSourceAsset ||
+      mdimAssetForBaseKey(state.workspace.mdimBaseKey, options) ||
+      null;
+    let workBlob = (sourceAsset && (sourceAsset.blob || sourceAsset.file)) || state.workspace.mdimWorkspaceBlob;
+    if (!workBlob) {
+      showToast('Load a base image in M-DIM first.', false);
+      return;
+    }
+
+    const srcMeta = draft.sourceImage || {};
+    // No Firefly here — burn at native letterbox size; Upscale & generate handles AI upscale like other shots.
+    const ow = Number(srcMeta.originalWidth) || 0;
+    const oh = Number(srcMeta.originalHeight) || 0;
+    const nativeSide = Math.max(ow, oh, 1);
+
+    const tmpUrl = URL.createObjectURL(workBlob);
+    let workspaceImg;
+    let burnUrl = '';
+    try {
+      const built = await window.MdimCore.buildWorkspaceBitmap(tmpUrl, {
+        size: nativeSide,
+        mime: 'image/png'
+      });
+      burnUrl = URL.createObjectURL(built.blob);
+      workspaceImg = await window.MdimCore.loadHtmlImage(burnUrl);
+      draft.sourceImage = Object.assign(draft.sourceImage || {}, {
+        originalWidth: built.originalWidth,
+        originalHeight: built.originalHeight,
+        isSquare: built.isSquare,
+        needsUpscale: built.needsUpscale,
+        workspaceSize: built.workspaceSize
+      });
+    } finally {
+      try { URL.revokeObjectURL(tmpUrl); } catch (_) { /* */ }
+    }
+
+    const outBlob = await window.MdimCore.exportMergedPng(workspaceImg, draft.arrows, draft.style);
+    if (burnUrl) {
+      try { URL.revokeObjectURL(burnUrl); } catch (_) { /* */ }
+    }
+    if (!outBlob) throw new Error('PNG encode failed');
+    const ean = state.workspace.ean || 'EAN';
+    const shots = shotListFor(taskByEan(ean));
+    const shot = shots[shotIndex] || {};
+    const seq = String(shot.seq != null ? shot.seq : shotIndex).replace(/\D/g, '') || String(shotIndex).padStart(2, '0');
+    const code = shot.code || 'M-DIM';
+    const file = new File([outBlob], ean + '_' + String(seq).padStart(2, '0') + '_' + code + '.png', { type: 'image/png' });
+    await addExportImageToShot(shotIndex, file);
+
+    // Apply = approval for M-DIM (no star rating). Persist JSON to Prompt DB by EAN (upsert).
+    try {
+      await saveMdimJsonToPromptDb(ean, draft);
+      showToast('M-DIM applied to export row. Prompt DB updated. Upscale runs with Upscale & generate images if needed.', false);
+    } catch (err) {
+      showToast(
+        'M-DIM applied to export, but JSON was not saved: ' + esc((err && err.message) || err),
+        false,
+        { error: true }
+      );
+    }
+    renderWorkspace();
+  }
+
+  function mdimJsonPayload(ean, draft) {
+    const d = draft || {};
+    const style = Object.assign({}, (window.MdimCore && window.MdimCore.DEFAULT_STYLE) || {}, d.style || {}, { textOffset: 50 });
+    return {
+      version: d.version || 1,
+      layoutVersion: d.layoutVersion || null,
+      ean: String(ean || d.ean || ''),
+      code: 'M-DIM',
+      sourceFields: d.sourceFields || {},
+      sourceImage: d.sourceImage || {},
+      omittedVolume: d.omittedVolume || [],
+      arrows: d.arrows || [],
+      style: style
+    };
+  }
+
+  async function saveMdimJsonToPromptDb(ean, draft) {
+    if (!PROMPT_DB_URL) throw new Error('PROMPT_DB_URL is not set.');
+    const id = String(ean || '').replace(/\D/g, '');
+    if (!id) throw new Error('EAN is required to save M-DIM JSON.');
+    const author = String(state.author || '').trim();
+    if (!author) throw new Error('Set your author name before Apply to export (needed for Prompt DB).');
+    const ver = await pingPromptDbVersion();
+    if (ver < 15) {
+      throw new Error(
+        'Prompt DB web app is outdated (v' + (ver || '?') + ', need v15+ for M-DIM). ' +
+        'Copy dashboard/apps-script-prompt-db/Code.gs → Deploy → New version.'
+      );
+    }
+    const json = JSON.stringify(mdimJsonPayload(id, draft));
+    const uploadId = 'm' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+    const chunks = splitPromptForJsonp(json, 1400);
+    for (let i = 0; i < chunks.length; i++) {
+      await jsonp(
+        [
+          'action=promptChunk',
+          'uploadId=' + encodeURIComponent(uploadId),
+          'i=' + i,
+          'n=' + chunks.length,
+          'data=' + encodeURIComponent(chunks[i])
+        ].join('&'),
+        45000,
+        PROMPT_DB_URL
+      );
+    }
+    const data = await jsonp(
+      [
+        'action=mdimSave',
+        'ean=' + encodeURIComponent(id),
+        'author=' + encodeURIComponent(author),
+        'appVersion=' + encodeURIComponent(APP_VERSION),
+        'uploadId=' + encodeURIComponent(uploadId)
+      ].join('&'),
+      60000,
+      PROMPT_DB_URL
+    );
+    state.workspace.mdimDbAvailable = true;
+    state.workspace.mdimDbDoc = mdimJsonPayload(id, draft);
+    return data;
+  }
+
+  async function fetchMdimJsonFromPromptDb(ean) {
+    if (!PROMPT_DB_URL) return null;
+    const id = String(ean || '').replace(/\D/g, '');
+    if (!id) return null;
+    const ver = await pingPromptDbVersion();
+    if (ver < 15) return null;
+    const data = await jsonp(
+      'action=mdimGet&ean=' + encodeURIComponent(id),
+      45000,
+      PROMPT_DB_URL
+    );
+    if (!(data && data.found && data.json)) return null;
+    try {
+      const doc = JSON.parse(String(data.json));
+      if (!doc || typeof doc !== 'object') return null;
+      return doc;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function applyMdimDocToWorkspace(doc, t) {
+    if (!state.workspace || !window.MdimCore || !doc) return;
+    const Core = window.MdimCore;
+    const base = Core.emptyDoc();
+    const layoutVer = (window.MdimPlayground && window.MdimPlayground.LAYOUT_VERSION) || 3;
+    state.workspace.mdimDraft = Object.assign(base, {
+      version: doc.version || 1,
+      ean: String((t && t.ean) || doc.ean || state.workspace.ean || ''),
+      code: 'M-DIM',
+      sourceFields: doc.sourceFields || {
+        productSize: String((t && t.size) || ''),
+        productDimensions: String((t && t.dimensions) || ''),
+        productWeightKg: String((t && t.weight) || ''),
+        productCapacity: String((t && t.capacity) || '')
+      },
+      sourceImage: Object.assign({}, base.sourceImage, doc.sourceImage || {}),
+      omittedVolume: Array.isArray(doc.omittedVolume) ? doc.omittedVolume.slice() : [],
+      arrows: Array.isArray(doc.arrows) ? doc.arrows.map(function (a) { return Object.assign({}, a); }) : [],
+      style: Object.assign({}, Core.DEFAULT_STYLE, doc.style || {}, { textOffset: 50 }),
+      layoutVersion: layoutVer
+    });
+    state.workspace.mdimDbDoc = doc;
+    state.workspace.mdimDbAvailable = true;
+  }
+
+  function rebuildMdimFromShootTracker(t) {
+    if (!state.workspace || !window.MdimCore) return;
+    const Core = window.MdimCore;
+    const doc = Core.emptyDoc();
+    doc.ean = String((t && t.ean) || state.workspace.ean || '');
+    doc.sourceFields = {
+      productSize: String((t && t.size) || ''),
+      productDimensions: String((t && t.dimensions) || ''),
+      productWeightKg: String((t && t.weight) || ''),
+      productCapacity: String((t && t.capacity) || '')
+    };
+    const packed = Core.collectLabelsFromFields(doc.sourceFields, { includeVolume: false });
+    doc.omittedVolume = packed.omittedVolume.slice();
+    doc.arrows = Core.buildArrowsFromLabels(packed.labels, [], false);
+    doc.layoutVersion = (window.MdimPlayground && window.MdimPlayground.LAYOUT_VERSION) || 3;
+    if (state.workspace.mdimDraft && state.workspace.mdimDraft.sourceImage) {
+      doc.sourceImage = Object.assign({}, doc.sourceImage, state.workspace.mdimDraft.sourceImage);
+    }
+    state.workspace.mdimDraft = doc;
+  }
+
+  /** Prefer Prompt DB M-DIM JSON when present; else keep local / Shoot Tracker defaults. */
+  async function hydrateMdimDraftForEan(forceDb) {
+    if (!state.workspace || state.workspace.mode !== 'replace') return;
+    const ean = state.workspace.ean;
+    const t = taskByEan(ean);
+    if (state.workspace.mdimDbChecked && !forceDb) return;
+    state.workspace.mdimDbChecked = true;
+    try {
+      const doc = await fetchMdimJsonFromPromptDb(ean);
+      state.workspace.mdimDbAvailable = !!doc;
+      state.workspace.mdimDbDoc = doc || null;
+      if (doc) {
+        // DB wins on EAN load (and on forced reload).
+        applyMdimDocToWorkspace(doc, t);
+      } else if (!state.workspace.mdimDraft && window.MdimPlayground) {
+        window.MdimPlayground.ensureDraft(state.workspace, t);
+      }
+    } catch (err) {
+      state.workspace.mdimDbAvailable = false;
+      if (!state.workspace.mdimDraft && window.MdimPlayground) {
+        window.MdimPlayground.ensureDraft(state.workspace, taskByEan(ean));
+      }
+    }
+  }
+
+  function mdimDimDiffHeadHtml(t, prior) {
+    const note = dimDiffSummary(t, prior);
+    if (!note) return '';
+    // Prefer Size values; otherwise first differ bit — strip field name (Size/Dimensions/Volume).
+    const bits = note.split(' · ');
+    const sizeBit = bits.find(function (b) { return /^Size:/i.test(b); }) || bits[0] || '';
+    const values = String(sizeBit).replace(/^(Size|Dimensions|Volume):\s*/i, '').trim();
+    return '<span class="wr-dim-head" title="' + esc(note) + '">' +
+      '<span class="wr-dim-head-label">Dimension differ:</span>' +
+      (values ? '<span class="wr-dim-head-size">' + esc(values) + '</span>' : '') +
+    '</span>';
   }
 
   function isMainShot(shot) {
@@ -4754,6 +5504,7 @@
     state.workspace.prompts = {};
     state.workspace.promptBaselines = {};
     state.workspace.shotInputs = {};
+    clearMdimWorkspaceState();
     shots.forEach((shot, idx) => {
       const compiled = compileReplacePrompt(task, shot, prior).text;
       state.workspace.prompts[idx] = compiled;
@@ -4761,7 +5512,7 @@
     });
     await persistCurrentReplaceDraft();
     renderWorkspace();
-    showToast('Reset all Gen Img & Prompt — B, D, ratings cleared; prompts restored to Universal defaults.', false);
+    showToast('Reset all Gen Img & Prompt — B, D, M-DIM base, ratings cleared; prompts restored to Universal defaults.', false);
   }
 
   /** Drag/drop onto export row (wr-slot-drop) — e.g. manual M-DIM — skip rating gate. */
@@ -5935,22 +6686,22 @@
 
   // opts.includeDone = true → regenerate (include shots that already have D).
   // Only shots with their own B are queued. MAIN is also queued when H-FR / 01 has B.
+  // Product Dimension (M-DIM) is never included — it uses Apply to export, not Answerly generate.
   function genAllPendingCandidates(task, prior, shots, opts) {
     opts = opts || {};
     const includeDone = !!opts.includeDone;
     const mapInfo = priorTargetCodeMap(prior, shots);
-    const dimSeparate = !!(state.workspace && state.workspace.dimSeparate);
     const list = (mapInfo.mapped || []).filter((m) => {
       const shot = shots[m.shotIdx];
       if (!shot) return false;
+      if (isDimensionShot(shot)) return false;
       if (!includeDone && shotHasGeneratedOutput(m.shotIdx)) return false;
-      if (dimSeparate && isDimensionShot(shot)) return false;
       if (!shotEligibleForGenAll(m.shotIdx, shots)) return false;
       return true;
     });
     // MAIN last: include when eligible via own B or Hero Front / seq 01 B.
     const mainIdx = mainShotIndex(shots);
-    if (mainIdx >= 0 && !(dimSeparate && isDimensionShot(shots[mainIdx]))) {
+    if (mainIdx >= 0 && !isDimensionShot(shots[mainIdx])) {
       const hasMainOut = shotHasGeneratedOutput(mainIdx);
       if ((includeDone || !hasMainOut) &&
           shotEligibleForGenAll(mainIdx, shots) &&
@@ -7357,7 +8108,11 @@
     }
     if (state.workspace.mode === 'replace') {
       prefetchSelectedDrivePrior();
-      restoreReplaceDraftsIntoWorkspace();
+      restoreReplaceDraftsIntoWorkspace().then(function () {
+        return hydrateMdimDraftForEan(false);
+      }).then(function () {
+        if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
+      }).catch(function () { /* soft */ });
       ensureUniversalPrompts(true).then(() => {
         if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
       });
@@ -7383,7 +8138,8 @@
     revokeAllWorkspaceAssets();
     state.workspace = null;
     state.workspaceShot = 0;
-    document.body.classList.remove('view-workspace', 'ws-choose', 'ws-replace');
+    document.body.classList.remove('view-workspace', 'ws-choose', 'ws-replace', 'mdim-main-max');
+    document.documentElement.classList.remove('mdim-main-max');
     if (els.workspace) {
       els.workspace.hidden = true;
       els.workspace.innerHTML = '';
@@ -7450,6 +8206,9 @@
     const mode = state.workspace.mode;
     document.body.classList.toggle('ws-choose', mode === 'choose');
     document.body.classList.toggle('ws-replace', mode === 'replace');
+    const mdimMax = mode === 'replace' && !!state.workspace.mdimMainMax && !state.workspace.mdimShowAbcd;
+    document.body.classList.toggle('mdim-main-max', mdimMax);
+    document.documentElement.classList.toggle('mdim-main-max', mdimMax);
     els.workspace.innerHTML = mode === 'primary' ? workspacePrimaryHtml(t)
       : mode === 'replace' ? workspaceReplaceHtml(t)
       : workspaceChooseHtml(t);
@@ -7469,9 +8228,59 @@
         requestAnimationFrame(() => {
           syncRailToMainHeight();
           restoreRailScroll();
+          if (window.MdimPlayground && window.MdimPlayground.syncOverlay) {
+            const root = els.workspace.querySelector('[data-mdim-root]');
+            if (root) window.MdimPlayground.syncOverlay(root);
+          }
         });
+        const shotsNow = shotListFor(t);
+        const si = Math.min(state.workspaceShot, Math.max(0, shotsNow.length - 1));
+        if (isDimensionShot(shotsNow[si]) && !state.workspace.mdimShowAbcd) {
+          ensureMdimDefaultBaseThenMount(t, shotsNow, si);
+        } else if (window.MdimPlayground) {
+          window.MdimPlayground.unmount();
+        }
       });
+    } else {
+      document.body.classList.remove('mdim-main-max');
+      document.documentElement.classList.remove('mdim-main-max');
     }
+  }
+
+  function ensureMdimDefaultBaseThenMount(t, shots, si) {
+    const options = mdimBaseOptions(t, shots, si);
+    if (state.workspace.mdimOverride) {
+      state.workspace.mdimBaseKey = '__override__';
+    } else if (!state.workspace.mdimBaseKey ||
+        (state.workspace.mdimBaseKey === '__override__' && !state.workspace.mdimOverride)) {
+      state.workspace.mdimBaseKey = mdimDefaultBaseKey(options, t);
+    }
+    const key = state.workspace.mdimBaseKey;
+    const needBuild = !state.workspace.mdimWorkspaceUrl && key;
+    const finish = () => mountMdimWorkbench();
+    if (!needBuild) {
+      finish();
+      mdimPrefetchBaseOptions(options);
+      return;
+    }
+    const asset = (key === '__override__' ? state.workspace.mdimOverride : null) ||
+      mdimAssetForBaseKey(key, options) ||
+      (key === '__custom__' ? shotAssets(si).output : null);
+    if (!asset) {
+      finish();
+      return;
+    }
+    mdimEnsureWorkspaceFromAsset(asset, asset.name, key).then(function (wsUrl) {
+      if (wsUrl && window.MdimPlayground && window.MdimPlayground.setWorkspaceUrl) {
+        finish();
+        window.MdimPlayground.setWorkspaceUrl(wsUrl);
+        mdimPrefetchBaseOptions(options);
+        return;
+      }
+      renderWorkspace();
+    }).catch(function () {
+      finish();
+    });
   }
 
   function syncRailToMainHeight() {
@@ -8147,7 +8956,7 @@
                           (mappedDoneCount
                             ? mappedDoneCount + ' already in D · choose skip or regenerate'
                             : 'Generate ' + mappedPending.length + ' shot' + (mappedPending.length > 1 ? 's' : '') + ' that have B') +
-                          ' (skips shots without B' + (state.workspace.dimSeparate ? '; skips M-DIM' : '') +
+                          ' (skips shots without B; always skips M-DIM' +
                           '; MAIN waits for Hero Front / 01 D as A · parallel)"'
                         : ' title="No mapped shots to generate"')
                     : ' title="Select a Product Type first"') + '>' +
@@ -8158,10 +8967,16 @@
         '<div class="wr-rail-splitter" data-ws-rail-split title="Drag to resize Drive images panel" role="separator" aria-orientation="vertical" aria-label="Resize Drive images panel"></div>' +
 
         '<div class="wr-main-wrap">' +
-        '<section class="wr-main">' +
+        (isDimensionShot(shot) && !state.workspace.mdimShowAbcd && state.workspace.mdimMainMax
+          ? '<div class="wr-mdim-max-backdrop" data-mdim="toggle-main-max" title="Exit large editor"></div>'
+          : '') +
+        '<section class="wr-main' +
+          (isDimensionShot(shot) && !state.workspace.mdimShowAbcd && state.workspace.mdimMainMax ? ' is-max' : '') +
+          '">' +
           '<header class="wr-main-head">' +
             '<h2 class="wr-main-title">' + esc(headName) + '</h2>' +
             '<span class="wr-code">' + esc(headCode) + '</span>' +
+            (isDimensionShot(shot) && dimsDiffer ? mdimDimDiffHeadHtml(t, prior) : '') +
             (isShotBusy(i)
               ? '<span class="wr-pill-progress">' +
                   esc((state.workspace.busyShots && state.workspace.busyShots[i]) || genStage || 'In progress') +
@@ -8172,13 +8987,24 @@
               : '') +
           '</header>' +
 
-          (showDimBanner
+          /* M-DIM uses the compact head chip — never the old wr-dim-banner (incl. Custom/ABCD). */
+          (showDimBanner && !isDimensionShot(shot)
             ? '<div class="wr-dim-banner">' +
                 '<label class="wr-dim-toggle">' +
                   '<input type="checkbox" data-ws-dim-toggle' + (state.workspace.dimSeparate ? ' checked' : '') + '>' +
                   '<span>Dimensions differ — create as a separate image (skip 1:1 map)</span>' +
                 '</label>' +
                 '<span class="wr-dim-note">' + esc(dimNote || 'Optional exception') + '</span>' +
+              '</div>'
+            : '') +
+
+          (isDimensionShot(shot) && !state.workspace.mdimShowAbcd
+            ? mdimWorkbenchSectionHtml(t, shot, i)
+            : '' +
+          (isDimensionShot(shot) && state.workspace.mdimShowAbcd
+            ? '<div class="mdim-abcd-bar">' +
+                '<span class="mdim-abcd-note">A·B·C·D for a custom plate. Generate a new D, then return — or drop an image on the dimension editor to override.</span>' +
+                '<button type="button" class="tp-btn tp-btn-primary" data-mdim="back-editor">Back to dimension editor</button>' +
               '</div>'
             : '') +
 
@@ -8382,6 +9208,7 @@
                     (hasOutput ? 'Regenerate this shot' : 'Generate this shot') + '</button>') +
             '</div>' +
           '</div>' +
+            '') +
         '</section>' +
         (!panelOpen
           ? '<button type="button" class="wr-panel-tab" data-ws-panel="open" title="Open Detail &amp; Compare">Detail &amp; Compare</button>'
@@ -8677,11 +9504,28 @@
     else if (els.setupModal && !els.setupModal.hidden) closeSetupModal();
     else if (!els.menu.hidden) closeMenu();
     else if (!els.settingsMenu.hidden) closeSettings();
+    else if (state.workspace && state.workspace.mdimMainMax) {
+      state.workspace.mdimMainMax = false;
+      persistCurrentReplaceDraft();
+      renderWorkspace();
+    }
     else if (state.workspace) {
       if (state.workspace.mode === 'choose') { closeWorkspace(); render(); }
       else { state.workspace.mode = 'choose'; renderWorkspace(); }
     }
   });
+
+  // Lock page scroll while Product Dimension is enlarged (same idea as a modal popup).
+  document.addEventListener('wheel', (e) => {
+    if (!document.body.classList.contains('mdim-main-max')) return;
+    if (e.target && e.target.closest && e.target.closest('.wr-main.is-max')) return;
+    e.preventDefault();
+  }, { passive: false });
+  document.addEventListener('touchmove', (e) => {
+    if (!document.body.classList.contains('mdim-main-max')) return;
+    if (e.target && e.target.closest && e.target.closest('.wr-main.is-max')) return;
+    e.preventDefault();
+  }, { passive: false });
 
   function closeSettings() {
     els.settingsMenu.hidden = true;
@@ -9026,6 +9870,43 @@
     });
 
     els.workspace.addEventListener('click', (e) => {
+      const mdimBack = e.target.closest('[data-mdim="back-editor"]');
+      if (mdimBack && state.workspace) {
+        e.preventDefault();
+        state.workspace.mdimShowAbcd = false;
+        // Prefer a fresh drop override; else use this shot’s latest D when returning from Custom/ABCD.
+        if (state.workspace.mdimOverride) {
+          state.workspace.mdimBaseKey = '__override__';
+          mdimEnsureWorkspaceFromAsset(
+            state.workspace.mdimOverride,
+            state.workspace.mdimOverride.name,
+            '__override__'
+          ).then(function () {
+            persistCurrentReplaceDraft();
+            renderWorkspace();
+          }).catch(function () {
+            persistCurrentReplaceDraft();
+            renderWorkspace();
+          });
+          return;
+        }
+        const dimOut = shotAssets(state.workspaceShot).output;
+        if (dimOut) {
+          mdimRevokeCacheKey('__custom__');
+          state.workspace.mdimBaseKey = '__custom__';
+          mdimEnsureWorkspaceFromAsset(dimOut, dimOut.name, '__custom__').then(function () {
+            persistCurrentReplaceDraft();
+            renderWorkspace();
+          }).catch(function () {
+            persistCurrentReplaceDraft();
+            renderWorkspace();
+          });
+        } else {
+          persistCurrentReplaceDraft();
+          renderWorkspace();
+        }
+        return;
+      }
       const copyExec = e.target.closest('[data-ws-copy-exec]');
       if (copyExec) {
         e.preventDefault();
@@ -9181,6 +10062,19 @@
         });
         return;
       }
+      // Backdrop / chrome for enlarged Product Dimension (outside mdim-root).
+      const mdimMaxToggle = e.target.closest('[data-mdim="toggle-main-max"]');
+      if (mdimMaxToggle && state.workspace && !e.target.closest('[data-mdim-root]')) {
+        e.preventDefault();
+        state.workspace.mdimMainMax = !state.workspace.mdimMainMax;
+        if (state.workspace.mdimMainMax) {
+          state.workspace.panelOpen = false;
+          state.workspace.panelMax = false;
+        }
+        persistCurrentReplaceDraft();
+        renderWorkspace();
+        return;
+      }
       // Prefer explicit shot clicks over Drive-index remapping so only one rail item stays active.
       const shotBtn = e.target.closest('[data-ws-shot]');
       if (shotBtn) {
@@ -9192,11 +10086,20 @@
             state.workspace.prompts[state.workspaceShot || 0] = promptEl.value;
           }
         }
-        state.workspaceShot = Number(shotBtn.dataset.wsShot) || 0;
-        // Sync Drive prior index to this shot's mapped prior when available.
         const taskNow = taskByEan(state.workspace.ean);
+        const shotsNow = shotListFor(taskNow || {});
+        const clickIdx = Number(shotBtn.dataset.wsShot) || 0;
+        const curIdx = state.workspaceShot || 0;
+        // On Product Dimension: clicking another rail thumb uses that image as override (stay on M-DIM).
+        if (isDimensionShot(shotsNow[curIdx]) && clickIdx !== curIdx &&
+            e.target.closest('.wr-shot-thumb')) {
+          setMdimOverrideFromShotIndex(clickIdx);
+          return;
+        }
+        state.workspaceShot = clickIdx;
+        // Sync Drive prior index to this shot's mapped prior when available.
         const priorNow = resolveWorkspaceMatch(taskNow).selected;
-        const mapNow = priorTargetCodeMap(priorNow, shotListFor(taskNow || {}));
+        const mapNow = priorTargetCodeMap(priorNow, shotsNow);
         const mapped = (mapNow.mapped || []).find((m) => m.shotIdx === state.workspaceShot);
         if (mapped && mapped.imgIdx != null) {
           state.workspace.driveImgIndex = mapped.imgIdx;
@@ -9218,10 +10121,19 @@
         const imgIdx = Number(driveImgBtn.dataset.wsDriveImg) || 0;
         state.workspace.driveImgIndex = imgIdx;
         const task = taskByEan(state.workspace.ean);
-        const prior = resolveWorkspaceMatch(task).selected;
-        const imgs = priorDriveImages(prior);
-        const shotIdx = shotIndexForDriveName(shotListFor(task || {}), (imgs[imgIdx] && imgs[imgIdx].name) || '');
-        if (shotIdx >= 0) state.workspaceShot = shotIdx;
+        const shotsNow = shotListFor(task || {});
+        const curShot = shotsNow[state.workspaceShot || 0];
+        // MAIN: pick Drive image as A, stay on MAIN. M-DIM: use as base override.
+        if (isDimensionShot(curShot)) {
+          setMdimOverrideFromDriveIndex(imgIdx);
+          return;
+        }
+        if (!isMainShot(curShot)) {
+          const prior = resolveWorkspaceMatch(task).selected;
+          const imgs = priorDriveImages(prior);
+          const shotIdx = shotIndexForDriveName(shotsNow, (imgs[imgIdx] && imgs[imgIdx].name) || '');
+          if (shotIdx >= 0) state.workspaceShot = shotIdx;
+        }
         state.workspace.priorFetch = null;
         persistCurrentReplaceDraft();
         renderWorkspace();
@@ -9916,6 +10828,10 @@
       if (exportBanner) {
         return { kind: 'export-fill', highlight: exportBanner };
       }
+      const mdimBase = el.closest('[data-ws-drop="mdim-base"]');
+      if (mdimBase) {
+        return { kind: 'mdim-base', shotIndex: state.workspaceShot || 0, highlight: mdimBase };
+      }
       const prior = el.closest('[data-ws-drop="prior"]');
       if (prior) return { kind: 'prior', shotIndex: state.workspaceShot || 0, highlight: prior };
       const inputTile = el.closest('[data-ws-crop-input]');
@@ -9929,9 +10845,21 @@
       }
       const shotBtn = el.closest('[data-ws-drop-shot]');
       if (shotBtn && shotBtn.getAttribute('data-ws-drop-shot') !== '') {
+        const dropShotIdx = Number(shotBtn.getAttribute('data-ws-drop-shot')) || 0;
+        const taskDrop = taskByEan(state.workspace.ean);
+        const shotsDrop = shotListFor(taskDrop || {});
+        if (isDimensionShot(shotsDrop[dropShotIdx])) {
+          return {
+            kind: 'mdim-base',
+            shotIndex: dropShotIdx,
+            highlight: shotBtn,
+            switchShot: true,
+            keepDriveIndex: true
+          };
+        }
         return {
           kind: 'inputs',
-          shotIndex: Number(shotBtn.getAttribute('data-ws-drop-shot')) || 0,
+          shotIndex: dropShotIdx,
           highlight: shotBtn,
           // Keep rail order stable — switch active shot for B attach, but do not remap Drive thumbs.
           switchShot: true,
@@ -9941,7 +10869,15 @@
       const inputs = el.closest('[data-ws-drop="inputs"]');
       if (inputs) return { kind: 'inputs', shotIndex: state.workspaceShot || 0, highlight: inputs };
       const rail = el.closest('[data-ws-drop="rail"]');
-      if (rail) return { kind: 'inputs', shotIndex: state.workspaceShot || 0, highlight: rail };
+      if (rail) {
+        const taskRail = taskByEan(state.workspace.ean);
+        const shotsRail = shotListFor(taskRail || {});
+        const cur = state.workspaceShot || 0;
+        if (isDimensionShot(shotsRail[cur])) {
+          return { kind: 'mdim-base', shotIndex: cur, highlight: rail };
+        }
+        return { kind: 'inputs', shotIndex: cur, highlight: rail };
+      }
       return null;
     }
 
@@ -9996,7 +10932,9 @@
           if (matchImg >= 0) state.workspace.driveImgIndex = matchImg;
         }
       }
-      if (dest.kind === 'prior') {
+      if (dest.kind === 'mdim-base') {
+        setMdimBaseOverrideFromFile(files[0]);
+      } else if (dest.kind === 'prior') {
         setPriorOverrideFromFile(dest.shotIndex, files[0]);
       } else if (dest.kind === 'inputs-replace') {
         replaceShotInput(dest.shotIndex, dest.inputIndex, files[0]);
@@ -10420,6 +11358,14 @@
             productTypeVariant: state.workspace.productTypeVariant,
             productTypeQuery: state.workspace.productTypeQuery,
             dimSeparate: state.workspace.dimSeparate,
+            mdimShowAbcd: state.workspace.mdimShowAbcd,
+            mdimDraft: state.workspace.mdimDraft,
+            mdimBaseKey: state.workspace.mdimBaseKey,
+            mdimOverride: state.workspace.mdimOverride,
+            mdimWorkspaceUrl: state.workspace.mdimWorkspaceUrl,
+            mdimWorkspaceBlob: state.workspace.mdimWorkspaceBlob,
+            mdimSourceAsset: state.workspace.mdimSourceAsset,
+            mdimWsCache: state.workspace.mdimWsCache,
             promptBaselines: state.workspace.promptBaselines
           }
         : null;
@@ -10439,6 +11385,14 @@
         state.workspace.productTypeVariant = keepWs.productTypeVariant || state.workspace.productTypeVariant;
         state.workspace.productTypeQuery = keepWs.productTypeQuery || state.workspace.productTypeQuery;
         state.workspace.dimSeparate = keepWs.dimSeparate;
+        state.workspace.mdimShowAbcd = keepWs.mdimShowAbcd;
+        state.workspace.mdimDraft = keepWs.mdimDraft || state.workspace.mdimDraft;
+        state.workspace.mdimBaseKey = keepWs.mdimBaseKey || state.workspace.mdimBaseKey;
+        state.workspace.mdimOverride = keepWs.mdimOverride || state.workspace.mdimOverride;
+        state.workspace.mdimWorkspaceUrl = keepWs.mdimWorkspaceUrl || state.workspace.mdimWorkspaceUrl;
+        state.workspace.mdimWorkspaceBlob = keepWs.mdimWorkspaceBlob || state.workspace.mdimWorkspaceBlob;
+        state.workspace.mdimSourceAsset = keepWs.mdimSourceAsset || state.workspace.mdimSourceAsset;
+        state.workspace.mdimWsCache = keepWs.mdimWsCache || state.workspace.mdimWsCache;
         state.workspace.promptBaselines = keepWs.promptBaselines || state.workspace.promptBaselines;
         state.workspace.draftsLoaded = !!keepWs.draftsLoaded;
         if (keepWs.matchEan) state.workspace.matchEan = keepWs.matchEan;

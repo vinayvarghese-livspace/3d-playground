@@ -1386,6 +1386,73 @@ a.tp-link:hover { background: var(--hover); }
   display: flex; align-items: flex-start; gap: 0;
 }
 .wr-main-wrap .wr-main { flex: 1; min-width: 0; }
+.wr-mdim-max-backdrop {
+  position: fixed; inset: 0; z-index: 69;
+  background: rgba(15, 23, 42, 0.45);
+}
+/* Same popup pattern as Detail & Compare (.wr-panel.is-max) */
+.wr-main.is-max {
+  position: fixed; inset: 8px; z-index: 70;
+  min-height: 0; max-width: none; height: auto !important;
+  width: auto !important;
+  display: flex; flex-direction: column;
+  box-shadow: var(--shadow-lg);
+  border-radius: 12px; background: #fff;
+  overflow: hidden; padding: 12px 14px; gap: 10px;
+}
+.wr-main.is-max .wr-main-head { flex-shrink: 0; }
+.wr-main.is-max .mdim-workbench {
+  flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px;
+}
+.wr-main.is-max .mdim-toolbar,
+.wr-main.is-max .mdim-warns,
+.wr-main.is-max .mdim-hint { flex-shrink: 0; }
+.wr-main.is-max .mdim-body {
+  flex: 1 1 auto; min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch; gap: 10px;
+}
+.wr-main.is-max .mdim-stage-wrap {
+  min-width: 0; min-height: 0; height: 100%;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.wr-main.is-max .mdim-stage {
+  flex: 1 1 auto; min-height: 0 !important; height: auto !important;
+  max-height: none !important;
+  display: flex !important; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.wr-main.is-max .mdim-canvas-box {
+  /* Shrink-wrap the image so SVG overlay matches the visible bitmap. */
+  position: relative; display: inline-block; line-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto; height: auto;
+}
+.wr-main.is-max .mdim-canvas-box img {
+  display: block;
+  width: auto !important; height: auto !important;
+  max-width: min(100%, calc(100vw - 300px)) !important;
+  max-height: calc(100vh - 168px) !important;
+  object-fit: contain;
+}
+.wr-main.is-max .mdim-side {
+  max-height: none !important; min-height: 0; height: 100%; overflow: auto;
+}
+body.mdim-main-max {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+body.mdim-main-max .wr-grid {
+  pointer-events: none;
+}
+body.mdim-main-max .wr-main.is-max,
+body.mdim-main-max .wr-mdim-max-backdrop {
+  pointer-events: auto;
+}
 .wr-panel-tab {
   flex: 0 0 auto; align-self: flex-start; margin: 12px 0 0 -1px; z-index: 2;
   writing-mode: vertical-rl; transform: rotate(180deg);
@@ -2194,3 +2261,104 @@ body.is-rail-resizing * { cursor: col-resize !important; }
   width: 48px; height: 48px; object-fit: cover; border-radius: 8px; border: 1px solid #E2E8F0; background: #fff;
   flex-shrink: 0; cursor: zoom-in;
 }
+
+/* ---------- M-DIM workbench (Product Replacement) ---------- */
+.wr-dim-head {
+  display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px;
+  background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E;
+}
+.wr-dim-head-label { text-transform: uppercase; letter-spacing: 0.04em; font-size: 10px; opacity: 0.85; }
+.wr-dim-head-size { font-family: var(--mono); font-weight: 700; color: #78350F; }
+
+.mdim-workbench { display: flex; flex-direction: column; gap: 8px; min-height: 0; flex: 1; }
+.mdim-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; flex-shrink: 0; }
+.mdim-base-pick { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #64748B; }
+.mdim-base-pick select {
+  font: inherit; font-size: 12px; font-weight: 600; color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; background: #fff; min-width: 200px;
+}
+.mdim-apply-btn { margin-left: auto; }
+.mdim-warns { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.mdim-warn {
+  font-size: 12px; line-height: 1.35; padding: 8px 10px; border-radius: 8px;
+  border: 1px solid #FDE68A; background: #FFFBEB; color: #92400E;
+}
+.mdim-body {
+  display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 10px;
+  flex: 1; min-height: 0; align-items: stretch;
+}
+@media (max-width: 960px) { .mdim-body { grid-template-columns: 1fr; } }
+.mdim-stage-wrap { display: flex; flex-direction: column; gap: 6px; min-width: 0; min-height: 0; }
+.mdim-stage {
+  flex: 1; min-height: min(72vh, 820px); border: 1px solid var(--border); border-radius: 12px;
+  background: #F8FAFC; display: grid; place-items: center; overflow: hidden; position: relative;
+}
+.mdim-stage.is-empty { background: #F1F5F9; }
+.mdim-stage.is-drop-target {
+  outline: 2px solid #0B6B5F; outline-offset: -2px; background: #F0FDFA;
+}
+.mdim-stage.has-override { box-shadow: inset 0 0 0 2px #0B6B5F; }
+.mdim-empty { padding: 24px; text-align: center; color: #64748B; font-size: 13px; max-width: 28rem; line-height: 1.45; }
+.mdim-canvas-box {
+  position: relative; display: inline-block; line-height: 0;
+  max-width: 100%; max-height: min(72vh, 820px);
+}
+.mdim-canvas-box img {
+  display: block; width: auto; height: auto;
+  max-width: min(100%, calc(100vw - 360px));
+  max-height: min(72vh, 820px);
+  object-fit: contain;
+  user-select: none; -webkit-user-drag: none; background: #fff;
+}
+.mdim-overlay { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; }
+.mdim-hint { margin: 0; font-size: 11px; color: #94A3B8; flex-shrink: 0; }
+.mdim-side {
+  border: 1px solid var(--border); border-radius: 12px; padding: 10px; background: #fff;
+  display: flex; flex-direction: column; gap: 8px; overflow: auto; max-height: min(72vh, 820px);
+}
+.mdim-label-list { display: flex; flex-direction: column; gap: 6px; }
+.mdim-label-card {
+  border: 1px solid #E2E8F0; border-radius: 8px; padding: 6px 8px; background: #F8FAFC; cursor: pointer;
+}
+.mdim-label-card.is-active { border-color: #0B6B5F; box-shadow: 0 0 0 1px #0B6B5F; background: #F0FDFA; }
+.mdim-label-row { display: flex; align-items: center; gap: 4px; }
+.mdim-label-idx {
+  font-family: var(--mono); font-size: 10px; font-weight: 700; color: #0B6B5F;
+  width: 16px; text-align: center; flex-shrink: 0;
+}
+.mdim-label-input {
+  flex: 1; min-width: 0; font: inherit; font-size: 12px; font-weight: 600;
+  border: 1px solid #E2E8F0; border-radius: 6px; padding: 4px 6px; background: #fff;
+}
+.mdim-icon-btn {
+  flex-shrink: 0; width: 28px; height: 28px; border: 1px solid #E2E8F0; border-radius: 6px;
+  background: #fff; color: #64748B; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  padding: 0;
+}
+.mdim-icon-btn:hover { border-color: #0B6B5F; color: #0B6B5F; background: #F0FDFA; }
+.mdim-icon-btn.is-on { border-color: #0B6B5F; color: #0B6B5F; background: #CCFBF1; }
+.mdim-icon-btn.mdim-icon-danger:hover { border-color: #FECACA; color: #B91C1C; background: #FEF2F2; }
+.mdim-side-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.mdim-add-vol { width: 100%; }
+.mdim-abcd-bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px; border-radius: 10px; background: #F0FDFA; border: 1px solid #99F6E4;
+}
+.mdim-abcd-note { font-size: 12px; color: #0F766E; font-weight: 600; max-width: 40rem; line-height: 1.35; }
+.mdim-hit { fill: transparent; stroke: transparent; stroke-width: 22; cursor: move; }
+.mdim-end { fill: transparent; stroke: transparent; cursor: ew-resize; }
+.mdim-rotate-handle {
+  fill: #0B6B5F; stroke: none; opacity: 0;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%231c1a17' d='M12 3a9 9 0 0 1 9 9h-2.2A6.8 6.8 0 0 0 12 5.2V3zm0 18a9 9 0 0 1-9-9h2.2A6.8 6.8 0 0 0 12 18.8V21zm7.4-4.3-1.5-1.6 3.2-.7.7 3.2-1.6-1.5A8.9 8.9 0 0 1 12 21v-2.2a6.8 6.8 0 0 0 5.1-2.5l2.3 1.4zM4.6 7.3l1.5 1.6-3.2.7-.7-3.2 1.6 1.5A8.9 8.9 0 0 1 12 3v2.2A6.8 6.8 0 0 0 6.9 7.7L4.6 7.3z'/%3E%3C/svg%3E") 12 12, grab;
+}
+.mdim-arrow:hover .mdim-rotate-handle,
+.mdim-arrow.is-selected .mdim-rotate-handle { opacity: 1; }
+.mdim-rotate-handle:active {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%231c1a17' d='M12 3a9 9 0 0 1 9 9h-2.2A6.8 6.8 0 0 0 12 5.2V3zm0 18a9 9 0 0 1-9-9h2.2A6.8 6.8 0 0 0 12 18.8V21zm7.4-4.3-1.5-1.6 3.2-.7.7 3.2-1.6-1.5A8.9 8.9 0 0 1 12 21v-2.2a6.8 6.8 0 0 0 5.1-2.5l2.3 1.4zM4.6 7.3l1.5 1.6-3.2.7-.7-3.2 1.6 1.5A8.9 8.9 0 0 1 12 3v2.2A6.8 6.8 0 0 0 6.9 7.7L4.6 7.3z'/%3E%3C/svg%3E") 12 12, grabbing;
+}
+.mdim-rotate-line {
+  stroke: #0B6B5F; stroke-width: 1; stroke-dasharray: 3 3; opacity: 0; pointer-events: none;
+}
+.mdim-arrow:hover .mdim-rotate-line,
+.mdim-arrow.is-selected .mdim-rotate-line { opacity: 0.85; }

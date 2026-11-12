@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>M-DIM Editor (Test)</title>
+  <link rel="stylesheet" href="mdim-editor.css" />
+</head>
+<body>
+  <header class="mdim-header">
+    <div class="mdim-brand">
+      <strong>M-DIM Editor</strong>
+      <span class="mdim-badge">Standalone test</span>
+    </div>
+    <div class="mdim-header-actions">
+      <label class="btn btn-ghost">
+        Open image
+        <input type="file" id="file-image" accept="image/*" hidden />
+      </label>
+      <button type="button" class="btn btn-ghost" id="btn-load-json">Load JSON</button>
+      <button type="button" class="btn btn-ghost" id="btn-save-json">Save JSON</button>
+      <button type="button" class="btn btn-primary" id="btn-export">Export PNG</button>
+    </div>
+  </header>
+
+  <main class="mdim-layout">
+    <section class="mdim-stage-wrap">
+      <div id="stage-warnings" class="mdim-warnings" hidden></div>
+      <div class="mdim-stage" id="stage">
+        <div class="mdim-empty" id="empty-hint">
+          Drop a product image here, or use <strong>Open image</strong>.
+          Editor workspace is always <strong>3000 × 3000</strong> (white pad / fit).
+        </div>
+        <div class="mdim-canvas-box" id="canvas-box" hidden>
+          <img id="base-img" alt="Base product" draggable="false" />
+          <svg id="overlay" class="mdim-overlay" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+      </div>
+      <p class="mdim-hint">
+        Drag arrow to move · drag near either tip to change length ·
+        drag the green rotate handle on the arrow · hold <kbd>Shift</kbd> while rotating to snap 0 / 90 / 180 / 270
+      </p>
+    </section>
+
+    <aside class="mdim-panel">
+      <h2>Product data</h2>
+      <label class="field">
+        <span>EAN</span>
+        <input type="text" id="field-ean" maxlength="13" placeholder="13-digit EAN" />
+      </label>
+      <label class="field">
+        <span>Seq</span>
+        <input type="text" id="field-seq" maxlength="2" placeholder="05" />
+      </label>
+      <label class="field">
+        <span>Product Size</span>
+        <input type="text" id="field-size" placeholder="8.2 X CM 5.5 X CM 10.5 CM/ 340ML" />
+      </label>
+      <label class="field">
+        <span>Product Dimensions</span>
+        <input type="text" id="field-dimensions" placeholder="if different from Size" />
+      </label>
+      <label class="field">
+        <span>Product Weight Kg.</span>
+        <input type="text" id="field-weight" placeholder="1.2 or 840gram" />
+      </label>
+      <label class="field">
+        <span>Product Capacity</span>
+        <input type="text" id="field-capacity" placeholder="640 ml" />
+      </label>
+      <button type="button" class="btn btn-block" id="btn-rebuild">Rebuild arrows from raw</button>
+
+      <h2>Source image</h2>
+      <label class="field">
+        <span>Kind</span>
+        <select id="field-image-kind">
+          <option value="custom">Custom upload</option>
+          <option value="shot">Named shot (from shot list)</option>
+        </select>
+      </label>
+      <label class="field" id="wrap-shot-code">
+        <span>Shot code</span>
+        <input type="text" id="field-shot-code" placeholder="MAIN / H-FR / L-CTX …" />
+      </label>
+      <p id="source-image-meta" class="muted source-meta">No image loaded</p>
+
+      <h2>Arrows <span id="arrow-count-label" class="muted"></span></h2>
+      <div id="arrow-list" class="arrow-list"></div>
+
+      <h2>Selected arrow</h2>
+      <div id="selected-empty" class="muted">Select an arrow on the image</div>
+      <div id="selected-fields" hidden>
+        <label class="field">
+          <span>Label</span>
+          <input type="text" id="sel-label" />
+        </label>
+        <label class="field">
+          <span>Rotation °</span>
+          <input type="number" id="sel-rotation" step="0.5" />
+        </label>
+        <label class="field">
+          <span>Length (0–1)</span>
+          <input type="number" id="sel-length" step="0.01" min="0.02" max="1" />
+        </label>
+      </div>
+
+      <h2>Style (JSON)</h2>
+      <label class="field">
+        <span>Font name</span>
+        <input type="text" id="style-font" placeholder="Times New Roman" />
+      </label>
+      <label class="field">
+        <span>Font size</span>
+        <input type="number" id="style-font-size" min="8" max="120" step="1" />
+      </label>
+      <label class="field">
+        <span>Stroke width</span>
+        <input type="number" id="style-stroke" min="0.5" max="20" step="0.5" />
+      </label>
+      <label class="field">
+        <span>Text offset</span>
+        <input type="number" id="style-offset" min="0" max="120" step="1" />
+      </label>
+      <label class="field">
+        <span>Arrow head size</span>
+        <input type="number" id="style-head" min="4" max="60" step="1" />
+      </label>
+
+      <h2>JSON preview</h2>
+      <textarea id="json-preview" class="json-preview" readonly rows="12" spellcheck="false"></textarea>
+      <p class="mdim-foot muted">
+        Draft auto-saves by EAN. JSON (incl. sourceImage) is for later Prompt DB — not embedded in the export PNG.
+        Editor/export workspace is always 3000×3000.
+      </p>
+    </aside>
+  </main>
+
+  <input type="file" id="file-json" accept="application/json,.json" hidden />
+  <script src="mdim-editor.js"></script>
+</body>
+</html>

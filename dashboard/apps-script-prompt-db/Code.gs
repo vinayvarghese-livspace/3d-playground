@@ -9,6 +9,8 @@
  *   action=promptChunk      — stash one Custom-prompt slice (CacheService; v6+)
  *   action=promptApprove    — append Rate & Approve row to All user
  *   action=approvedCustoms  — latest Custom prompts for Sub-category + Template reuse (v8+)
+ *   action=mdimSave         — upsert Product Dimension JSON by EAN (one row per EAN; v15+)
+ *   action=mdimGet          — read Product Dimension JSON by EAN (v15+)
  *   action=ping             — health check ({ version, sheet })
  *
  * After editing this file: Deploy → Manage deployments → ✎ Edit →
@@ -20,7 +22,16 @@
 var PROMPT_DB_ID = '12NU2Ru7Jnxok4M0Ylva1n8CKBxScnOs3k4gPs35a4Ec';
 var UNIVERSAL_TAB = 'Universal';
 var ALL_USER_TAB = 'All user';
-var SCRIPT_VERSION = 14;
+var MDIM_TAB = 'M-DIM';
+var SCRIPT_VERSION = 15;
+
+var MDIM_COLUMNS = [
+  'EAN Number',
+  'Author',
+  'M-DIM JSON',
+  'app version',
+  'Updated At'
+];
 
 /** Old headers that must never be re-created (and are deleted if still present). */
 var RETIRED_COLUMNS = [
@@ -75,9 +86,11 @@ function doGet(e) {
     else if (p.action === 'promptChunk') body = { ok: true, data: stashPromptChunk_(p) };
     else if (p.action === 'promptApprove') body = { ok: true, data: writePromptApprove_(p) };
     else if (p.action === 'approvedCustoms') body = { ok: true, data: readApprovedCustoms_(p) };
+    else if (p.action === 'mdimSave') body = { ok: true, data: writeMdimSave_(p) };
+    else if (p.action === 'mdimGet') body = { ok: true, data: readMdimGet_(p) };
     else if (p.action === 'ping') body = { ok: true, data: { version: SCRIPT_VERSION, sheet: PROMPT_DB_ID } };
     else throw new Error('Unknown action: ' + (p.action || '(none)') +
-      '. Use universal, promptChunk, promptApprove, approvedCustoms, or ping.');
+      '. Use universal, promptChunk, promptApprove, approvedCustoms, mdimSave, mdimGet, or ping.');
   } catch (err) {
     body = { ok: false, error: String((err && err.message) || err) };
   }
@@ -436,6 +449,164 @@ function ensureHeaders_(sheet) {
   sheet.getRange(1, start, 1, missing.length).setValues([missing]);
 }
 
+/** Ensure M-DIM tab exists with headers (create if missing). */
+function ensureMdimSheet_() {
+  var ss = getSpreadsheet_();
+  var sheet;
+  try {
+    sheet = findSheet_(ss, MDIM_TAB);
+  } catch (err) {
+    sheet = ss.insertSheet(MDIM_TAB);
+  }
+  var lastRow = sheet.getLastRow();
+  var lastCol = Math.max(sheet.getLastColumn(), 1);
+  var header = lastRow >= 1
+    ? sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0]
+    : [];
+  if (!header.length || !String(header[0] || '').trim()) {
+    sheet.getRange(1, 1, 1, MDIM_COLUMNS.length).setValues([MDIM_COLUMNS]);
+    return sheet;
+  }
+  var have = {};
+  header.forEach(function (h) {
+    var k = norm_(h);
+    if (k) have[k] = true;
+  });
+  var missing = [];
+  MDIM_COLUMNS.forEach(function (name) {
+    if (!have[norm_(name)]) missing.push(name);
+  });
+  if (missing.length) {
+    sheet.getRange(1, lastCol + 1, 1, missing.length).setValues([missing]);
+  }
+  return sheet;
+}
+
+/**
+ * Upsert one Product Dimension JSON per EAN (Apply to export).
+ * Params: ean, author, appVersion, uploadId (promptChunk holding JSON) or json=
+ */
+function writeMdimSave_(p) {
+  var ean = String(p.ean || '').replace(/\D/g, '');
+  var author = String(p.author || '').trim();
+  var uploadId = String(p.uploadId || p.promptUploadId || '').trim();
+  var json = String(p.json || '');
+  if (!ean) throw new Error('ean is required');
+  if (!author) throw new Error('author is required');
+  if (uploadId) json = takePromptUpload_(uploadId);
+  if (!String(json || '').trim()) throw new Error('M-DIM JSON is empty');
+  // Validate JSON
+  try { JSON.parse(json); } catch (e) {
+    throw new Error('M-DIM JSON is not valid JSON');
+  }
+
+  var sheet = ensureMdimSheet_();
+  var lastRow = sheet.getLastRow();
+  var lastCol = Math.max(sheet.getLastColumn(), MDIM_COLUMNS.length);
+  var header = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+  var colIndex = {};
+  header.forEach(function (h, i) {
+    var key = norm_(h);
+    if (key) colIndex[key] = i;
+  });
+  function col(name) {
+    var i = colIndex[norm_(name)];
+    return i == null ? -1 : i;
+  }
+  function setRow(rowArr, name, value) {
+    var i = col(name);
+    if (i < 0) return;
+    rowArr[i] = value == null ? '' : String(value);
+  }
+
+  var updatedAt = Utilities.formatDate(
+    new Date(),
+    Session.getScriptTimeZone() || 'Asia/Kolkata',
+    "yyyy-MM-dd'T'HH:mm:ssXXX"
+  );
+
+  var eanCol = col('EAN Number');
+  if (eanCol < 0) throw new Error('M-DIM sheet missing EAN Number column');
+  var existingRow = -1;
+  if (lastRow >= 2) {
+    var eans = sheet.getRange(2, eanCol + 1, lastRow - 1, 1).getDisplayValues();
+    for (var r = 0; r < eans.length; r++) {
+      if (String(eans[r][0] || '').replace(/\D/g, '') === ean) {
+        existingRow = r + 2;
+        break;
+      }
+    }
+  }
+
+  var width = Math.max(header.length, MDIM_COLUMNS.length);
+  var row = [];
+  for (var c = 0; c < width; c++) row.push('');
+  setRow(row, 'EAN Number', ean);
+  setRow(row, 'Author', author);
+  setRow(row, 'M-DIM JSON', json);
+  setRow(row, 'app version', String(p.appVersion || '').trim());
+  setRow(row, 'Updated At', updatedAt);
+
+  var target = existingRow > 0 ? existingRow : (sheet.getLastRow() + 1);
+  var range = sheet.getRange(target, 1, 1, row.length);
+  try { range.clearDataValidations(); } catch (e) { /* ignore */ }
+  range.setValues([row]);
+  SpreadsheetApp.flush();
+
+  return {
+    version: SCRIPT_VERSION,
+    tab: sheet.getName(),
+    row: target,
+    ean: ean,
+    updated: existingRow > 0,
+    jsonChars: String(json).length,
+    updatedAt: updatedAt
+  };
+}
+
+/** Read Product Dimension JSON for one EAN. */
+function readMdimGet_(p) {
+  var ean = String(p.ean || '').replace(/\D/g, '');
+  if (!ean) throw new Error('ean is required');
+  var sheet = ensureMdimSheet_();
+  var lastRow = sheet.getLastRow();
+  var lastCol = Math.max(sheet.getLastColumn(), 1);
+  if (lastRow < 2) {
+    return { version: SCRIPT_VERSION, ean: ean, found: false, json: '' };
+  }
+  var header = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+  var colIndex = {};
+  header.forEach(function (h, i) {
+    var key = norm_(h);
+    if (key) colIndex[key] = i;
+  });
+  function idx(name) {
+    var i = colIndex[norm_(name)];
+    return i == null ? -1 : i;
+  }
+  var eanCol = idx('EAN Number');
+  var jsonCol = idx('M-DIM JSON');
+  if (eanCol < 0 || jsonCol < 0) {
+    return { version: SCRIPT_VERSION, ean: ean, found: false, json: '' };
+  }
+  var values = sheet.getRange(2, 1, lastRow - 1, lastCol).getDisplayValues();
+  for (var r = values.length - 1; r >= 0; r--) {
+    var row = values[r] || [];
+    if (String(row[eanCol] || '').replace(/\D/g, '') === ean) {
+      return {
+        version: SCRIPT_VERSION,
+        ean: ean,
+        found: true,
+        json: String(row[jsonCol] || ''),
+        author: idx('Author') >= 0 ? String(row[idx('Author')] || '') : '',
+        updatedAt: idx('Updated At') >= 0 ? String(row[idx('Updated At')] || '') : '',
+        row: r + 2
+      };
+    }
+  }
+  return { version: SCRIPT_VERSION, ean: ean, found: false, json: '' };
+}
+
 /** Run once from the editor to verify tabs + authorize write. */
 function checkPromptDb() {
   var ss = getSpreadsheet_();
@@ -446,5 +617,7 @@ function checkPromptDb() {
   ensureHeaders_(a);
   Logger.log('All user OK: "' + a.getName() + '", rows=' + a.getLastRow() +
     ', headers=' + a.getRange(1, 1, 1, a.getLastColumn()).getDisplayValues()[0].join(' | '));
+  var m = ensureMdimSheet_();
+  Logger.log('M-DIM OK: "' + m.getName() + '", rows=' + m.getLastRow());
   Logger.log('Script version ' + SCRIPT_VERSION + ' — authorize if prompted, then Deploy → New deployment.');
 }
