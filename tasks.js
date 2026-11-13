@@ -45,7 +45,7 @@
   const FEED_VERSION = 35;
   const APP_VERSION = /preview\.html$/i.test(typeof location !== 'undefined' ? location.pathname : '')
     ? 'Preview V1.8'
-    : 'Beta V1.7';
+    : 'Beta V1.8';
   // How often to re-read the assign sheet while this tab is visible (other users' picks).
   // ~2 reads/min per open browser — well under the Sheets ~60 reads/min/user cap.
   const ASSIGN_POLL_MS = 30000;
@@ -7505,7 +7505,7 @@
       frame.hidden = true;
     }
     const title = view === 'renamer' ? 'Renamer' : view === 'my' ? 'My Tasks' : 'Available Tasks';
-    const ver = /preview\.html$/i.test(location.pathname) ? 'PREVIEW V1.7' : 'BETA V1.7';
+    const ver = /preview\.html$/i.test(location.pathname) ? 'PREVIEW V1.8' : 'BETA V1.8';
     document.title = title + ' · 3D Playground (' + ver + ')';
     const titleEl = $('view-title');
     if (titleEl) titleEl.textContent = title;
