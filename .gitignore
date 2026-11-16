@@ -19,6 +19,12 @@ data points/
 *.csv
 *.pdf
 
+# Presentation board: sheet extracts / PPTX unpack (never commit)
+presentation/fixtures/*.csv
+presentation/fixtures/pptx-extract/
+presentation/fixtures/*.zip
+presentation/fixtures/*.pptx
+
 # Runtime / local artifacts
 firefly-upscaler/jobs-answerly/
 *.lnk
