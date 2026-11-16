@@ -5,8 +5,6 @@ UI lives in `presentation/` and is hosted with **3D Playground** on GitHub Pages
 
 https://vinayvarghese-livspace.github.io/3d-playground/presentation/
 
-(Also linked from the Playground nav → **Presentation**.)
-
 **Not** part of HH Multi Sheet Reader or MTS Furniture reader.
 
 ## Spreadsheet
