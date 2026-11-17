@@ -104,6 +104,15 @@ svg { display: block; }
 }
 .app-nav-tab:hover { color: #111827; background: #F9FAFB; }
 .app-nav-tab.is-active { background: #F3F4F6; color: #0F766E; font-weight: 600; }
+.app-nav-cat {
+  display: inline-flex; align-items: center;
+  margin-left: 6px; padding: 1px 7px;
+  border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+  background: #E2E8F0; color: #475569; vertical-align: middle;
+}
+.app-nav-tab.is-active .app-nav-cat { background: #CCFBF1; color: #0F766E; }
+body.catalog-mts .app-nav-cat { background: #E0F2FE; color: #0369A1; }
+body.catalog-mts .app-nav-tab.is-active .app-nav-cat { background: #BAE6FD; color: #075985; }
 .app-nav-count {
   padding: 1px 6px; border-radius: 9999px; font-family: var(--mono); font-size: 11px; font-weight: 500; line-height: 1.4;
   background: #E5E7EB; color: #374151;
@@ -274,6 +283,39 @@ svg { display: block; }
 .tp-source.is-local { color: var(--amber); background: var(--amber-bg); border: 1px solid var(--amber-border); }
 .tp-search { position: relative; width: 288px; flex-shrink: 0; }
 .tp-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--faint); pointer-events: none; }
+
+/* HH ↔ MTS catalog switch — same shape/colors as .tp-seg */
+.tp-catalog {
+  height: 36px; padding: 2px; display: inline-flex; align-items: center; gap: 2px;
+  flex-shrink: 0;
+  background: var(--chip); border: 1px solid rgba(226, 232, 240, 0.8); border-radius: 6px;
+}
+.tp-catalog button {
+  height: 100%; min-width: 48px; padding: 0 12px; border: 0; border-radius: 4px;
+  background: transparent;
+  font-family: inherit; font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
+  color: var(--muted); cursor: pointer;
+  transition: color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+.tp-catalog button:hover { color: var(--text-1); }
+.tp-catalog button.is-active {
+  background: #fff; color: var(--teal-600); font-weight: 700;
+  box-shadow: var(--shadow-2xs);
+}
+.tp-catalog button:focus-visible {
+  outline: 2px solid var(--teal-600);
+  outline-offset: 1px;
+}
+body.catalog-mts [data-hh-only] { display: none !important; }
+body:not(.catalog-mts) [data-mts-only] { display: none !important; }
+body.catalog-mts #tab-my { display: none !important; }
+.tp-range-chip {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 4px;
+  font: 600 11px/1.2 var(--font);
+  background: var(--chip); color: var(--text-2); border: 1px solid rgba(226, 232, 240, 0.8);
+  white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis;
+}
 .tp-search input {
   width: 100%; height: 36px; padding: 0 12px 0 36px;
   font-family: inherit; font-size: 12px; color: var(--text);
@@ -409,7 +451,7 @@ svg { display: block; }
 /* Task rows */
 .tp-row {
   min-height: 64px; padding: 8px 16px;
-  display: grid; grid-template-columns: minmax(0, 1fr) 88px 96px 56px auto; align-items: center; gap: 16px;
+  display: grid; grid-template-columns: minmax(0, 1fr) max-content 96px 56px auto; align-items: center; gap: 16px;
   border-top: 1px solid var(--border-soft); cursor: pointer; outline: none;
   transition: background-color 0.15s;
 }
@@ -441,13 +483,24 @@ svg { display: block; }
 .tp-copy svg { width: 13px; height: 13px; }
 .tp-copy:hover { color: var(--text-2); }
 .tp-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber-500); flex-shrink: 0; cursor: help; margin-left: 2px; }
+.tp-pills {
+  justify-self: end;
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
 .tp-pill {
-  justify-self: end; padding: 2px 8px; border-radius: 9999px; white-space: nowrap;
+  padding: 2px 8px; border-radius: 9999px; white-space: nowrap;
   font-size: 12px; font-weight: 500; color: var(--text-3);
   background: var(--chip); border: 1px solid rgba(226, 232, 240, 0.6);
 }
 /* Same rose palette as .tp-prop-tag so Set stands out like Prop */
 .tp-pill.is-set { color: #BE123C; background: #FFF1F2; border-color: #FECDD3; font-weight: 600; }
+.tp-pill.is-collection { color: #BE123C; background: #FFF1F2; border-color: #FECDD3; font-weight: 600; }
 .tp-pill.is-other { color: #9A3412; background: #FFF7ED; border-color: #FED7AA; font-weight: 600; }
 .tp-pill-empty { color: var(--faint); background: transparent; border-color: transparent; }
 .tp-shots {
@@ -915,7 +968,7 @@ a.tp-link:hover { background: var(--hover); }
   .meta-author, #btn-refresh { display: none; }
   .tp-search { width: 100%; }
   .tp-row { grid-template-columns: minmax(0, 1fr) auto; }
-  .tp-row .tp-pill, .tp-row .tp-shots, .tp-row .tp-tpl-code { display: none; }
+  .tp-row .tp-pills, .tp-row .tp-pill, .tp-row .tp-shots, .tp-row .tp-tpl-code { display: none; }
   .tp-my-tabs { margin-left: 0; width: 100%; }
   .tp-my-tabs button { flex: 1; justify-content: center; }
 }

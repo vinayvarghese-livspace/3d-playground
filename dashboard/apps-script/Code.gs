@@ -7,7 +7,7 @@ const SOURCES = {
   render: { label: 'LSH-HH-Render Tracker', type: 'sheet', id: '12ckZ3NVf2bF08A7Lq6rFf08qK-gIz5mdQL65C-3l--U' },
   // Native Google Sheet (Save as Google Sheets). Live edits are readable immediately — no .xlsx write-back lag.
   shoot:  { label: 'Shoot Tracker - HH', type: 'sheet', id: '1mowqAXZMzYmy-EXrl3gAiqX72FjWn0FBlPZD9ZsuBIw',
-            tabs: ['Decor and Garden', 'Table Top & Bath', 'Kitchen & Laundry'],
+            tabs: ['Decor and Garden', 'Table Top & Bath', 'Kitchen & Laundry', 'SF'],
             lookupTabs: ['Upload Log', 'Log'] },
   naming: { label: 'LSH-HH-Naming Convention-Test-2', type: 'sheet', id: '1BCUOtOmzYyMcfxptuwpSNOtvyN7PC7k792pljITUM8w',
             tabs: ['Shot List'] },
@@ -28,7 +28,7 @@ const CACHE_CHUNK = 30000;
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const XLSX_MEMO = {};
 // tasks.js warns when the deployed web app is older than this; raise both together.
-const FEED_VERSION = 35;
+const FEED_VERSION = 40;
 // Written by tools/shoot-sync (key/value tab). Used for "Data last sync" in the playground.
 const SYNC_META_TAB = 'Sync Meta';
 
@@ -444,7 +444,7 @@ function inspectShootTracker() {
 }
 
 // Logs how one EAN's GDRIVE LINK cell is stored. Change DEBUG_EAN and run from the editor.
-const DEBUG_EAN = '8909327028525';
+const DEBUG_EAN = '8909327051141';
 // PDP guideline debug EANs — run inspectPdpLinks() from the Apps Script editor.
 const DEBUG_PDP_EANS = ['8909327048158', '8909327041531'];
 
@@ -547,6 +547,42 @@ function inspectPdpLinks() {
         Logger.log('finalize ' + tab + ' error: ' + err);
       }
     });
+  });
+}
+
+/** Run from the editor to debug GDRIVE for DEBUG_EAN (default 8909327051141). */
+function inspectDriveLink() {
+  const src = source_('shoot');
+  const want = String(DEBUG_EAN || '').replace(/\s+/g, '');
+  Logger.log('FEED_VERSION=' + FEED_VERSION + ' DEBUG_EAN=' + want);
+  nativeDriveMap_(src);
+  (src._driveMapInfo || []).forEach(line => Logger.log(line));
+  Logger.log('Upload Log map has EAN: ' + (src._driveMap && src._driveMap[want] ? src._driveMap[want] : '(no)'));
+
+  src.tabs.forEach(tab => {
+    let parsed;
+    try {
+      parsed = readNativeTab_(src, tab, true);
+    } catch (err) {
+      Logger.log(tab + ': ' + err);
+      return;
+    }
+    const headers = (parsed.values[0] || []).map(h => String(h || '').toLowerCase().replace(/\s+/g, ' ').trim());
+    const eanCol = headers.indexOf('ean code');
+    const driveCols = linkColumnIndexes_(parsed.values[0]).filter(c => /gdrive|drive/.test(headers[c] || ''));
+    if (eanCol < 0) return;
+    let found = 0;
+    parsed.values.forEach((row, r) => {
+      if (String(row[eanCol] || '').replace(/\s+/g, '') !== want) return;
+      found++;
+      driveCols.forEach(c => {
+        Logger.log(tab + ' row ' + (r + 1) + ' ' + colA1_(c) +
+          ' text="' + String(row[c] || '').slice(0, 80) + '"' +
+          ' link=' + (parsed.links[r + ',' + c] || '(none)'));
+      });
+      Logger.log(tab + ' fillInfo=' + (src._driveFillInfo || ''));
+    });
+    if (!found) Logger.log(tab + ': EAN not on this tab');
   });
 }
 
@@ -814,65 +850,156 @@ function fetchDrivePreviewParallel_(id, meta, width) {
 
 // Returns { folderId: [{ id, name, thumb }] }. thumb is Drive's short-lived thumbnail link, which loads in the
 // page without a Google cookie (browsers block that cookie on drive.google.com images inside other sites).
-// The 30-minute cache stays well inside the link's lifetime. If a folder has no images directly inside,
-// the images one level down (e.g. an "Edited" subfolder) are used instead.
+// The 30-minute cache stays well inside the link's lifetime.
+// Shoot folders often keep RAW (.CR3) at the root and JPEGs one level down (Edited / JPEG / Output).
+// Always merge one level of subfolder previewables so RAW-at-root does not hide the real thumbs.
 function getFolderImages(ids) {
   ids = ids.filter(id => /^[\w-]{10,100}$/.test(id)).slice(0, MAX_FOLDERS_PER_CALL);
   const out = {};
   const cache = CacheService.getUserCache();
-  const cached = cache.getAll(ids.map(id => 'imgs2:' + id));
+  // imgs5: per-folder Shared Drive list + extension fallback (octet-stream .jpg).
+  const cached = cache.getAll(ids.map(id => 'imgs5:' + id));
   const missing = [];
   ids.forEach(id => {
-    const hit = cached['imgs2:' + id];
+    const hit = cached['imgs5:' + id];
     if (hit != null) out[id] = JSON.parse(hit);
     else missing.push(id);
   });
   if (!missing.length) return out;
 
-  const found = listChildren_(missing);
+  const resolved = resolveFolderIds_(missing);
+  const found = listChildren_(resolved.map(r => r.target));
   const subfolders = [];
-  missing.forEach(id => {
-    out[id] = found[id].images;
-    if (!out[id].length) found[id].folders.forEach(f => subfolders.push({ parent: id, id: f.id, name: f.name }));
+  missing.forEach((id, i) => {
+    const target = resolved[i].target;
+    const slot = found[target] || { images: [], folders: [] };
+    out[id] = slot.images.filter(isPreviewableDriveImage_);
+    // Always walk one level down — MTS/HH shoots put usable JPEG under Edited/ etc.
+    (slot.folders || []).forEach(f => subfolders.push({ parent: id, id: f.id, name: f.name }));
   });
   if (subfolders.length) {
     const inner = listChildren_(subfolders.map(s => s.id));
-    subfolders.forEach(s => inner[s.id].images.forEach(img => out[s.parent].push(Object.assign({}, img, { name: s.name + '/' + img.name }))));
+    subfolders.forEach(s => (inner[s.id] && inner[s.id].images || []).filter(isPreviewableDriveImage_).forEach(img => {
+      out[s.parent].push(Object.assign({}, img, { name: s.name + '/' + img.name }));
+    }));
   }
 
   const put = {};
   missing.forEach(id => {
-    out[id] = out[id].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).slice(0, MAX_IMAGES_PER_FOLDER);
-    put['imgs2:' + id] = JSON.stringify(out[id]);
+    // Prefer root-level previewables first, then subfolder paths; keep stable numeric name order.
+    out[id] = out[id].sort((a, b) => {
+      const aNest = String(a.name || '').indexOf('/') >= 0 ? 1 : 0;
+      const bNest = String(b.name || '').indexOf('/') >= 0 ? 1 : 0;
+      if (aNest !== bNest) return aNest - bNest;
+      return a.name.localeCompare(b.name, undefined, { numeric: true });
+    }).slice(0, MAX_IMAGES_PER_FOLDER);
+    put['imgs5:' + id] = JSON.stringify(out[id]);
   });
   try { cache.putAll(put, FOLDER_CACHE_SECONDS); } catch (err) { /* uncached: listed again next time */ }
   return out;
 }
 
+// Camera RAW / sidecar files are image/* in Drive but have no useful browser thumbnail.
+function isPreviewableDriveImage_(f) {
+  const name = String((f && f.name) || '');
+  if (/\.(cr3|cr2|crw|nef|nrw|arw|srf|sr2|dng|orf|raf|rw2|pef|ptx|raw|rwl|x3f|3fr|fff|iiq|kdc|dcr|mrw|mos|erf|mef)$/i.test(name)) {
+    return false;
+  }
+  return true;
+}
+
+// Uploads sometimes land as application/octet-stream with a .jpg name — still treat as images.
+function isDriveImageFile_(f) {
+  const mime = String((f && f.mimeType) || '');
+  if (mime.indexOf('image/') === 0) return true;
+  return /\.(jpe?g|png|gif|webp|bmp|tif{1,2}|heic|heif)$/i.test(String((f && f.name) || ''));
+}
+
+function pushChild_(slot, f) {
+  if (!slot || !f) return;
+  if (f.mimeType === FOLDER_MIME) slot.folders.push({ id: f.id, name: f.name });
+  else if (isDriveImageFile_(f)) slot.images.push({ id: f.id, name: f.name, thumb: f.thumbnailLink || '' });
+}
+
+// GDRIVE cells sometimes link a shortcut; listing children needs the target folder id.
+function resolveFolderIds_(ids) {
+  return ids.map(id => {
+    try {
+      const f = Drive.Files.get(id, {
+        supportsAllDrives: true,
+        fields: 'id,mimeType,shortcutDetails'
+      });
+      if (f && f.mimeType === 'application/vnd.google-apps.shortcut' &&
+          f.shortcutDetails && f.shortcutDetails.targetId) {
+        return { id: id, target: f.shortcutDetails.targetId };
+      }
+    } catch (err) { /* use original id */ }
+    return { id: id, target: id };
+  });
+}
+
+// List each folder alone. Shared Drive files often omit `parents` in batch OR queries, which
+ // previously dropped every image even when the folder only had .jpg files.
 function listChildren_(parentIds) {
   const result = {};
   parentIds.forEach(id => { result[id] = { images: [], folders: [] }; });
-  for (let i = 0; i < parentIds.length; i += 25) {
-    const chunk = parentIds.slice(i, i + 25);
-    const q = '(' + chunk.map(id => "'" + id + "' in parents").join(' or ') + ')' +
-      " and trashed = false and (mimeType contains 'image/' or mimeType = '" + FOLDER_MIME + "')";
+  parentIds.forEach(id => {
+    if (!id) return;
     let pageToken;
     do {
-      const res = Drive.Files.list({
-        q, pageToken, pageSize: 1000,
-        fields: 'nextPageToken, files(id, name, mimeType, parents, thumbnailLink)',
-        supportsAllDrives: true, includeItemsFromAllDrives: true
+      let res;
+      try {
+        res = Drive.Files.list({
+          q: "'" + id + "' in parents and trashed = false",
+          pageToken: pageToken,
+          pageSize: 1000,
+          fields: 'nextPageToken, files(id, name, mimeType, parents, thumbnailLink)',
+          supportsAllDrives: true,
+          includeItemsFromAllDrives: true,
+          corpora: 'allDrives'
+        });
+      } catch (err) {
+        // Fallback without corpora for My Drive–only contexts.
+        try {
+          res = Drive.Files.list({
+            q: "'" + id + "' in parents and trashed = false",
+            pageToken: pageToken,
+            pageSize: 1000,
+            fields: 'nextPageToken, files(id, name, mimeType, parents, thumbnailLink)',
+            supportsAllDrives: true,
+            includeItemsFromAllDrives: true
+          });
+        } catch (err2) {
+          return;
+        }
+      }
+      (res.files || []).forEach(f => {
+        let slotted = false;
+        (f.parents || []).forEach(p => {
+          if (!result[p]) return;
+          pushChild_(result[p], f);
+          slotted = true;
+        });
+        // Shared Drive responses sometimes omit parents — still attribute to the queried folder.
+        if (!slotted) pushChild_(result[id], f);
       });
-      (res.files || []).forEach(f => (f.parents || []).forEach(p => {
-        const slot = result[p];
-        if (!slot) return;
-        if (f.mimeType === FOLDER_MIME) slot.folders.push({ id: f.id, name: f.name });
-        else slot.images.push({ id: f.id, name: f.name, thumb: f.thumbnailLink || '' });
-      }));
       pageToken = res.nextPageToken;
     } while (pageToken);
-  }
+  });
   return result;
+}
+
+/** Run once in the editor to verify thumbs for a JPG-only MTS folder (e.g. 8909327060754). */
+function debugFolderThumbs() {
+  const id = '1d6S-JKScQzjDHigH20ujbjnNN2xfOcIv';
+  const listed = listChildren_([id]);
+  const slot = listed[id] || { images: [], folders: [] };
+  Logger.log('folders=' + slot.folders.length + ' rawImages=' + slot.images.length);
+  slot.images.slice(0, 8).forEach(function (img, i) {
+    Logger.log((i + 1) + '. ' + img.name + ' id=' + img.id + ' thumb=' + (img.thumb ? 'yes' : 'NO'));
+  });
+  const viaApi = getFolderImages([id]);
+  Logger.log('getFolderImages count=' + ((viaApi[id] || []).length));
 }
 
 /* ---------- Viewer (Index.html) ---------- */
@@ -983,10 +1110,10 @@ function linksFromCellText_(values) {
   return links;
 }
 
-// Parses =HYPERLINK("https://...", "label") from FORMULA render values (double or single quotes).
+// Parses HYPERLINK("https://...", "label") from FORMULA render values — top-level or nested in IF/LET/IFERROR.
 function linksFromFormulas_(values) {
   const links = {};
-  const re = /^=\s*HYPERLINK\s*\(\s*["'](https?:\/\/[^"']+)["']/i;
+  const re = /HYPERLINK\s*\(\s*["'](https?:\/\/[^"']+)["']/i;
   (values || []).forEach((row, r) => (row || []).forEach((v, c) => {
     const m = String(v || '').match(re);
     if (m) links[r + ',' + c] = m[1];
@@ -1222,7 +1349,13 @@ function readNativeShootTabs_(src, tabs) {
   return out;
 }
 
-// Empty GDRIVE cells get the folder from Upload Log / Log (A = EAN, E = EAN Folder Link).
+/**
+ * Upload Log backfill rules (HH / SF):
+ * - Blank GDRIVE cell → do NOT fill. EAN present in Upload Log alone does not make the job Available.
+ * - Display text "Open" / "Open folder" with no extracted URL → fill from top-most Upload Log row
+ *   (broken rich-text labels that lost their hyperlink).
+ * - Real HYPERLINK / grid URL already in links{} → leave as-is.
+ */
 function fillNativeDriveFromLog_(src, values, links) {
   if (!values.length) return;
   const header = values[0].map(h => String(h || '').toLowerCase().replace(/\s+/g, ' ').trim());
@@ -1234,14 +1367,24 @@ function fillNativeDriveFromLog_(src, values, links) {
   }
   const map = nativeDriveMap_(src);
   let filled = 0;
+  let skippedBlank = 0;
   for (let r = 1; r < values.length; r++) {
+    const c0 = driveCols[0];
     if (driveCols.some(c => links[r + ',' + c])) continue;
+    const display = String((values[r] && values[r][c0]) || '').trim();
+    // Empty formula result (no "Open") — never invent a folder from Upload Log.
+    if (!display) {
+      skippedBlank++;
+      continue;
+    }
+    if (!/^open(?:\s+folder)?$/i.test(display)) continue;
     const url = map[lookupKey_(values[r][eanCol])];
     if (!url) continue;
-    links[r + ',' + driveCols[0]] = url;
+    links[r + ',' + c0] = url;
     filled++;
   }
-  src._driveFillInfo = 'filled ' + filled + ' GDRIVE cells from Upload Log map (' + Object.keys(map).length + ' EANs, col ' + (driveCols[0] + 1) + ')';
+  src._driveFillInfo = 'filled ' + filled + ' Open-label GDRIVE cells from top-most Upload Log (' +
+    Object.keys(map).length + ' EANs); skipped ' + skippedBlank + ' blank GDRIVE cells';
 }
 
 // Upload Log: native shoot-sync sheet is 2-col (A=EAN, B=folder URL). Legacy xlsx / full log uses E.
@@ -1273,6 +1416,7 @@ function nativeDriveMap_(src) {
     let added = 0;
     const firstKey = lookupKey_(shown[0] && shown[0][eanCol]);
     const start = /^\d{8,}/.test(firstKey) ? 0 : 1;
+    // Top→bottom: first row with a folder URL wins (newer uploads are appended above / at top).
     for (let i = start; i < shown.length; i++) {
       const key = lookupKey_(shown[i] && shown[i][eanCol]);
       if (!key || !/^\d{8,}/.test(key) || map[key]) continue;
@@ -1282,7 +1426,7 @@ function nativeDriveMap_(src) {
       added++;
     }
     src._driveMapInfo.push('"' + title + '": ' + added + ' EANs with a folder link (A=EAN, col ' +
-      (linkCol + 1) + '=folder). Sample: A=' +
+      (linkCol + 1) + '=folder; top-most duplicate wins). Sample: A=' +
       String((shown[start] && shown[start][eanCol]) || '').slice(0, 20) + ' link=' +
       String((shown[start] && shown[start][linkCol]) || '').slice(0, 60));
   });
@@ -1628,8 +1772,7 @@ function parseXlsxSheet_(book, sheet) {
   return { values: trimmed, links };
 }
 
-// Any row whose GDRIVE cell has no link (empty cell, or a formula whose cached result is blank) gets the folder
-// from the Upload Log / Log EAN-to-Drive mapping.
+// xlsx path: same Open-label-only fill as native (never invent folders for blank GDRIVE cells).
 function fillDriveFromLog_(book, grid, links) {
   const header = (grid[0] || []).map(h => String(h || '').toLowerCase().replace(/\s+/g, ' ').trim());
   const eanCol = header.indexOf('ean code');
@@ -1637,9 +1780,12 @@ function fillDriveFromLog_(book, grid, links) {
   if (eanCol < 0 || !driveCols.length) return;
   const map = driveMap_(book);
   for (let r = 1; r < grid.length; r++) {
+    const c0 = driveCols[0];
     if (driveCols.some(c => links[r + ',' + c])) continue;
+    const display = String(((grid[r] || [])[c0]) || '').trim();
+    if (!display || !/^open(?:\s+folder)?$/i.test(display)) continue;
     const url = map[lookupKey_((grid[r] || [])[eanCol])];
-    if (url) links[r + ',' + driveCols[0]] = url;
+    if (url) links[r + ',' + c0] = url;
   }
 }
 
@@ -1713,8 +1859,7 @@ function lookupSheet_(book, sheetName) {
   return book.sheets.find(s => squashName_(s.name) === squashName_(sheetName)) || logSheets_(book)[0] || null;
 }
 
-// First row per key that holds a link. An EAN logged twice (e.g. a failed upload with no folder, then the real one)
-// still gets its folder. Built once per tab and column pair while the file is being read.
+// First (top-most) row per key that holds a link. Duplicate Upload Log EANs keep the earliest folder URL.
 function lookupTable_(book, sheetName, matchCol, resultCol) {
   book.lookups = book.lookups || {};
   const id = sheetName + '|' + matchCol + '|' + resultCol;

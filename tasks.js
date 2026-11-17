@@ -41,20 +41,30 @@
   const FEED_URL = 'https://script.google.com/a/macros/livspace.com/s/AKfycbxWbesitEd9mhiPkdLzZawNAb_AxwYWulrrBBA8ZqtYx5A9RX0lAGnybIQMle6W_7V8/exec';
   // Prompt Database Apps Script (Universal read + All user Rate & Approve). Separate from FEED_URL.
   const PROMPT_DB_URL = 'https://script.google.com/a/macros/livspace.com/s/AKfycbwjLPIuL9J_XtHmnEm7jdbnJHlUIEjscACqYiSIB3ISTQNXHDhKHAVyuOc9VuPaobHT/exec';
+  // MTS Furniture Sheet Reader (Sheet1 only). Separate from FEED_URL — deploy dashboard/apps-script-mts-furniture.
+  const MTS_FEED_URL = 'https://script.google.com/a/macros/livspace.com/s/AKfycbyMZSpmOfCpu4Dx45DjLN8et1TLqFcKRMATFgNwnZLZD_JYpn5WA0qMNuAM8tc_t-91mA/exec';
   const FEED_TIMEOUT_MS = 90000;
-  const FEED_VERSION = 35;
-  const APP_VERSION = /preview\.html$/i.test(typeof location !== 'undefined' ? location.pathname : '')
-    ? 'Preview V1.8'
-    : 'Beta V1.8';
+  // Preview expects SF-capable reader (v40+). Beta stays compatible with the last shipped feed.
+  const FEED_VERSION = isPreviewApp() ? 40 : 35;
+  const MTS_FEED_VERSION = 3;
+  const CATALOG_KEY = 'tasks.catalog';
+  // Preview gets MTS catalog + SF Shoot Tracker tab; Beta stays HH-only until promoted.
+  function isPreviewApp() {
+    return /preview\.html$/i.test(typeof location !== 'undefined' ? location.pathname : '');
+  }
+  const APP_VERSION = isPreviewApp() ? 'Preview V1.8' : 'Beta V1.8';
   // How often to re-read the assign sheet while this tab is visible (other users' picks).
   // ~2 reads/min per open browser — well under the Sheets ~60 reads/min/user cap.
   const ASSIGN_POLL_MS = 30000;
 
-  const SHOOT_TABS = [
+  const SHOOT_TABS_HH = [
     { category: 'Decor & Garden', tab: 'Decor and Garden' },
     { category: 'Table Top & Bath', tab: 'Table Top & Bath' },
     { category: 'Kitchen & Laundry', tab: 'Kitchen & Laundry' }
   ];
+  const SHOOT_TABS = isPreviewApp()
+    ? SHOOT_TABS_HH.concat([{ category: 'SF', tab: 'SF' }])
+    : SHOOT_TABS_HH.slice();
 
   // Template reference images from Drive (thumbnails only). Keys are tidyTemplate ids: T2, T38, T2a…
   // Folder: https://drive.google.com/drive/folders/1-Z-zDxQgUCI7AaPDcJCYveBihssvpEG1
@@ -94,6 +104,32 @@
     driveLink: ['gdrive link', 'gdrive*', 'drive link', 'drive folder', 'ean folder', '~gdrive'],
     template: ['template mapping*'],
     functionalProp: ['functional prop*'],
+    propsNeeded: ['styling/ props needed*', 'styling props*', 'props needed*'],
+    shootStatus: ['photoshoot status*'],
+    shootRemarks: ['photoshoot remarks*'],
+    uploadStatus: ['upload status*'],
+    uploadDate: ['upload date*'],
+    shootDate: ['shoot date*']
+  };
+  // MTS Furniture Sheet1 — no PRODUCT NAME / STYLE / TEMPLATE; title from Detail Description;
+  // PDP from Image/PPT link; Set/EACH from REMARKS; three size columns.
+  const MTS_COLUMNS = {
+    ean: ['ean code', 'ean'],
+    department: ['department'],
+    category: ['category'],
+    subCategory: ['sub-category', 'sub category'],
+    productName: ['detail description - construction/quality', 'detail description*'],
+    detailDescription: ['detail description - construction/quality', 'detail description*'],
+    range: ['range'],
+    color: ['color'],
+    setPcs: ['remarks (set/each)', 'remarks (set/each)*', 'set / pcs'],
+    sizeW: ['product size mm w/l*', 'product size mm\nw/l*'],
+    sizeD: ['product size mm d/l*', 'product size mm\nd/l*'],
+    sizeHt: ['product size mm ht*', 'product size mm\nht*'],
+    shotList: ['mandatory shot list (sequence)', 'mandatory shot list', 'mandatory shot list*'],
+    collectionShoot: ['collection shoot', 'collection shot', 'collection*'],
+    pdpLink: ['pdp guideline*', 'pdp guidelines*', 'pdp link', 'pdp url', '~pdp guideline', '~guideline'],
+    driveLink: ['gdrive link', 'gdrive*', 'drive link', 'drive folder', '~gdrive'],
     propsNeeded: ['styling/ props needed*', 'styling props*', 'props needed*'],
     shootStatus: ['photoshoot status*'],
     shootRemarks: ['photoshoot remarks*'],
@@ -143,6 +179,10 @@
 
   const state = {
     model: null,
+    hhModel: null,
+    mtsModel: null,
+    // HH (default) | MTS Furniture (Preview only). Available Tasks count always follows this catalog.
+    catalog: (isPreviewApp() && localStorage.getItem(CATALOG_KEY) === 'mts' ? 'mts' : 'hh'),
     loadedAt: null,
     view: 'renamer',
     myBucket: 'active',
@@ -176,6 +216,78 @@
     renderMarkedInProgress: {},
     railScrollTop: null
   };
+
+  function isMts() {
+    return state.catalog === 'mts';
+  }
+
+  function syncCatalogUi() {
+    document.body.classList.toggle('catalog-mts', isMts());
+    document.body.classList.toggle('catalog-hh', !isMts());
+    document.querySelectorAll('[data-catalog]').forEach((btn) => {
+      const on = btn.dataset.catalog === state.catalog;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', String(on));
+    });
+    const cat = isMts() ? 'MTS' : 'HH';
+    const catEl = $('tab-cat-available');
+    if (catEl) {
+      catEl.textContent = cat;
+      catEl.title = isMts() ? 'Showing MTS Furniture available tasks' : 'Showing HH available tasks';
+    }
+    const titleEl = $('view-title');
+    if (titleEl && state.view === 'available') {
+      titleEl.textContent = 'Available Tasks · ' + cat;
+    }
+    const hhGroup = document.querySelector('.tp-group-wrap[data-hh-only] .tp-seg');
+    const mtsGroup = document.querySelector('.tp-group-wrap[data-mts-only] .tp-seg');
+    if (hhGroup) {
+      hhGroup.querySelectorAll('[data-group]').forEach((b) => {
+        b.classList.toggle('is-active', b.dataset.group === state.groupBy);
+      });
+    }
+    if (mtsGroup) {
+      mtsGroup.querySelectorAll('[data-group]').forEach((b) => {
+        b.classList.toggle('is-active', b.dataset.group === state.groupBy);
+      });
+    }
+  }
+
+  function setCatalog(next) {
+    // MTS catalog switch is Preview-only until promoted to Beta.
+    const catalog = (isPreviewApp() && next === 'mts') ? 'mts' : 'hh';
+    if (state.catalog === catalog) return;
+    state.catalog = catalog;
+    try { localStorage.setItem(CATALOG_KEY, catalog); } catch (e) { /* ignore */ }
+    state.model = catalog === 'mts' ? state.mtsModel : state.hhModel;
+    state.category = '';
+    state.template = '';
+    state.artist = '';
+    state.selectedEan = null;
+    state.drawerClosed = false;
+    state.collapsed.clear();
+    // MTS has no template grouping / My Tasks yet.
+    if (catalog === 'mts') {
+      if (state.groupBy === 'subTemplate' || state.groupBy === 'productTemplate' || state.groupBy === 'template') {
+        state.groupBy = 'subCategory';
+      }
+      closeWorkspace();
+    } else if (state.groupBy === 'subCategory' || state.groupBy === 'product') {
+      state.groupBy = 'subTemplate';
+    }
+    syncCatalogUi();
+    if (catalog === 'mts' && state.view === 'my') {
+      setView('available', { syncHash: true });
+      return;
+    }
+    if (state.model) {
+      fillFilters();
+      updateTabCounts();
+      if (state.view !== 'renamer') render();
+    } else {
+      updateTabCounts();
+    }
+  }
 
   const $ = (id) => document.getElementById(id);
   const els = {
@@ -255,7 +367,9 @@
   }
 
   // Vinay / Aman / Ananyo (and "Vinay …" full names) can Assign; everyone else cannot.
+  // MTS Furniture has no Render Tracker / assign path yet.
   function canAssignTasks() {
+    if (isMts()) return false;
     const n = String(state.author || '').trim().toLowerCase().replace(/\s+/g, ' ');
     if (!n) return false;
     if (ASSIGN_AUTHORS.indexOf(n) >= 0) return true;
@@ -396,16 +510,40 @@
   }
 
   // Thumbnail only, never the full file. Drive's thumbnail link ends in a size such as "=s220"; it is swapped for
-  // the width needed. Without that link it falls back to the sign-in based URL, which some browsers block.
+  // the width needed. Prefer lh3 hosted thumbs (work cross-origin); drive.google.com/thumbnail often blocked.
   function thumbUrl(img, width) {
-    if (img.thumb) return img.thumb.replace(/=s\d+(-[a-z0-9-]+)?$/i, '') + '=w' + width;
-    return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(img.id) + '&sz=w' + width;
+    const w = width || 160;
+    const t = String((img && img.thumb) || '');
+    if (t) {
+      if (/=[sw]\d+/i.test(t)) return t.replace(/=[sw]\d+(-[a-z0-9-]+)?$/i, '') + '=w' + w;
+      return t;
+    }
+    if (img && img.id) return 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(img.id) + '=w' + w;
+    return '';
   }
 
   // Shoot folders: second image is the usual product preview. Output folders: first image.
+  // MTS Furniture: prefer the 3rd previewable image (index 2) when present.
   function defaultPhoto(list, preferFirst) {
     if (preferFirst) return 0;
+    if (isMts()) {
+      if (list.length > 2) return 2;
+      return list.length ? list.length - 1 : 0;
+    }
     return list.length > 1 ? 1 : 0;
+  }
+
+  // Camera RAW has no useful Drive thumbnail — never show in list/drawer.
+  function isPreviewableImage(img) {
+    const name = String((img && img.name) || '');
+    if (/\.(cr3|cr2|crw|nef|nrw|arw|srf|sr2|dng|orf|raf|rw2|pef|ptx|raw|rwl|x3f|3fr|fff|iiq|kdc|dcr|mrw|mos|erf|mef)$/i.test(name)) {
+      return false;
+    }
+    return true;
+  }
+
+  function previewImages(list) {
+    return (Array.isArray(list) ? list : []).filter(isPreviewableImage);
   }
 
   // Completed My Tasks (and Completed prior-match drawers) preview the Render Tracker output folder.
@@ -458,10 +596,10 @@
           if (hit && h && !cols.includes(c)) cols.push(c);
         });
       });
-      // Catch renamed headers such as "SET/PCS" or "Set - Pcs" that still contain both words.
+      // Catch renamed headers such as "SET/PCS", "Set - Pcs", or MTS "REMARKS (Set/EACH)".
       if (key === 'setPcs') {
         headers.forEach((h, c) => {
-          if (h && /set/.test(h) && /pcs/.test(h) && !cols.includes(c)) cols.push(c);
+          if (h && /set/.test(h) && (/pcs/.test(h) || /each/.test(h)) && !cols.includes(c)) cols.push(c);
         });
         cols.sort((a, b) => headers[b].length - headers[a].length);
         if (!cols.length) {
@@ -502,9 +640,9 @@
     }).filter((rec) => keys.some((k) => rec[k])), { missing });
   }
 
-  // A tab whose Set / PCs header has another name: the column where most filled cells read PCs, Set or Set of N.
+  // A tab whose Set / PCs header has another name: the column where most filled cells read PCs, EACH, Set or Set of N.
   function setColumnByValues_(rows) {
-    const re = /^(pcs?|pieces?|sets?|set\s*of\s*\d+)$/i;
+    const re = /^(pcs?|pieces?|each|sets?|set\s*of\s*\d+)$/i;
     let best = -1;
     let bestHits = 0;
     (rows[0] || []).forEach((h, c) => {
@@ -521,10 +659,10 @@
     return best;
   }
 
-  // Prefer "SET OF 2" / "Set" over a stray "PCs" copied into a helper column on the same row.
+  // Prefer "SET OF 2" / "Set" over a stray "PCs"/"EACH" copied into a helper column on the same row.
   function pickSetValue_(vals) {
     if (!vals.length) return '';
-    const rank = (v) => (/set\s*of\s*\d+/i.test(v) ? 0 : /^set\b/i.test(v) ? 1 : /pc/i.test(v) ? 3 : 2);
+    const rank = (v) => (/set\s*of\s*\d+/i.test(v) ? 0 : /^set\b/i.test(v) ? 1 : /^(each|pc)/i.test(v) ? 3 : 2);
     return vals.slice().sort((a, b) => rank(a) - rank(b) || b.length - a.length)[0];
   }
 
@@ -618,18 +756,124 @@
         if (r.endDate && !existing.endDate) existing.endDate = r.endDate;
       });
     }
+
     return { shoot, render, warnings, xlsxSync: feed.xlsxSync || null };
+  }
+
+  function parseFurnitureFeed(mtsFeed, warnings) {
+    const furniture = { rows: [], modified: '', error: '' };
+    if (!mtsFeed) {
+      if (!MTS_FEED_URL) {
+        warnings.push('MTS Furniture: MTS_FEED_URL is not set — deploy dashboard/apps-script-mts-furniture and paste the /exec URL');
+      }
+      return furniture;
+    }
+    if (!(mtsFeed.version >= MTS_FEED_VERSION)) {
+      warnings.push('MTS Furniture: web app is an older version (' + (mtsFeed.version || 'no version') +
+        ', expected ' + MTS_FEED_VERSION + ')');
+    }
+    const block = mtsFeed.furniture || mtsFeed;
+    if (block.error) {
+      furniture.error = block.error;
+      warnings.push('MTS Furniture: ' + block.error);
+      return furniture;
+    }
+    if (!block.values || !block.values.length) {
+      warnings.push('MTS Furniture: Sheet1 returned no rows');
+      return furniture;
+    }
+    const rows = tableFrom(block.values, MTS_COLUMNS, block.links);
+    attachMtsPdpUrls_(rows, block.values, block.links || {}, block.multiLinks || {});
+    const required = ['ean', 'driveLink', 'pdpLink'];
+    const lost = missingNames(rows, MTS_COLUMNS, required);
+    if (lost) warnings.push('MTS Furniture: columns not found: ' + lost);
+    return { rows, modified: block.modified || '', error: '' };
+  }
+
+  // Attach every PDP URL for a cell (chips + raw URLs). links key uses tableFrom's 1-based data rows.
+  function attachMtsPdpUrls_(rows, values, links, multiLinks) {
+    const headers = (values && values[0]) || [];
+    const squash = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').replace(/[^a-z0-9]/g, '');
+    let pdpCol = -1;
+    headers.forEach((h, c) => {
+      const n = squash(h);
+      if (pdpCol < 0 && (n.indexOf('pdpguideline') === 0 || n === 'pdplink' || n.indexOf('guideline') >= 0)) pdpCol = c;
+    });
+    if (pdpCol < 0) return;
+    rows.forEach((rec, n) => {
+      const key = (n + 1) + ',' + pdpCol;
+      const fromMulti = multiLinks[key] || [];
+      const fromLink = links[key] ? [links[key]] : [];
+      const cellText = values[n + 1] ? values[n + 1][pdpCol] : '';
+      const fromText = allHttpUrls(cellText);
+      const urls = uniqueUrls([].concat(fromMulti, fromLink, fromText, rec.pdpLink || [], rec.pdpLinkUrl || []));
+      rec.pdpUrls = urls;
+      if (urls.length && !rec.pdpLink) rec.pdpLink = urls[0];
+    });
   }
 
   async function loadTaskData(opts) {
     opts = opts || {};
     if (!FEED_URL) throw new Error('NO_FEED_URL');
     let feed = opts.feed || null;
-    if (!feed) feed = await jsonp('action=tasks', FEED_TIMEOUT_MS);
+    // HH only here — MTS is loaded in the background so a slow/broken MTS deploy cannot block HH.
+    if (!feed) feed = await jsonp('action=tasks', FEED_TIMEOUT_MS, FEED_URL);
     const data = buildTaskDataFromFeed(feed);
+    if (opts.mtsFeed) {
+      if (opts.mtsFeed.__mtsError) {
+        data.warnings.push('MTS Furniture: ' + opts.mtsFeed.__mtsError);
+        data.furniture = { rows: [], modified: '', error: opts.mtsFeed.__mtsError };
+      } else {
+        data.furniture = parseFurnitureFeed(opts.mtsFeed, data.warnings);
+      }
+    } else {
+      data.furniture = { rows: [], modified: '', error: '' };
+    }
     // Cache successful live feeds so deep-link reload can restore the EAN workspace without waiting.
     if (!opts.feed && !opts.skipCache) saveFeedCache(feed);
     return data;
+  }
+
+  let mtsLoading = false;
+  async function loadMtsFeedInBackground() {
+    if (!isPreviewApp() || !MTS_FEED_URL || mtsLoading) return;
+    mtsLoading = true;
+    try {
+      const mtsFeed = await jsonp('action=tasks', FEED_TIMEOUT_MS, MTS_FEED_URL);
+      const warnings = [];
+      const furniture = parseFurnitureFeed(mtsFeed, warnings);
+      state.mtsModel = buildMtsModel({ furniture: furniture, warnings: warnings });
+      if (warnings.length && isMts()) {
+        showToast('MTS: ' + warnings.join('; '), false);
+      }
+      if (isMts()) {
+        state.model = state.mtsModel;
+        fillFilters();
+        updateTabCounts();
+        if (state.view !== 'renamer') {
+          render();
+          loadImages();
+        }
+      } else {
+        updateTabCounts();
+      }
+      syncCatalogUi();
+    } catch (err) {
+      const msg = String((err && err.message) || err || 'MTS feed failed');
+      state.mtsModel = buildMtsModel({
+        furniture: { rows: [], modified: '', error: msg },
+        warnings: ['MTS Furniture: ' + msg]
+      });
+      if (isMts()) {
+        state.model = state.mtsModel;
+        fillFilters();
+        updateTabCounts();
+        if (state.view !== 'renamer') render();
+        showToast('MTS Furniture could not be read: ' + esc(msg), false, { error: true });
+      }
+    } finally {
+      mtsLoading = false;
+    }
   }
 
   function missingNames(table, columns, required) {
@@ -641,17 +885,53 @@
   // One entry per line of the Mandatory Shot List cell. The row count and the Required Shots list both use this.
   // A line that only continues the previous one, e.g. "( Base )" on its own line, is joined back to it.
   function parseShots(text) {
-    const lines = String(text || '')
-      .replace(/\u00a0/g, ' ')
+    let raw = String(text || '').replace(/\u00a0/g, ' ');
+    // MTS (and some HH) cells use a lone "+" between shot groups — drop it, keep the shots.
+    raw = raw.replace(/(?:^|\n)\s*\+\s*(?=\n|$)/g, '\n');
+    // Split jammed numbered items on one line: "2.Hero … 3.Top-down"
+    raw = raw.replace(/(\S)(?=\d+[.)]\s*[A-Za-z])/g, '$1\n');
+    const lines = raw
       .split(/\r\n|\r|\n|\u2022/)
-      .map((l) => l.replace(/^\s*(\d+[.)]|[-*])\s+/, '').trim())
-      .filter((l) => l && !/^[-–.,]+$/.test(l));
+      .map((l) => l.replace(/^\s*(\d+[.)]|[-*.])\s+/, '').trim())
+      .filter((l) => l && !/^[-–.,+]+$/.test(l));
     const out = [];
     lines.forEach((l) => {
       if (out.length && /^[(&,]/.test(l)) out[out.length - 1] += ' ' + l;
       else out.push(l);
     });
     return out.map((name) => ({ name }));
+  }
+
+  function allHttpUrls(text) {
+    const out = [];
+    const seen = new Set();
+    const re = /https?:\/\/[^\s<>"']+/gi;
+    let m;
+    while ((m = re.exec(String(text || '')))) {
+      const url = m[0].replace(/[.,);]+$/, '');
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+      out.push(url);
+    }
+    return out;
+  }
+
+  function uniqueUrls(list) {
+    const out = [];
+    const seen = new Set();
+    (list || []).forEach((u) => {
+      const url = String(u || '').trim();
+      if (!url || !/^https?:\/\//i.test(url) || seen.has(url)) return;
+      seen.add(url);
+      out.push(url);
+    });
+    return out;
+  }
+
+  function pdpLinksOf(t) {
+    if (!t) return [];
+    if (Array.isArray(t.pdpLinks) && t.pdpLinks.length) return t.pdpLinks;
+    return t.pdpLink ? [t.pdpLink] : [];
   }
 
   // Template mapping values: "T4", "T 4", "T2a", "T61a", "T7 set", "T7 Set of 2".
@@ -781,8 +1061,23 @@
     const of = v.match(/set\s*of\s*(\d+)/i);
     if (of) return { label: 'Set of ' + of[1], kind: 'set' };
     if (/^sets?\b/i.test(v) || /\bset\b/i.test(v)) return { label: titleCase(v).replace(/\bOf\b/, 'of'), kind: 'set' };
+    // MTS Furniture uses EACH instead of PCs.
+    if (/^each\b/i.test(v)) return { label: 'EACH', kind: 'pcs' };
     if (/pc/i.test(v)) return { label: 'PCs', kind: 'pcs' };
     return { label: v, kind: 'other' };
+  }
+
+  // MTS "COLLECTION SHOOT" column — keep sheet value; blank / NO hidden. UI shows "collection shot- <value>".
+  function tidyCollectionShoot(s) {
+    const v = String(s || '').trim();
+    if (!v) return '';
+    if (/^(n|no|false|0|na|n\/?a|nil|none|-|–|—)$/i.test(v)) return '';
+    return v;
+  }
+
+  function collectionShootLabel(value) {
+    const v = String(value || '').trim();
+    return v ? ('collection shot- ' + v) : '';
   }
 
   // Template rows carry defaults such as "0", "-" or "NA" in columns nobody filled in; those count as empty.
@@ -835,12 +1130,18 @@
   function toProduct(r, category) {
     const set = tidySet(r.setPcs);
     // Some tabs keep the folder link in a helper column, so any Drive folder link on the row is used as a fallback.
-    if (!isUrl(r.driveLink) && r.rowFolder) r.driveLink = r.rowFolder;
+    // "Open" / "Open folder" is label-only — never treat it as the Drive URL.
+    if ((!isUrl(r.driveLink) || /^open(?:\s+folder)?$/i.test(String(r.driveLink || '').trim())) && r.rowFolder) {
+      r.driveLink = r.rowFolder;
+    }
     const driveRaw = r.driveLink;
     let driveResolved = pickUrl(driveRaw, r.driveLinkUrl) || (isUrl(driveRaw) ? String(driveRaw).trim() : '');
-    if (!driveResolved) {
+    if (!driveResolved || /^open(?:\s+folder)?$/i.test(driveResolved)) {
+      driveResolved = '';
       const embedded = String(driveRaw || '').match(/drive\.google\.com\/(?:.*\/folders\/|[^\s]*[?&]id=)([\w-]{10,})/i);
       if (embedded) driveResolved = 'https://drive.google.com/drive/folders/' + embedded[1];
+      if (!driveResolved && isUrl(r.driveLinkUrl)) driveResolved = String(r.driveLinkUrl).trim();
+      if (!driveResolved && isUrl(r.rowFolder)) driveResolved = String(r.rowFolder).trim();
     }
     const productName = tidyName(r.productName);
     const subCategory = tidyName(r.subCategory);
@@ -850,6 +1151,7 @@
     return {
       ean: r.ean.replace(/\s+/g, ''),
       rowNumber: r.rowNumber,
+      catalog: 'hh',
       category,
       department: r.department,
       sheetCategory: tidyName(r.category),
@@ -858,12 +1160,16 @@
       productName,
       productKey: productName.toLowerCase(),
       style: r.style,
+      range: '',
       title: productName || tidyName(r.style) || 'Untitled product',
       detailDescription: String(r.detailDescription || '').trim(),
       color: String(r.color || '').trim(),
       setLabel: set.label,
       setKind: set.kind,
       size: realValue(r.size),
+      sizeW: '',
+      sizeD: '',
+      sizeHt: '',
       dimensions: realValue(r.dimensions),
       capacity: realValue(r.capacity),
       template: tidyTemplate(r.template),
@@ -883,12 +1189,91 @@
     };
   }
 
+  // MTS Furniture: Detail Description = title; CATEGORY drives the filter; PDP GUIDELINE LINK = PDP; no template.
+  function toMtsProduct(r) {
+    const set = tidySet(r.setPcs);
+    if (!isUrl(r.driveLink) && r.rowFolder) r.driveLink = r.rowFolder;
+    const driveRaw = r.driveLink;
+    let driveResolved = pickUrl(driveRaw, r.driveLinkUrl) || (isUrl(driveRaw) ? String(driveRaw).trim() : '');
+    if (!driveResolved) {
+      const embedded = String(driveRaw || '').match(/drive\.google\.com\/(?:.*\/folders\/|[^\s]*[?&]id=)([\w-]{10,})/i);
+      if (embedded) driveResolved = 'https://drive.google.com/drive/folders/' + embedded[1];
+    }
+    const pdpRaw = String(r.pdpLink || '').trim();
+    // a) raw URL(s)  b) chip/hyperlink URL(s)  c) multi-line mix of titles + URLs
+    const pdpLinks = uniqueUrls([].concat(
+      r.pdpUrls || [],
+      pickUrl(pdpRaw, r.pdpLinkUrl) || [],
+      allHttpUrls(pdpRaw),
+      allHttpUrls(r.pdpLinkUrl)
+    ));
+    const pdpResolved = pdpLinks[0] || '';
+    const productName = tidyName(r.productName || r.detailDescription);
+    const sheetCategory = tidyName(r.category);
+    const subCategory = tidyName(r.subCategory);
+    const range = tidyName(r.range);
+    const sizeW = realValue(r.sizeW);
+    const sizeD = realValue(r.sizeD);
+    const sizeHt = realValue(r.sizeHt);
+    const sizeParts = [sizeW, sizeD, sizeHt].filter(Boolean);
+    const needsProp = propsNeeded(r.propsNeeded);
+    const collectionShoot = tidyCollectionShoot(r.collectionShoot);
+    return {
+      ean: String(r.ean || '').replace(/\s+/g, ''),
+      rowNumber: r.rowNumber,
+      catalog: 'mts',
+      // Category filter uses the sheet CATEGORY column (Dining Chair, Tables, …).
+      category: sheetCategory,
+      department: tidyName(r.department),
+      sheetCategory,
+      subCategory,
+      subKey: subCategory.toLowerCase(),
+      productName,
+      productKey: productName.toLowerCase(),
+      style: '',
+      range,
+      title: productName || range || 'Untitled product',
+      detailDescription: String(r.detailDescription || r.productName || '').trim(),
+      color: String(r.color || '').trim(),
+      setLabel: set.label,
+      setKind: set.kind,
+      collectionShoot,
+      size: sizeParts.join(' × '),
+      sizeW,
+      sizeD,
+      sizeHt,
+      dimensions: '',
+      capacity: '',
+      template: '',
+      templateRaw: '',
+      functionalProp: '',
+      prop: { kind: 'text', html: '' },
+      propsNeeded: needsProp,
+      shots: parseShots(r.shotList),
+      pdpLink: pdpResolved,
+      pdpLinks: pdpLinks,
+      pdpText: pdpRaw,
+      driveLink: driveResolved,
+      driveText: driveRaw,
+      folderId: folderIdFrom(driveResolved),
+      shootStatus: r.shootStatus,
+      uploadStatus: r.uploadStatus,
+      remarks: r.shootRemarks,
+      date: parseDate(r.uploadDate) || parseDate(r.shootDate)
+    };
+  }
+
   function detectIssues(t, eanCount) {
     const issues = [];
     const warn = (key, text) => issues.push({ key, level: 'warn', text });
     if (!/^\d{13}$/.test(t.ean)) warn('ean', 'EAN "' + t.ean + '" is not 13 digits.');
-    if (eanCount.get(t.ean) > 1) warn('dup', 'EAN appears ' + eanCount.get(t.ean) + ' times in the Shoot Tracker.');
-    if (!t.template) warn('template', t.templateRaw ? 'Template mapping "' + t.templateRaw + '" is not a recognised template (e.g. T4, T2a, T7 set).' : 'Template mapping is missing.');
+    if (eanCount.get(t.ean) > 1) {
+      warn('dup', 'EAN appears ' + eanCount.get(t.ean) + ' times in the ' +
+        (t.catalog === 'mts' ? 'MTS Furniture sheet' : 'Shoot Tracker') + '.');
+    }
+    if (t.catalog !== 'mts') {
+      if (!t.template) warn('template', t.templateRaw ? 'Template mapping "' + t.templateRaw + '" is not a recognised template (e.g. T4, T2a, T7 set).' : 'Template mapping is missing.');
+    }
     if (!t.shots.length) warn('shots', 'Mandatory shot list is empty.');
     if (/re-?sh(o|oo)t/i.test(t.remarks)) warn('reshoot', 'Photoshoot remarks: "' + t.remarks + '".');
     // Many rows leave Upload status and the GDRIVE cell blank and record the upload only in the Log tab,
@@ -1008,7 +1393,81 @@
       artists: [...artistTotals.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name),
       categories: data.shoot.map((s) => s.category),
       fileSavedAt: data.shoot.map((s) => s.modified).filter(Boolean).sort().pop() || '',
-      xlsxSync: data.xlsxSync || null
+      xlsxSync: data.xlsxSync || null,
+      catalog: 'hh'
+    };
+  }
+
+  // MTS Furniture: Available = GDRIVE link + PDP GUIDELINE LINK (no template, no Render Tracker yet).
+  function buildMtsModel(data) {
+    const furniture = data.furniture || { rows: [] };
+    const products = [];
+    const eanCount = new Map();
+    (furniture.rows || []).forEach((r) => {
+      const p = toMtsProduct(r);
+      if (!p.ean) return;
+      products.push(p);
+      eanCount.set(p.ean, (eanCount.get(p.ean) || 0) + 1);
+    });
+
+    const withDrive = products.filter((p) => p.driveLink);
+    const withPdp = products.filter((p) => p.pdpLink);
+    const ready = products.filter((p) => p.driveLink && p.pdpLink);
+    const stats = {
+      products: products.length,
+      withDrive: withDrive.length,
+      withPdp: withPdp.length,
+      withTpl: 0,
+      ready: ready.length,
+      noDrive: products.filter((p) => !p.driveLink).length,
+      driveTextNoLink: products.filter((p) => !p.driveLink && p.driveText).length,
+      noPdp: withDrive.filter((p) => !p.pdpLink).length,
+      pdpTextNoLink: withDrive.filter((p) => !p.pdpLink && p.pdpText).length,
+      noTemplate: 0,
+      assigned: 0,
+      open: ready.length
+    };
+    const tasks = ready.slice();
+    products.forEach((p) => {
+      p.search = [p.ean, p.title, p.range, p.subCategory, p.sheetCategory, p.department, p.color, p.collectionShoot]
+        .join(' ').toLowerCase();
+      p.hiddenReason = !p.driveLink
+        ? (p.driveText
+          ? 'GDRIVE cell shows "' + String(p.driveText).slice(0, 60) + '" but no folder link could be read'
+          : 'no GDRIVE link yet')
+        : !p.pdpLink
+          ? (p.pdpText
+            ? 'PDP guideline shows "' + String(p.pdpText).slice(0, 60) + '" but no link could be read'
+            : 'no PDP guideline link yet')
+          : '';
+    });
+    tasks.forEach((t) => {
+      t.issues = detectIssues(t, eanCount);
+      t.hasIssue = t.issues.some((i) => i.level === 'warn');
+    });
+
+    const catSet = new Map();
+    products.forEach((p) => {
+      if (p.category) catSet.set(p.category, (catSet.get(p.category) || 0) + 1);
+    });
+    const categories = [...catSet.keys()].sort((a, b) => a.localeCompare(b));
+
+    const warnings = (data.warnings || []).filter((w) => /MTS Furniture/i.test(w));
+    if (furniture.error) warnings.push('MTS Furniture: ' + furniture.error);
+
+    return {
+      tasks,
+      products,
+      assignedByEan: new Map(),
+      templates: new Map(),
+      stats,
+      warnings,
+      history: { byKey: new Map(), byTemplate: new Map(), bySub: new Map() },
+      artists: [],
+      categories,
+      fileSavedAt: furniture.modified || '',
+      xlsxSync: null,
+      catalog: 'mts'
     };
   }
 
@@ -1212,7 +1671,7 @@
 
   let assignRefreshRunning = false;
   async function refreshAssigns() {
-    if (!state.model || assignRefreshRunning || !FEED_URL) return;
+    if (!state.model || assignRefreshRunning || !FEED_URL || isMts()) return;
     assignRefreshRunning = true;
     try {
       const data = await jsonp('action=assigns', 30000);
@@ -2681,6 +3140,25 @@
     const next = await answerlyHealth();
     state.answerlyToken = next.token || null;
     return next;
+  }
+
+  /** Preflight for Generate / Generate all — toast + Answerly modal when bridge/token is down. */
+  async function ensureAnswerlyReadyForGenerate() {
+    const tok = await refreshAnswerlyTokenState();
+    if (tok && tok.bridgeOffline) {
+      const msg = tok.error || ('Cannot reach the Answerly bridge at ' + UPSCALE_URL + '.');
+      showToast(esc(msg), false, { error: true });
+      openAnswerlyModal();
+      return false;
+    }
+    try {
+      await answerlyEnsureToken();
+      return true;
+    } catch (err) {
+      showToast(esc((err && err.message) || 'Answerly is not ready'), false, { error: true });
+      openAnswerlyModal();
+      return false;
+    }
   }
 
   /* ---------- IndexedDB + memory drafts (A/B/C/D kept across EANs and refresh) ---------- */
@@ -4283,7 +4761,7 @@
     delete cache[key];
   }
 
-  /** Drop cached M-DIM workspace when a shot’s D is (re)generated; auto-load into empty editor. */
+  /** Drop cached M-DIM workspace when a shot’s D is (re)generated; refresh editor only if that base is active. */
   function mdimOnShotOutputChanged(shotIndex) {
     if (!state.workspace) return;
     const key = 'shot:' + shotIndex;
@@ -4295,38 +4773,28 @@
     const onDimEditor = state.workspace.mode === 'replace' &&
       isDimensionShot(shots[dimSi]) &&
       !state.workspace.mdimShowAbcd;
-    const empty = !state.workspace.mdimOverride && !state.workspace.mdimWorkspaceUrl;
-    const optionsPreview = mdimBaseOptions(t, shots, dimSi);
-    const curMissing = !state.workspace.mdimOverride &&
-      (!cur || cur === '__custom__' || !mdimAssetForBaseKey(cur, optionsPreview));
+    // Only the currently selected base should update the full-view editor — never jump to
+    // whichever shot finished generating last.
     const watching = cur === key || (isDim && cur === '__custom__');
 
-    // Always invalidate this shot’s cache entry.
     const cache = mdimWorkspaceCache();
     const stale = watching ? (cache[cur] || cache[key]) : cache[key];
     mdimRevokeCacheKey(key);
     if (isDim) mdimRevokeCacheKey('__custom__');
-    if (watching && cur && cur !== key) delete cache[cur];
 
-    if (!onDimEditor) return;
-    // Adopt newly generated image when editor has no usable base yet, or when that base was regenerated.
-    if (!watching && !empty && !curMissing) return;
+    if (!onDimEditor || !watching) return;
+    // Manual override owns the canvas — leave it alone when other Ds finish.
+    if (state.workspace.mdimOverride && cur !== '__override__') return;
 
-    const adoptKey = (watching && cur && cur !== '__custom__') ? cur : key;
+    const adoptKey = (cur && cur !== '__custom__') ? cur : key;
     state.workspace.mdimBaseKey = adoptKey;
 
     const options = mdimBaseOptions(t, shots, dimSi);
     const asset = mdimAssetForBaseKey(adoptKey, options) || shotAssets(shotIndex).output;
-    if (!asset) {
-      state.workspace.mdimWorkspaceUrl = null;
-      state.workspace.mdimWorkspaceBlob = null;
-      return;
-    }
+    if (!asset) return;
     mdimEnsureWorkspaceFromAsset(asset, asset.name, adoptKey).then(function (wsUrl) {
-      if (empty || curMissing || !els.workspace || !els.workspace.querySelector('[data-mdim-img]')) {
-        persistCurrentReplaceDraft();
-        renderWorkspace();
-      } else if (wsUrl && window.MdimPlayground && window.MdimPlayground.setWorkspaceUrl) {
+      if (wsUrl && window.MdimPlayground && window.MdimPlayground.setWorkspaceUrl &&
+          els.workspace && els.workspace.querySelector('[data-mdim-img]')) {
         window.MdimPlayground.setWorkspaceUrl(wsUrl);
         const root = els.workspace.querySelector('[data-mdim-root]');
         mdimRefreshWarnDom(root);
@@ -7306,10 +7774,10 @@
 
   function matchesFilters(t) {
     if (state.category && t.category !== state.category) return false;
-    if (state.template && t.template !== state.template) return false;
+    if (!isMts() && state.template && t.template !== state.template) return false;
     if (state.view === 'available') {
       if (state.setKind && !(state.setKind === 'set' ? isSet(t) : t.setKind === state.setKind)) return false;
-      if (artistFilterName() && !taskFitsArtist(t, artistFilterName())) return false;
+      if (!isMts() && artistFilterName() && !taskFitsArtist(t, artistFilterName())) return false;
     }
     return true;
   }
@@ -7325,6 +7793,9 @@
   }
 
   function hasFilters() {
+    if (isMts()) {
+      return !!(state.category || (state.view === 'available' && state.setKind));
+    }
     return !!(state.category || state.template ||
       (state.view === 'available' && (state.setKind || state.artist)));
   }
@@ -7333,21 +7804,42 @@
   function searchMissHtml(q) {
     const m = state.model;
     const hits = m.products.filter((p) => p.search.includes(q)).slice(0, 8);
-    if (!hits.length) return '<strong>No product matches "' + esc(state.search.trim()) + '"</strong>It is not in the Shoot Tracker tabs that were read.';
+    const sourceLabel = isMts() ? 'MTS Furniture Sheet1' : 'Shoot Tracker tabs that were read';
+    if (!hits.length) return '<strong>No product matches "' + esc(state.search.trim()) + '"</strong>It is not in the ' + sourceLabel + '.';
     const lines = hits.map((p) => {
-      const artist = assignedArtist(p.ean);
+      const artist = isMts() ? '' : assignedArtist(p.ean);
       const why = p.hiddenReason || (artist ? 'assigned to ' + artist + ' in the Render Tracker'
         : !matchesFilters(p) ? 'hidden by the filters above' : 'available');
       return '<span class="tp-state-line"><span class="tp-mono">' + esc(p.ean) + '</span> ' + esc(p.title) + ': ' + esc(why) + '</span>';
     });
-    const clear = hits.some((p) => !p.hiddenReason && !assignedArtist(p.ean)) && hasFilters()
+    const clear = hits.some((p) => !p.hiddenReason && (isMts() || !assignedArtist(p.ean))) && hasFilters()
       ? '<div class="tp-state-actions"><button type="button" class="tp-btn tp-btn-ghost" data-clear-filters>Clear filters</button></div>' : '';
     return '<strong>Not in the list</strong>' + lines.join('') + clear;
   }
 
-  // Per Shoot Tracker tab: how many products pass each listing rule, so a low count can be traced to one rule.
+  // Per category: how many products pass each listing rule, so a low count can be traced to one rule.
   function dataCheckHtml() {
     const m = state.model;
+    if (isMts()) {
+      const rows = m.categories.map((cat) => {
+        const ps = m.products.filter((p) => p.category === cat);
+        const drive = ps.filter((p) => p.driveLink);
+        const both = drive.filter((p) => p.pdpLink);
+        const open = both.filter((p) => !p.hiddenReason);
+        return '<tr><th>' + esc(cat) + '</th><td>' + ps.length + '</td><td>' + drive.length +
+          '</td><td>' + both.length + '</td><td>' + open.length + '</td><td>' + open.filter(isSet).length + '</td></tr>';
+      });
+      const saved = m.fileSavedAt ? new Date(m.fileSavedAt) : null;
+      const savedLine = saved
+        ? 'MTS Furniture last updated: ' + saved.toLocaleString([], { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) +
+          '. Open = GDRIVE folder link + PDP GUIDELINE LINK (no template / Render Tracker yet).'
+        : 'Open = GDRIVE folder link + PDP GUIDELINE LINK (no template / Render Tracker yet).';
+      return '<details class="tp-datacheck"' + (state.dataCheckOpen ? ' open' : '') + '><summary>Data check per MTS category</summary>' +
+        '<div class="tp-datacheck-body"><p>' + esc(savedLine) + '</p>' +
+        '<table><thead><tr><th>Category</th><th>Products</th><th>+ Drive folder</th>' +
+        '<th>+ PDP guideline</th><th>Open</th><th>Open sets</th></tr></thead>' +
+        '<tbody>' + rows.join('') + '</tbody></table></div></details>';
+    }
     const notes = [];
     const rows = m.categories.map((cat) => {
       const ps = m.products.filter((p) => p.category === cat);
@@ -7383,15 +7875,19 @@
   function filterMissHtml() {
     const fits = state.model.products.filter((p) =>
       (!state.category || p.category === state.category) &&
-      (!state.template || p.template === state.template) &&
+      (isMts() || !state.template || p.template === state.template) &&
       (!state.setKind || (state.setKind === 'set' ? isSet(p) : p.setKind === state.setKind)));
-    if (!fits.length) return '<span class="tp-state-line">No product in the Shoot Tracker fits these filters.</span>';
+    if (!fits.length) {
+      return '<span class="tp-state-line">No product in the ' +
+        (isMts() ? 'MTS Furniture sheet' : 'Shoot Tracker') + ' fits these filters.</span>';
+    }
     const counts = new Map();
     fits.forEach((p) => {
       const why = !p.hiddenReason
-        ? 'hidden by the Artist filter'
+        ? (isMts() ? 'hidden by filters' : 'hidden by the Artist filter')
         : /^already assigned/.test(p.hiddenReason) ? 'already assigned in the Render Tracker'
         : /^GDRIVE cell/.test(p.hiddenReason) || /^no GDRIVE/.test(p.hiddenReason) ? 'no readable GDRIVE folder link'
+        : /^PDP guideline/.test(p.hiddenReason) || /^no PDP/.test(p.hiddenReason) ? 'no readable PDP guideline link'
         : /^template mapping/.test(p.hiddenReason) || /^no template/.test(p.hiddenReason) ? 'no template mapping'
         : p.hiddenReason;
       counts.set(why, (counts.get(why) || 0) + 1);
@@ -7446,23 +7942,28 @@
     return (a.date - b.date) * dir || a.ean.localeCompare(b.ean);
   }
 
-  // subTemplate: Sub-category + Template, productTemplate: Product name + Template, template: Template only.
-  // My Tasks always groups by Sub-category + Template. Active orders groups by status priority.
+  // HH: subTemplate / productTemplate / template.
+  // MTS: subCategory / product (no template). My Tasks (HH only) always groups by Sub-category + Template.
   function groupTasks(tasks) {
-    const by = state.view === 'my' ? 'subTemplate' : state.groupBy;
+    const by = isMts()
+      ? (state.groupBy === 'product' ? 'product' : 'subCategory')
+      : (state.view === 'my' ? 'subTemplate' : state.groupBy);
     const groups = new Map();
     tasks.forEach((t) => {
-      const key = by === 'template' ? t.template
-        : by === 'productTemplate' ? t.productKey + '|' + t.template
-        : t.subKey + '|' + t.template;
+      let key;
+      if (by === 'template') key = t.template;
+      else if (by === 'productTemplate') key = t.productKey + '|' + t.template;
+      else if (by === 'product') key = t.productKey || t.title.toLowerCase();
+      else if (by === 'subCategory') key = t.subKey || '(none)';
+      else key = t.subKey + '|' + t.template;
       if (!groups.has(key)) {
         groups.set(key, {
           key,
-          template: t.template,
-          subCategory: by === 'template' || by === 'productTemplate' ? '' : t.subCategory,
-          subKey: by === 'template' || by === 'productTemplate' ? '' : t.subKey,
-          productName: by === 'productTemplate' ? t.productName : '',
-          productKey: by === 'productTemplate' ? t.productKey : '',
+          template: by === 'subCategory' || by === 'product' ? '' : t.template,
+          subCategory: by === 'template' || by === 'productTemplate' || by === 'product' ? '' : t.subCategory,
+          subKey: by === 'template' || by === 'productTemplate' || by === 'product' ? '' : t.subKey,
+          productName: by === 'productTemplate' || by === 'product' ? t.productName : '',
+          productKey: by === 'productTemplate' || by === 'product' ? t.productKey : '',
           tasks: []
         });
       }
@@ -7475,8 +7976,13 @@
         const byStatus = groupActiveRank(a) - groupActiveRank(b);
         if (byStatus) return byStatus;
       }
-      if (!a.template !== !b.template) return a.template ? -1 : 1;
-      return compareTasks(a.tasks[0], b.tasks[0]) || templateOrder(a.template) - templateOrder(b.template);
+      if (!isMts()) {
+        if (!a.template !== !b.template) return a.template ? -1 : 1;
+        return compareTasks(a.tasks[0], b.tasks[0]) || templateOrder(a.template) - templateOrder(b.template);
+      }
+      const an = (a.productName || a.subCategory || '').toLowerCase();
+      const bn = (b.productName || b.subCategory || '').toLowerCase();
+      return an.localeCompare(bn) || compareTasks(a.tasks[0], b.tasks[0]);
     });
     return list;
   }
@@ -7486,6 +7992,10 @@
   function setView(view, opts) {
     opts = opts || {};
     if (view !== 'renamer' && view !== 'available' && view !== 'my') return;
+    // MTS Furniture: My Tasks / assign / Render Tracker are on hold.
+    if (view === 'my' && isMts()) {
+      view = 'available';
+    }
     if (view === 'my' && !state.author) {
       withAuthor(() => setView('my', opts));
       return;
@@ -7504,11 +8014,14 @@
     } else if (frame) {
       frame.hidden = true;
     }
-    const title = view === 'renamer' ? 'Renamer' : view === 'my' ? 'My Tasks' : 'Available Tasks';
+    const title = view === 'renamer' ? 'Renamer'
+      : view === 'my' ? 'My Tasks'
+      : ('Available Tasks · ' + (isMts() ? 'MTS' : 'HH'));
     const ver = /preview\.html$/i.test(location.pathname) ? 'PREVIEW V1.8' : 'BETA V1.8';
     document.title = title + ' · 3D Playground (' + ver + ')';
     const titleEl = $('view-title');
     if (titleEl) titleEl.textContent = title;
+    syncCatalogUi();
     const tabs = { renamer: $('tab-renamer'), available: $('tab-available'), my: $('tab-my') };
     Object.keys(tabs).forEach((k) => {
       const el = tabs[k];
@@ -7592,6 +8105,20 @@
 
   function emptyReason() {
     const s = state.model.stats;
+    if (isMts()) {
+      const lines = [
+        s.products + ' products read from MTS Furniture (Sheet1).',
+        s.withDrive + ' have a GDRIVE folder link, ' + (s.withPdp || 0) + ' have a PDP guideline link, ' +
+          s.ready + ' have both (Available).',
+        s.noDrive + ' have no GDRIVE folder link yet' +
+          (s.driveTextNoLink ? ' (' + s.driveTextNoLink + ' still show text in the GDRIVE cell with no readable URL)' : '') + '.',
+        (s.noPdp || 0) + ' have a GDRIVE link but no readable PDP guideline link' +
+          (s.pdpTextNoLink ? ' (' + s.pdpTextNoLink + ' still show text in the PDP cell)' : '') + '.',
+        'Available Tasks (MTS) = GDRIVE folder link + PDP GUIDELINE LINK. No template. Assign / My Tasks / Render Tracker are on hold.'
+      ];
+      if (state.model.warnings.length) lines.push('Check: ' + state.model.warnings.join('; ') + '.');
+      return lines.map((l) => '<span class="tp-state-line">' + esc(l) + '</span>').join('');
+    }
     const lines = [
       s.products + ' products read from the Shoot Tracker.',
       s.withDrive + ' have a GDRIVE folder link, ' + s.withTpl + ' have a template mapping, ' +
@@ -7610,11 +8137,14 @@
     const colour = g.colour;
     const collapsed = state.collapsed.has(g.key);
     const isMy = state.view === 'my';
-    const groupBy = isMy ? 'subTemplate' : state.groupBy;
-    const suggestions = isMy ? [] : suggestionsFor(g.template, groupBy === 'template' ? '' : (g.subKey || g.tasks[0].subKey));
+    const mts = isMts();
+    const groupBy = mts
+      ? (state.groupBy === 'product' ? 'product' : 'subCategory')
+      : (isMy ? 'subTemplate' : state.groupBy);
+    const suggestions = (isMy || mts) ? [] : suggestionsFor(g.template, groupBy === 'template' ? '' : (g.subKey || g.tasks[0].subKey));
     const tpl = g.template || '—';
     const name = groupBy === 'template' ? 'Template ' + g.template
-      : groupBy === 'productTemplate' ? (g.productName || 'Unnamed product')
+      : groupBy === 'productTemplate' || groupBy === 'product' ? (g.productName || 'Unnamed product')
       : (g.subCategory || 'No sub-category');
     const cats = [...new Set(g.tasks.map((t) => t.sheetCategory || t.category).filter(Boolean))];
     const catText = cats.length > 2 ? cats.slice(0, 2).join(', ') + ' +' + (cats.length - 2) : cats.join(', ');
@@ -7625,7 +8155,7 @@
       : tasksText;
     const shown = suggestions.slice(0, 3);
     const tip = suggestions.map((s) => s.name + ': ' + s.count + ' done (' + s.basis + ')').join('\n');
-    const suggestHtml = isMy ? '' : (suggestions.length
+    const suggestHtml = (isMy || mts) ? '' : (suggestions.length
       ? '<span class="tp-suggest" title="' + esc(tip) + '">Suggested: ' +
         shown.map((s) => '<span class="tp-suggest-person"><span class="tp-mini-avatar">' + esc(initials(s.name)) + '</span><b>' + esc(s.name) + '</b></span>').join('') +
         (suggestions.length > shown.length ? '<span class="tp-suggest-more">+' + (suggestions.length - shown.length) + '</span>' : '') +
@@ -7634,11 +8164,13 @@
     const pickAllHtml = (!isMy && canAssignTasks())
       ? '<button type="button" class="tp-assign-btn" data-action="assign-all-menu" aria-haspopup="menu">Assign to</button>'
       : '';
+    const tplBits = mts
+      ? ''
+      : templateThumb(g.template) + '<span class="tp-tpl-chip">' + esc(tpl) + '</span>';
     return '<section class="tp-group ' + colour + (collapsed ? ' is-collapsed' : '') + '" data-key="' + esc(g.key) + '">' +
       '<header class="tp-group-head">' +
         '<button type="button" class="tp-chevron" data-action="toggle-group" aria-expanded="' + !collapsed + '" aria-label="Collapse group">' + ICON.chevron + '</button>' +
-        templateThumb(g.template) +
-        '<span class="tp-tpl-chip">' + esc(tpl) + '</span>' +
+        tplBits +
         '<span class="tp-group-name">' + esc(name) + '</span>' +
         (catText ? '<span class="tp-group-cat" title="' + esc(tabs + ' > ' + cats.join(', ')) + '">' + esc(catText) + '</span>' : '') +
         '<span class="tp-group-count">· ' + esc(countText) + '</span>' +
@@ -7705,9 +8237,20 @@
           '</span>' +
         '</div>' +
       '</div>' +
-      '<span class="tp-pill' + (!t.setLabel ? ' tp-pill-empty' : t.setKind ? ' is-' + t.setKind : '') + '">' + esc(t.setLabel || '—') + '</span>' +
+      '<span class="tp-pills">' +
+        // EACH / PCs stay off the row; only SET (and other set-like values) keep the rose pill.
+        (isSet(t)
+          ? '<span class="tp-pill is-set">' + esc(t.setLabel) + '</span>'
+          : '') +
+        (t.collectionShoot
+          ? '<span class="tp-pill is-collection" title="' + esc(collectionShootLabel(t.collectionShoot)) + '">' +
+            esc(collectionShootLabel(t.collectionShoot)) + '</span>'
+          : '') +
+      '</span>' +
       '<span class="tp-shots" data-tip="' + esc(tip) + '">' + ICON.camera + (t.shots ? t.shots.length : 0) + ' shots</span>' +
-      '<span class="tp-tpl-code' + (t.template ? '' : ' is-empty') + '">' + esc(t.template || '—') + '</span>' +
+      (isMts()
+        ? (t.range ? '<span class="tp-range-chip" title="Range">' + esc(t.range) + '</span>' : '<span class="tp-range-chip" style="opacity:.45">—</span>')
+        : '<span class="tp-tpl-code' + (t.template ? '' : ' is-empty') + '">' + esc(t.template || '—') + '</span>') +
       (isMy ? statusHtml + actions : actions) +
     '</div>';
   }
@@ -7715,14 +8258,24 @@
   function imagesOf(t) {
     const id = previewFolderId(t);
     const list = id ? state.images[id] : null;
-    return Array.isArray(list) ? list : null;
+    if (!Array.isArray(list)) return null;
+    return previewImages(list);
+  }
+
+  function thumbImgTag(imgObj, width) {
+    if (!imgObj || !imgObj.id) return '';
+    const w = width || 160;
+    const src = thumbUrl(imgObj, w);
+    if (!src) return '';
+    return '<img class="tp-img" src="' + esc(src) + '" alt="" loading="lazy" referrerpolicy="no-referrer" data-drive-id="' +
+      esc(imgObj.id) + '" data-thumb-w="' + w + '">';
   }
 
   function thumbHtml(t) {
     const list = imagesOf(t);
     const preferFirst = useOutputPreview(t);
     const img = list && list.length
-      ? '<img class="tp-img" src="' + esc(thumbUrl(list[defaultPhoto(list, preferFirst)], 160)) + '" alt="" loading="lazy" referrerpolicy="no-referrer">'
+      ? thumbImgTag(list[defaultPhoto(list, preferFirst)], 160)
       : '';
     return '<div class="tp-thumb" aria-hidden="true"><span>' + esc(initials(t.productName || t.title)) + '</span>' + img + '</div>';
   }
@@ -7738,12 +8291,12 @@
       const strip = list.length > 1
         ? '<div class="tp-photo-strip">' + list.map((p, n) =>
             '<button type="button" class="tp-photo-pick' + (n === i ? ' is-active' : '') + '" data-photo="' + n + '" title="' + esc(p.name) + '">' +
-              '<img class="tp-img" src="' + esc(thumbUrl(p, 120)) + '" alt="" loading="lazy" referrerpolicy="no-referrer"></button>').join('') +
+              thumbImgTag(p, 120) + '</button>').join('') +
           '</div>'
         : '';
       return '<a class="tp-photo has-img" href="https://drive.google.com/file/d/' + esc(encodeURIComponent(main.id)) + '/view" target="_blank" rel="noopener" title="' + esc(main.name) + ' (opens in Drive)">' +
           '<div class="tp-photo-initials">' + esc(initials(t.productName || t.title)) + '</div>' +
-          '<img class="tp-img" src="' + esc(thumbUrl(main, 800)) + '" alt="' + esc(main.name) + '" referrerpolicy="no-referrer">' +
+          thumbImgTag(main, 800).replace(' alt=""', ' alt="' + esc(main.name) + '"') +
           '<span class="tp-photo-count">' + (i + 1) + ' / ' + list.length + '</span>' +
         '</a>' + strip;
     }
@@ -7751,7 +8304,9 @@
       ? (useOutputPreview(t) ? 'No output Drive folder on the Render Tracker' : 'No Drive folder link for this product')
       : status === 'loading' || status === undefined ? 'Loading photos from Drive…'
       : status === 'error' ? 'Photos could not be loaded from Drive'
-      : 'No photos in the Drive folder yet';
+      : (Array.isArray(status) && status.length && !previewImages(status).length
+        ? 'No previewable photos (RAW/CR3 files are skipped)'
+        : 'No photos in the Drive folder yet');
     return '<div class="tp-photo"><div class="tp-photo-initials">' + esc(initials(t.productName || t.title)) + '</div>' +
       '<span class="tp-photo-note">' + esc(note) + '</span></div>';
   }
@@ -7863,15 +8418,27 @@
     if (!t) { els.drawer.hidden = true; return; }
     els.drawer.hidden = false;
     els.drawer.className = 'tp-drawer ' + (t.colour || 'c-slate');
+    const mts = isMts() || t.catalog === 'mts';
     const crumb = [t.department, t.sheetCategory, t.subCategory].filter(Boolean).join(' > ');
-    const kv = [
-      ['EAN code', t.ean, true],
-      ['Set / PCs', t.setLabel],
-      ['Style', t.style && t.style !== t.title ? t.style : ''],
-      ['Product size', t.size],
-      ['Product dimensions', t.dimensions !== t.size ? t.dimensions : ''],
-      ['Product capacity', t.capacity]
-    ].filter((r) => r[1]);
+    const kv = mts
+      ? [
+          ['EAN code', t.ean, true],
+          [isSet(t) ? 'Set / EACH' : '', isSet(t) ? t.setLabel : ''],
+          ['Collection shoot', collectionShootLabel(t.collectionShoot)],
+          ['Range', t.range],
+          ['Color', t.color],
+          ['Product Size mm W/L (Dining)', t.sizeW],
+          ['Product Size mm D/L (Bed)', t.sizeD],
+          ['Product Size mm HT', t.sizeHt]
+        ].filter((r) => r[1])
+      : [
+          ['EAN code', t.ean, true],
+          [isSet(t) ? 'Set / PCs' : '', isSet(t) ? t.setLabel : ''],
+          ['Style', t.style && t.style !== t.title ? t.style : ''],
+          ['Product size', t.size],
+          ['Product dimensions', t.dimensions !== t.size ? t.dimensions : ''],
+          ['Product capacity', t.capacity]
+        ].filter((r) => r[1]);
 
     let propBody = '';
     if (t.prop && t.prop.kind === 'image') {
@@ -7880,28 +8447,40 @@
     } else if (t.prop && t.prop.html) {
       propBody = '<p class="tp-prop-text">' + t.prop.html + '</p>';
     }
-    const prop = t.propsNeeded && propBody
+    const prop = !mts && t.propsNeeded && propBody
       ? '<div class="tp-prop"><div class="tp-prop-head">' + ICON.prop + '<span>Functional prop</span></div>' +
         propBody + '</div>'
       : '';
 
-    const tplBody = templateRefBody(t.template);
+    const tplBody = mts ? '' : templateRefBody(t.template);
 
     const shotCount = t.shots ? t.shots.length : 0;
     const shots = shotCount
       ? '<ol class="tp-shot-list">' + t.shots.map((s) => '<li>' + esc(s.name) + '</li>').join('') + '</ol>'
-      : '<p class="tp-empty-note">No mandatory shot list in the Shoot Tracker.</p>';
-    const pdpRef = t.pdpLink ? '<a href="' + esc(t.pdpLink) + '" target="_blank" rel="noopener">PDP</a>' : 'PDP';
+      : '<p class="tp-empty-note">No mandatory shot list in the ' + (mts ? 'MTS Furniture sheet' : 'Shoot Tracker') + '.</p>';
+    const pdps = pdpLinksOf(t);
+    const pdpRef = pdps.length
+      ? pdps.map((url, i) => '<a href="' + esc(url) + '" target="_blank" rel="noopener">PDP' +
+        (pdps.length > 1 ? ' ' + (i + 1) : '') + '</a>').join(' · ')
+      : 'PDP';
     const shotNotes = '<ul class="tp-shot-warn">' +
       '<li>' + ICON.warning + '<span>Always refer to the ' + pdpRef + ' for the final shot list.</span></li>' +
-      (isSet(t) ? '<li>' + ICON.warning + '<span>Marked as <b>' + esc(t.setLabel) + '</b> in the Shoot Tracker, so the ' + pdpRef +
+      (isSet(t) ? '<li>' + ICON.warning + '<span>Marked as <b>' + esc(t.setLabel) + '</b> in the sheet, so the ' + pdpRef +
         ' should show a set. If it does not, confirm before working: the sheet may have a data error.</span></li>' : '') +
+      (t.collectionShoot
+        ? '<li>' + ICON.warning + '<span><b>' + esc(collectionShootLabel(t.collectionShoot)) + '</b> — include collection framing from the ' +
+          pdpRef + ' when shooting / rendering.</span></li>'
+        : '') +
       '</ul>';
 
     const drive = t.driveLink
       ? linkHtml(t.driveLink, 'tp-link-folder', ICON.folder, 'Shoot folder', '')
       : linkHtml('', 'tp-link-folder', ICON.folder, 'Shoot folder', t.driveText ? 'Link not included in this export' : 'Not available');
-    const pdp = linkHtml(t.pdpLink, 'tp-link-slides', ICON.slides, 'PDP guideline', t.pdpLink ? '' : 'Not available');
+    const pdp = pdps.length
+      ? pdps.map((url, i) => linkHtml(url, 'tp-link-slides', ICON.slides,
+        pdps.length > 1 ? ('PDP guideline ' + (i + 1)) : 'PDP guideline', '')).join('')
+      : linkHtml('', 'tp-link-slides', ICON.slides, 'PDP guideline',
+        t.pdpText ? 'Title only — no URL' : 'Not available');
     const outHref = outputLinkOf(t);
     const output = state.view === 'my'
       ? (outHref
@@ -7924,6 +8503,16 @@
         t.issues.map((i) => '<li>' + esc(i.text) + '</li>').join('') + '</ul></div>'
       : '';
 
+    const tplSection = mts ? '' : (
+      '<div>' +
+        '<div class="tp-section-head"><span class="tp-section-title">Template Reference</span>' +
+          (t.template ? '<span class="tp-tpl-badge">' + esc(t.template) + '</span>' : '') + '</div>' +
+        '<div class="tp-tpl-ref">' + tplBody + '</div>' +
+      '</div>'
+    );
+    const namingLink = mts ? '' :
+      '<a class="tp-section-link" href="' + esc(NAMING_SHEET_URL) + '" target="_blank" rel="noopener" title="Open Naming Convention Shot List">Find shot codes' + ICON.external + '</a>';
+
     els.drawerBody.innerHTML =
       '<div class="tp-photo-wrap">' + photoHtml(t) + '</div>' +
       '<div>' +
@@ -7939,13 +8528,9 @@
           : '<span>' + esc(r[1]) + '</span>') + '</div>').join('') +
       '</div>' +
       '<div class="tp-links">' + drive + output + pdp + '</div>' +
-      '<div>' +
-        '<div class="tp-section-head"><span class="tp-section-title">Template Reference</span>' +
-          (t.template ? '<span class="tp-tpl-badge">' + esc(t.template) + '</span>' : '') + '</div>' +
-        '<div class="tp-tpl-ref">' + tplBody + '</div>' +
-      '</div>' +
+      tplSection +
       '<div><div class="tp-section-head"><span class="tp-section-title">Required Shots' + (shotCount ? ' (' + shotCount + ')' : '') + '</span>' +
-        '<a class="tp-section-link" href="' + esc(NAMING_SHEET_URL) + '" target="_blank" rel="noopener" title="Open Naming Convention Shot List">Find shot codes' + ICON.external + '</a></div>' +
+        namingLink + '</div>' +
         shotNotes + shots + '</div>' +
       issues;
     els.drawerBody.scrollTop = 0;
@@ -7961,17 +8546,33 @@
 
   function fillFilters() {
     const m = state.model;
+    if (!m) return;
     els.category.innerHTML = '<option value="">All categories</option>' +
       m.categories.map((c) => '<option value="' + esc(c) + '">' + esc(c) + '</option>').join('');
+    els.category.value = m.categories.includes(state.category) ? state.category : '';
+    state.category = els.category.value;
+
+    if (isMts()) {
+      state.template = '';
+      state.artist = '';
+      if (els.template) {
+        els.template.innerHTML = '<option value="">All Templates</option>';
+        els.template.value = '';
+      }
+      if (els.artist) {
+        els.artist.innerHTML = '<option value="">Artist history: anyone</option>';
+        els.artist.value = '';
+      }
+      return;
+    }
+
     const open = new Map();
     poolTasks().forEach((t) => open.set(t.template, (open.get(t.template) || 0) + 1));
     const templates = [...open.keys()].sort((a, b) => templateOrder(a) - templateOrder(b));
     const countLabel = state.view === 'my' ? ' mine' : ' open';
     els.template.innerHTML = '<option value="">All Templates</option>' +
       templates.map((t) => '<option value="' + esc(t) + '">' + esc(t) + ' · ' + open.get(t) + countLabel + '</option>').join('');
-    els.category.value = m.categories.includes(state.category) ? state.category : '';
     els.template.value = templates.includes(state.template) ? state.template : '';
-    state.category = els.category.value;
     state.template = els.template.value;
 
     // One entry for the current author (Suggested for me / their name), then every other artist once.
@@ -9476,9 +10077,18 @@
     els.drawerBody.querySelector('.tp-photo-wrap').innerHTML = photoHtml(taskByEan(state.selectedEan));
   });
 
-  // A thumbnail that fails (no access, or a file type Drive can't preview) falls back to the initials behind it.
+  // A thumbnail that fails (no access, or a file type Drive can't preview) tries one alternate URL, then initials.
   document.addEventListener('error', (e) => {
-    if (e.target.tagName === 'IMG' && e.target.classList.contains('tp-img')) e.target.remove();
+    const el = e.target;
+    if (!el || el.tagName !== 'IMG' || !el.classList.contains('tp-img')) return;
+    const id = el.getAttribute('data-drive-id') || '';
+    const w = el.getAttribute('data-thumb-w') || '160';
+    if (id && el.getAttribute('data-thumb-try') !== '1') {
+      el.setAttribute('data-thumb-try', '1');
+      el.src = 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w' + w;
+      return;
+    }
+    el.remove();
   }, true);
 
   els.menu.addEventListener('click', (e) => {
@@ -9498,6 +10108,16 @@
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    const genAllModal = document.getElementById('wr-gen-all-choice');
+    if (genAllModal) {
+      genAllModal.remove();
+      return;
+    }
+    const promptExpand = document.getElementById('wr-prompt-expand');
+    if (promptExpand) {
+      promptExpand.remove();
+      return;
+    }
     if (els.cropModal && !els.cropModal.hidden) closeCropModal();
     else if (!els.nameModal.hidden) closeNameModal();
     else if (els.answerlyModal && !els.answerlyModal.hidden) closeAnswerlyModal();
@@ -9505,14 +10125,26 @@
     else if (!els.menu.hidden) closeMenu();
     else if (!els.settingsMenu.hidden) closeSettings();
     else if (state.workspace && state.workspace.mdimMainMax) {
+      // Exit full-view dimension editor only — stay on M-DIM / replace.
       state.workspace.mdimMainMax = false;
       persistCurrentReplaceDraft();
       renderWorkspace();
     }
-    else if (state.workspace) {
-      if (state.workspace.mode === 'choose') { closeWorkspace(); render(); }
-      else { state.workspace.mode = 'choose'; renderWorkspace(); }
+    else if (state.workspace && state.workspace.mode === 'replace' && state.workspace.panelMax) {
+      state.workspace.panelMax = false;
+      renderWorkspace();
     }
+    else if (state.workspace && state.workspace.mode === 'replace' && state.workspace.panelOpen !== false) {
+      // Close Detail & Compare; do not leave Image Generation.
+      state.workspace.panelOpen = false;
+      state.workspace.panelMax = false;
+      renderWorkspace();
+    }
+    else if (state.workspace && state.workspace.mode === 'choose') {
+      closeWorkspace();
+      render();
+    }
+    // replace / primary: Esc must not jump back to the start of the flow.
   });
 
   // Lock page scroll while Product Dimension is enlarged (same idea as a modal popup).
@@ -9721,9 +10353,14 @@
     btn.addEventListener('click', () => {
       state.groupBy = btn.dataset.group;
       state.collapsed.clear();
-      document.querySelectorAll('.tp-seg [data-group]').forEach((b) => b.classList.toggle('is-active', b === btn));
+      const seg = btn.closest('.tp-seg');
+      if (seg) seg.querySelectorAll('[data-group]').forEach((b) => b.classList.toggle('is-active', b === btn));
       render();
     });
+  });
+
+  document.querySelectorAll('[data-catalog]').forEach((btn) => {
+    btn.addEventListener('click', () => setCatalog(btn.dataset.catalog));
   });
 
   els.toastUndo.addEventListener('click', hideToast);
@@ -10590,7 +11227,10 @@
               : 'Nothing left — shots with B already have D. Choose Regenerate all to overwrite, or add B on more shots.', false);
             return;
           }
-          startGenerateAllBatch(task, prior, shots, pending, mapInfo, includeDone);
+          ensureAnswerlyReadyForGenerate().then((ok) => {
+            if (!ok || !state.workspace || state.workspace.mode !== 'replace') return;
+            startGenerateAllBatch(task, prior, shots, pending, mapInfo, includeDone);
+          });
         }
 
         if (doneCount > 0) {
@@ -10695,7 +11335,10 @@
             cancelled ? undefined : { error: true }
           );
           renderWorkspace();
-          if (err && (err.code === 'no_token' || err.code === 'token_expired')) openAnswerlyModal();
+          if (err && (err.code === 'no_token' || err.code === 'token_expired' ||
+              err.code === 'bridge_offline' || isStaleBridgeError(err.message || err))) {
+            openAnswerlyModal();
+          }
         });
         return;
       }
@@ -11285,19 +11928,41 @@
   let loading = false;
   async function applyFeedData(data, opts) {
     opts = opts || {};
-    state.model = buildModel(data);
+    state.hhModel = buildModel(data);
+    try {
+      state.mtsModel = buildMtsModel(data);
+    } catch (err) {
+      console.warn('MTS model build failed', err);
+      state.mtsModel = buildMtsModel({
+        furniture: { rows: [], modified: '', error: String((err && err.message) || err) },
+        warnings: []
+      });
+    }
+    if (isMts() && state.groupBy !== 'subCategory' && state.groupBy !== 'product') {
+      state.groupBy = 'subCategory';
+    }
+    if (!isMts() && (state.groupBy === 'subCategory' || state.groupBy === 'product')) {
+      state.groupBy = 'subTemplate';
+    }
+    state.model = isMts() ? state.mtsModel : state.hhModel;
     state.loadedAt = Date.now();
+    syncCatalogUi();
     renderSource(data);
     fillFilters();
     updateTimestamp();
+    updateTabCounts();
     const route = parseHash();
-    if (!restoreWorkspaceFromRoute(route)) render();
+    if (isMts() && route && route.view === 'my') {
+      setView('available', { syncHash: true, replace: true });
+    } else if (!restoreWorkspaceFromRoute(route)) {
+      render();
+    }
     if (!opts.silentWarnings && data.warnings && data.warnings.length) {
       showToast('Some tabs could not be read: ' + esc(data.warnings.join('; ')), false);
     }
     // Drive thumbs only when needed for the open EAN workspace / list — avoid extra full reloads mid-edit.
     if (!opts.skipImages) loadImages();
-    loadTemplateRefImages();
+    if (!isMts()) loadTemplateRefImages();
   }
 
   async function load() {
@@ -11391,12 +12056,15 @@
         if (keepWs.drive != null) state.workspace.driveImgIndex = keepWs.drive;
         renderWorkspace();
       }
+      // MTS after HH so a slow/broken furniture deploy cannot block Available Tasks.
+      loadMtsFeedInBackground();
     } catch (err) {
       console.error(err);
       if (state.model) {
         updateTimestamp();
         if (state.model.xlsxSync) renderXlsxSync(state.model.xlsxSync);
         showToast('Refresh failed: ' + esc(err.message === 'NO_ACCESS' ? 'could not reach the sheet reader.' : err.message) + ' Showing the last loaded data.', false);
+        loadMtsFeedInBackground();
       } else {
         els.updated.textContent = 'Not loaded';
         if (els.synced) els.synced.textContent = '—';
@@ -11433,10 +12101,12 @@
   }, true);
 
   renderUser();
+  syncCatalogUi();
   {
     // No hash → #renamer so the live index.html URL opens Renamer (same as before V1.2).
     const initial = hashView() || 'renamer';
-    setView(initial, { syncHash: !hashView(), replace: true });
+    // MTS has no My Tasks yet — land on Available instead.
+    setView(isMts() && initial === 'my' ? 'available' : initial, { syncHash: !hashView(), replace: true });
   }
   setInterval(updateTimestamp, 30000);
   // Poll only while the tab is visible so background tabs do not burn Sheets quota.

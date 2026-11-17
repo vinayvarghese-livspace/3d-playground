@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="tasks.css?v=153">
+  <link rel="stylesheet" href="tasks.css?v=164">
 </head>
 <body class="view-renamer">
 
@@ -23,7 +23,8 @@
       <nav class="app-nav" aria-label="Sections">
         <a class="app-nav-tab is-active" href="#renamer" id="tab-renamer" aria-current="page">Renamer</a>
         <a class="app-nav-tab" href="#available" id="tab-available">
-          Available Tasks <span class="app-nav-count" id="tab-count-available">0</span>
+          Available Tasks <span class="app-nav-cat" id="tab-cat-available" title="Active catalog">HH</span>
+          <span class="app-nav-count" id="tab-count-available">0</span>
         </a>
         <a class="app-nav-tab" href="#my" id="tab-my">
           My Tasks <span class="app-nav-count" id="tab-count-my">0</span>
@@ -85,34 +86,45 @@
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
       <input type="text" id="search" placeholder="Search EAN or product name..." autocomplete="off" aria-label="Search EAN or product name">
     </label>
+    <div class="tp-catalog" role="group" aria-label="Catalog" title="Switch between HH and MTS Furniture">
+      <button type="button" class="is-active" data-catalog="hh" aria-pressed="true">HH</button>
+      <button type="button" data-catalog="mts" aria-pressed="false">MTS</button>
+    </div>
     <div class="tp-filters">
       <div class="tp-select">
         <select id="f-category" aria-label="Category"><option value="">All categories</option></select>
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
       </div>
-      <div class="tp-select">
+      <div class="tp-select" data-hh-only>
         <select id="f-template" aria-label="Template"><option value="">All Templates</option></select>
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
       </div>
       <div class="tp-select" data-available-only>
         <select id="f-set" aria-label="Set or PCs">
           <option value="">Any Set / PCs</option>
-          <option value="pcs">PCs</option>
-          <option value="set">Set (anything not PCs)</option>
+          <option value="pcs">PCs / EACH</option>
+          <option value="set">Set (anything not PCs/EACH)</option>
         </select>
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
       </div>
-      <div class="tp-select" data-available-only>
+      <div class="tp-select" data-available-only data-hh-only>
         <select id="f-artist" aria-label="Artist history"><option value="">Artist history: anyone</option></select>
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
       </div>
     </div>
-    <div class="tp-group-wrap" data-available-only>
+    <div class="tp-group-wrap" data-available-only data-hh-only>
       <span class="tp-label">Group:</span>
       <div class="tp-seg" role="group" aria-label="Group by">
         <button type="button" class="is-active" data-group="subTemplate">Sub-category + Template</button>
         <button type="button" data-group="productTemplate">Product + Template</button>
         <button type="button" data-group="template">Template</button>
+      </div>
+    </div>
+    <div class="tp-group-wrap" data-available-only data-mts-only>
+      <span class="tp-label">Group:</span>
+      <div class="tp-seg" role="group" aria-label="Group by">
+        <button type="button" class="is-active" data-group="subCategory">Sub-category</button>
+        <button type="button" data-group="product">Product</button>
       </div>
     </div>
     <div class="tp-sort-wrap" data-available-only>
@@ -356,6 +368,6 @@
   <script src="prompts/universal-replace.js"></script>
   <script src="mdim-core.js?v=16"></script>
   <script src="mdim-playground.js?v=16"></script>
-  <script src="tasks.js?v=153"></script>
+  <script src="tasks.js?v=168"></script>
 </body>
 </html>
