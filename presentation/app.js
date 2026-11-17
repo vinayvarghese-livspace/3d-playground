@@ -12,6 +12,8 @@ var lastModified = "";
 var pollTimer = null;
 var jsonpSeq = 0;
 var requestedSlug = "";
+/** hostname → brand from TITLE (once set, reused for all same-host URLs). */
+var domainTitles = {};
 
 function cleanMasterTitle(text) {
   return String(text || "")
@@ -30,12 +32,33 @@ function slugify(text) {
     .slice(0, 80);
 }
 
+function hostKey(url) {
+  if (!url) return "";
+  try {
+    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+  } catch (err) {
+    return "";
+  }
+}
+
+/** Capitalize first letter of each word (e.g. wayfair → Wayfair). */
+function prettyBrand(title) {
+  var t = String(title || "").trim();
+  if (!t) return "";
+  return t.replace(/\S+/g, function (word) {
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  });
+}
+
 function titleFromUrl(url) {
   if (!url) return "";
   try {
-    var host = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+    var host = hostKey(url);
+    if (!host) return "";
     if (host.indexOf("woodenstreet") >= 0) return "Wooden Street";
-    if (host.indexOf("homecentre") >= 0 || host.indexOf("home-centre") >= 0) return "Home center";
+    if (host.indexOf("homecentre") >= 0 || host.indexOf("home-centre") >= 0) {
+      return "Home center";
+    }
     if (host.indexOf("landmarkshops") >= 0) return "Landmarkshops";
     var parts = host.split(".");
     var core = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
@@ -43,6 +66,38 @@ function titleFromUrl(url) {
   } catch (err) {
     return "";
   }
+}
+
+/**
+ * Learn host → TITLE from any row that has both.
+ * Later blank TITLE cells on the same CDN host reuse that brand.
+ */
+function rebuildDomainTitles(boardsList) {
+  var map = {};
+  (boardsList || []).forEach(function (board) {
+    (board.images || []).forEach(function (img) {
+      if (!img) return;
+      var raw = String(img.title || "").trim();
+      var url = String(img.url || "").trim();
+      if (!raw || !url) return;
+      var host = hostKey(url);
+      if (!host || map[host]) return;
+      map[host] = prettyBrand(raw);
+    });
+  });
+  domainTitles = map;
+}
+
+/**
+ * Prefer row TITLE → learned TITLE for this host → domain guess.
+ */
+function resolveBrand(item) {
+  if (!item) return "";
+  var raw = String(item.title || "").trim();
+  if (raw) return prettyBrand(raw);
+  var host = hostKey(item.url);
+  if (host && domainTitles[host]) return domainTitles[host];
+  return titleFromUrl(item.url) || "";
 }
 
 function gridClassForCount(n) {
@@ -56,18 +111,20 @@ function gridClassForCount(n) {
 function resolveImages(items) {
   return (items || []).map(function (item, i) {
     var url = typeof item === "string" ? item : (item && item.url) || "";
-    var title =
-      (typeof item === "object" && item && item.title) ||
-      titleFromUrl(url) ||
-      "";
+    var rawTitle =
+      typeof item === "object" && item && item.title
+        ? String(item.title).trim()
+        : "";
     var sequence =
       (typeof item === "object" && item && item.sequence) || "";
-    return {
+    var resolved = {
       url: String(url || "").trim(),
-      title: title,
+      title: rawTitle,
       sequence: sequence,
       index: i
     };
+    resolved.brand = resolveBrand(resolved);
+    return resolved;
   });
 }
 
@@ -79,7 +136,9 @@ function shotLabelFor(item, index) {
 }
 
 function brandLabelFor(item) {
-  return (item && (item.title || titleFromUrl(item.url))) || "";
+  if (!item) return "";
+  if (item.brand) return item.brand;
+  return resolveBrand(item);
 }
 
 function readViewMode() {
@@ -360,6 +419,7 @@ function renderBoard() {
 
 function applyFeed(data) {
   boards = (data && data.boards) || [];
+  rebuildDomainTitles(boards);
 
   var slugIndex = findBoardIndexBySlug(requestedSlug);
   if (slugIndex >= 0) activeIndex = slugIndex;

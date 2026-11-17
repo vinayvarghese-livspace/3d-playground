@@ -14,7 +14,7 @@ https://docs.google.com/spreadsheets/d/1B9qtXKT0CVDt1aXFEhHyAHCWLHBp682pdL3egqNf
 | Column | Use |
 |--------|-----|
 | `SUB-CATEGORY` | Master title (coral bar). Fills down until the next value. |
-| `TITLE` | Label above each image. If blank, brand from image URL host. |
+| `TITLE` | Brand label above each image. If blank, reuse TITLE learned for the same image-host (CDN), else guess from the URL host. Example: one `assets.wfcdn.com` row titled `wayfair` → all other `assets.wfcdn.com` images show **Wayfair**. |
 | `IMAGE URL` | Image to show. Empty → blank square. |
 | `SEQUENCE` | Right-side numbered list (unique values, row order). |
 
