@@ -14,6 +14,9 @@ var jsonpSeq = 0;
 var requestedSlug = "";
 /** hostname → brand from TITLE (once set, reused for all same-host URLs). */
 var domainTitles = {};
+var authPopup = null;
+var authWatch = null;
+var authBusy = false;
 
 function cleanMasterTitle(text) {
   return String(text || "")
@@ -481,27 +484,124 @@ function jsonp(query, timeoutMs) {
       if (settled) return;
       settled = true;
       cleanup();
-      reject(new Error("Failed to load feed (open /exec once to authorize)"));
+      reject(new Error("AUTH_REQUIRED"));
     };
     document.head.appendChild(script);
   });
 }
 
+function feedRoot() {
+  return typeof PRESENTATION_FEED_URL === "string"
+    ? PRESENTATION_FEED_URL.trim()
+    : "";
+}
+
+function authPageUrl() {
+  var root = feedRoot();
+  if (!root) return "";
+  return root + (root.indexOf("?") >= 0 ? "&" : "?") + "action=ping";
+}
+
+function showAuthDialog(status) {
+  var dlg = document.getElementById("authDialog");
+  if (!dlg) return;
+  dlg.hidden = false;
+  var note = document.getElementById("authStatus");
+  if (note && status) note.textContent = status;
+  var title = document.getElementById("masterTitle");
+  if (title && !boards.length) title.textContent = "Access needed";
+}
+
+function hideAuthDialog() {
+  var dlg = document.getElementById("authDialog");
+  if (dlg) dlg.hidden = true;
+  var note = document.getElementById("authStatus");
+  if (note) note.textContent = "";
+}
+
+function needsAuth(err) {
+  var msg = String((err && err.message) || err || "");
+  return msg === "AUTH_REQUIRED" || /authoriz|permission|timeout/i.test(msg);
+}
+
+function openAuthPopup() {
+  var url = authPageUrl();
+  if (!url) return;
+  var fallback = document.getElementById("authFallback");
+  authPopup = window.open(
+    url,
+    "presBoardAuth",
+    "popup=yes,width=560,height=720"
+  );
+  if (!authPopup) {
+    if (fallback) {
+      fallback.hidden = false;
+      fallback.href = url;
+    }
+    showAuthDialog("The Google window was blocked. Use the link below.");
+    return;
+  }
+  if (fallback) fallback.hidden = true;
+  showAuthDialog("Finish Allow in the Google window, then close it.");
+  if (authWatch) clearInterval(authWatch);
+  authWatch = setInterval(function () {
+    if (authPopup && !authPopup.closed) return;
+    clearInterval(authWatch);
+    authWatch = null;
+    loadBoard();
+  }, 600);
+}
+
+function bindAuthDialog() {
+  var allow = document.getElementById("authAllow");
+  var retry = document.getElementById("authRetry");
+  if (allow) {
+    allow.addEventListener("click", function () {
+      openAuthPopup();
+    });
+  }
+  if (retry) {
+    retry.addEventListener("click", function () {
+      showAuthDialog("Checking access…");
+      loadBoard();
+    });
+  }
+}
+
 function loadBoard() {
-  return jsonp("action=board", 60000)
+  if (authBusy) return Promise.resolve(false);
+  authBusy = true;
+  return jsonp("action=board", 20000)
     .then(function (body) {
       if (!body || !body.ok) {
         throw new Error((body && body.error) || "Feed error");
       }
       applyFeed(body.data);
+      hideAuthDialog();
+      return true;
     })
     .catch(function (err) {
       if (err && err.message === "NO_FEED_URL") {
         document.getElementById("masterTitle").textContent = "Not connected";
-        return;
+        return false;
       }
-      document.getElementById("masterTitle").textContent =
-        "Error: " + (err && err.message ? err.message : err);
+      if (!boards.length && needsAuth(err)) {
+        showAuthDialog(
+          err && err.message === "AUTH_REQUIRED"
+            ? ""
+            : "Still waiting for access. Click Allow access."
+        );
+        return false;
+      }
+      if (!boards.length) {
+        document.getElementById("masterTitle").textContent =
+          "Error: " + (err && err.message ? err.message : err);
+      }
+      return false;
+    })
+    .then(function (ok) {
+      authBusy = false;
+      return ok;
     });
 }
 
@@ -517,6 +617,7 @@ function startPoll() {
 viewMode = readViewMode();
 requestedSlug = parseRequestedSlug();
 bindViewToggle();
+bindAuthDialog();
 syncViewToggle();
 applyViewVisibility();
 loadBoard();
