@@ -211,7 +211,8 @@
     answerlyModels: null,
     replaceDraftCache: {}, // in-memory EAN drafts so switching tasks keeps A/B/C/D
     renderMarkedInProgress: {},
-    railScrollTop: null
+    railScrollTop: null,
+    mtsAuthNeeded: false,
   };
 
   function isMts() {
@@ -272,6 +273,8 @@
       state.groupBy = 'subTemplate';
     }
     syncCatalogUi();
+    if (catalog === 'mts' && state.mtsAuthNeeded) showMtsAuthDialog();
+    else if (catalog !== 'mts') hideMtsAuthDialog();
     if (catalog === 'mts' && state.view === 'my') {
       setView('available', { syncHash: true });
       return;
@@ -519,10 +522,15 @@
   }
 
   // Shoot folders: second image is the usual product preview. Output folders: first image.
-  // MTS Furniture: prefer the 3rd previewable image (index 2) when present.
-  function defaultPhoto(list, preferFirst) {
+  // MTS Furniture and SF: prefer the 3rd previewable image (index 2) when present.
+  function prefersThirdThumb(task) {
+    if (isMts() || (task && task.catalog === 'mts')) return true;
+    return !!(task && String(task.category || '') === 'SF');
+  }
+
+  function defaultPhoto(list, preferFirst, task) {
     if (preferFirst) return 0;
-    if (isMts()) {
+    if (prefersThirdThumb(task)) {
       if (list.length > 2) return 2;
       return list.length ? list.length - 1 : 0;
     }
@@ -831,6 +839,89 @@
   }
 
   let mtsLoading = false;
+  let mtsAuthWatch = null;
+
+  function mtsAuthPageUrl() {
+    if (!MTS_FEED_URL) return '';
+    return MTS_FEED_URL + (MTS_FEED_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=ping';
+  }
+
+  function ensureMtsAuthDialog() {
+    let dlg = document.getElementById('mts-auth-dialog');
+    if (dlg) return dlg;
+    dlg = document.createElement('div');
+    dlg.id = 'mts-auth-dialog';
+    dlg.className = 'mts-auth-dialog';
+    dlg.hidden = true;
+    dlg.innerHTML =
+      '<div class="mts-auth-card" role="dialog" aria-modal="true" aria-labelledby="mts-auth-title">' +
+        '<h2 id="mts-auth-title">Allow Google access</h2>' +
+        '<p>MTS Furniture reads a separate Livspace sheet. The first time you open it, Google asks for permission.</p>' +
+        '<ol>' +
+          '<li>Click <strong>Allow access</strong>.</li>' +
+          '<li>In the Google window, choose your Livspace account and click <strong>Allow</strong>.</li>' +
+          '<li>Close that window. MTS loads on its own.</li>' +
+        '</ol>' +
+        '<button type="button" class="tp-btn tp-btn-primary mts-auth-allow" id="mts-auth-allow">Allow access</button>' +
+        '<button type="button" class="tp-btn mts-auth-retry" id="mts-auth-retry">I already allowed it</button>' +
+        '<p class="mts-auth-status" id="mts-auth-status"></p>' +
+        '<a class="mts-auth-fallback" id="mts-auth-fallback" hidden target="_blank" rel="noopener">Open the access page in a new tab</a>' +
+      '</div>';
+    document.body.appendChild(dlg);
+    dlg.querySelector('#mts-auth-allow').addEventListener('click', openMtsAuthPopup);
+    dlg.querySelector('#mts-auth-retry').addEventListener('click', () => {
+      setMtsAuthStatus('Checking access…');
+      loadMtsFeedInBackground();
+    });
+    return dlg;
+  }
+
+  function setMtsAuthStatus(text) {
+    const note = document.getElementById('mts-auth-status');
+    if (note) note.textContent = text || '';
+  }
+
+  function showMtsAuthDialog(status) {
+    const dlg = ensureMtsAuthDialog();
+    dlg.hidden = false;
+    setMtsAuthStatus(status || '');
+  }
+
+  function hideMtsAuthDialog() {
+    const dlg = document.getElementById('mts-auth-dialog');
+    if (dlg) dlg.hidden = true;
+    setMtsAuthStatus('');
+  }
+
+  function mtsNeedsAuth(err) {
+    const msg = String((err && err.message) || err || '');
+    return msg === 'NO_ACCESS' || /authoriz|permission/i.test(msg);
+  }
+
+  function openMtsAuthPopup() {
+    const url = mtsAuthPageUrl();
+    if (!url) return;
+    const fallback = document.getElementById('mts-auth-fallback');
+    const popup = window.open(url, 'mtsFeedAuth', 'popup=yes,width=560,height=720');
+    if (!popup) {
+      if (fallback) {
+        fallback.hidden = false;
+        fallback.href = url;
+      }
+      showMtsAuthDialog('The Google window was blocked. Use the link below.');
+      return;
+    }
+    if (fallback) fallback.hidden = true;
+    showMtsAuthDialog('Finish Allow in the Google window, then close it.');
+    if (mtsAuthWatch) clearInterval(mtsAuthWatch);
+    mtsAuthWatch = setInterval(() => {
+      if (popup && !popup.closed) return;
+      clearInterval(mtsAuthWatch);
+      mtsAuthWatch = null;
+      loadMtsFeedInBackground();
+    }, 600);
+  }
+
   async function loadMtsFeedInBackground() {
     if (!MTS_FEED_URL || mtsLoading) return;
     mtsLoading = true;
@@ -854,8 +945,12 @@
         updateTabCounts();
       }
       syncCatalogUi();
+      state.mtsAuthNeeded = false;
+      hideMtsAuthDialog();
     } catch (err) {
       const msg = String((err && err.message) || err || 'MTS feed failed');
+      const needsAuth = mtsNeedsAuth(err);
+      state.mtsAuthNeeded = needsAuth;
       state.mtsModel = buildMtsModel({
         furniture: { rows: [], modified: '', error: msg },
         warnings: ['MTS Furniture: ' + msg]
@@ -865,7 +960,8 @@
         fillFilters();
         updateTabCounts();
         if (state.view !== 'renamer') render();
-        showToast('MTS Furniture could not be read: ' + esc(msg), false, { error: true });
+        if (needsAuth) showMtsAuthDialog();
+        else showToast('MTS Furniture could not be read: ' + esc(msg), false, { error: true });
       }
     } finally {
       mtsLoading = false;
@@ -8277,7 +8373,7 @@
     const list = imagesOf(t);
     const preferFirst = useOutputPreview(t);
     const img = list && list.length
-      ? thumbImgTag(list[defaultPhoto(list, preferFirst)], 160)
+      ? thumbImgTag(list[defaultPhoto(list, preferFirst, t)], 160)
       : '';
     return '<div class="tp-thumb" aria-hidden="true"><span>' + esc(initials(t.productName || t.title)) + '</span>' + img + '</div>';
   }
@@ -8288,7 +8384,7 @@
     const status = folderId ? state.images[folderId] : null;
     const preferFirst = useOutputPreview(t);
     if (list && list.length) {
-      const i = state.photoIndex < 0 ? defaultPhoto(list, preferFirst) : Math.min(state.photoIndex, list.length - 1);
+      const i = state.photoIndex < 0 ? defaultPhoto(list, preferFirst, t) : Math.min(state.photoIndex, list.length - 1);
       const main = list[i];
       const strip = list.length > 1
         ? '<div class="tp-photo-strip">' + list.map((p, n) =>

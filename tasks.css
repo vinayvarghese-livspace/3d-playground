@@ -2415,3 +2415,22 @@ body.is-rail-resizing * { cursor: col-resize !important; }
 }
 .mdim-arrow:hover .mdim-rotate-line,
 .mdim-arrow.is-selected .mdim-rotate-line { opacity: 0.85; }
+
+.mts-auth-dialog {
+  position: fixed; inset: 0; z-index: 80;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px; background: rgba(15, 23, 42, 0.45);
+}
+.mts-auth-dialog[hidden] { display: none; }
+.mts-auth-card {
+  width: 100%; max-width: 420px; background: #fff; border-radius: 12px;
+  padding: 24px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+}
+.mts-auth-card h2 { margin: 0 0 8px; font-size: 18px; color: #0F172A; }
+.mts-auth-card p, .mts-auth-card li { font-size: 14px; line-height: 1.45; color: #334155; }
+.mts-auth-card ol { margin: 12px 0 18px 18px; }
+.mts-auth-card li + li { margin-top: 6px; }
+.mts-auth-allow, .mts-auth-retry { width: 100%; }
+.mts-auth-retry { margin-top: 8px; background: #fff; border: 1px solid #E2E8F0; }
+.mts-auth-status { min-height: 1.2em; margin: 10px 0 0; font-size: 13px; color: #0F766E; }
+.mts-auth-fallback { display: inline-block; margin-top: 10px; font-size: 13px; }
