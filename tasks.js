@@ -44,15 +44,13 @@
   // MTS Furniture Sheet Reader (Sheet1 only). Separate from FEED_URL — deploy dashboard/apps-script-mts-furniture.
   const MTS_FEED_URL = 'https://script.google.com/a/macros/livspace.com/s/AKfycbyMZSpmOfCpu4Dx45DjLN8et1TLqFcKRMATFgNwnZLZD_JYpn5WA0qMNuAM8tc_t-91mA/exec';
   const FEED_TIMEOUT_MS = 90000;
-  // Preview expects SF-capable reader (v40+). Beta stays compatible with the last shipped feed.
-  const FEED_VERSION = isPreviewApp() ? 40 : 35;
+  const FEED_VERSION = 40;
   const MTS_FEED_VERSION = 3;
   const CATALOG_KEY = 'tasks.catalog';
-  // Preview gets MTS catalog + SF Shoot Tracker tab; Beta stays HH-only until promoted.
   function isPreviewApp() {
     return /preview\.html$/i.test(typeof location !== 'undefined' ? location.pathname : '');
   }
-  const APP_VERSION = isPreviewApp() ? 'Preview V1.8' : 'Beta V1.8';
+  const APP_VERSION = isPreviewApp() ? 'Preview V1.9' : 'Beta V1.9';
   // How often to re-read the assign sheet while this tab is visible (other users' picks).
   // ~2 reads/min per open browser — well under the Sheets ~60 reads/min/user cap.
   const ASSIGN_POLL_MS = 30000;
@@ -62,14 +60,13 @@
     { category: 'Table Top & Bath', tab: 'Table Top & Bath' },
     { category: 'Kitchen & Laundry', tab: 'Kitchen & Laundry' }
   ];
-  const SHOOT_TABS = isPreviewApp()
-    ? SHOOT_TABS_HH.concat([{ category: 'SF', tab: 'SF' }])
-    : SHOOT_TABS_HH.slice();
+  const SHOOT_TABS = SHOOT_TABS_HH.concat([{ category: 'SF', tab: 'SF' }]);
 
-  // Template reference images from Drive (thumbnails only). Keys are tidyTemplate ids: T2, T38, T2a…
+  // Template reference images from Drive (thumbnails only).
+  // Keys are the sheet value with spaces removed, lowercased: "SF 1" and "SF1" share sf1.
   // Folder: https://drive.google.com/drive/folders/1-Z-zDxQgUCI7AaPDcJCYveBihssvpEG1
   const TEMPLATE_REF_FOLDER_ID = '1-Z-zDxQgUCI7AaPDcJCYveBihssvpEG1';
-  const TEMPLATE_IMAGES = {}; // tidy key → { id, name, thumb }
+  const TEMPLATE_IMAGES = {}; // match key → { id, name, thumb }
   let templateImagesLoading = false;
   const NAMING_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1BCUOtOmzYyMcfxptuwpSNOtvyN7PC7k792pljITUM8w/edit?pli=1&gid=476653278#gid=476653278';
   // Open as a Google Sheet (not the Drive file page) when checking pasted prop images.
@@ -181,8 +178,8 @@
     model: null,
     hhModel: null,
     mtsModel: null,
-    // HH (default) | MTS Furniture (Preview only). Available Tasks count always follows this catalog.
-    catalog: (isPreviewApp() && localStorage.getItem(CATALOG_KEY) === 'mts' ? 'mts' : 'hh'),
+    // HH (default) | MTS Furniture. Available Tasks count always follows this catalog.
+    catalog: (localStorage.getItem(CATALOG_KEY) === 'mts' ? 'mts' : 'hh'),
     loadedAt: null,
     view: 'renamer',
     myBucket: 'active',
@@ -254,8 +251,7 @@
   }
 
   function setCatalog(next) {
-    // MTS catalog switch is Preview-only until promoted to Beta.
-    const catalog = (isPreviewApp() && next === 'mts') ? 'mts' : 'hh';
+    const catalog = next === 'mts' ? 'mts' : 'hh';
     if (state.catalog === catalog) return;
     state.catalog = catalog;
     try { localStorage.setItem(CATALOG_KEY, catalog); } catch (e) { /* ignore */ }
@@ -836,7 +832,7 @@
 
   let mtsLoading = false;
   async function loadMtsFeedInBackground() {
-    if (!isPreviewApp() || !MTS_FEED_URL || mtsLoading) return;
+    if (!MTS_FEED_URL || mtsLoading) return;
     mtsLoading = true;
     try {
       const mtsFeed = await jsonp('action=tasks', FEED_TIMEOUT_MS, MTS_FEED_URL);
@@ -934,26 +930,29 @@
     return t.pdpLink ? [t.pdpLink] : [];
   }
 
-  // Template mapping values: "T4", "T 4", "T2a", "T61a", "T7 set", "T7 Set of 2".
-  // Letter suffixes and "set" / "set of N" are kept. Bare titles with no T-number count as empty.
-  // Same rules map Drive file stems ("T38.jpg", "T 38.png", "T02", "T2") → T38 / T2.
+  // Sheet value as-is, except spaces inside the code are ignored so
+  // "SF 1" and "SF1" are one template, and "T 4" still matches "T4".
+  // A trailing "set" / "set of N" keeps its space: "T7 set" stays "T7 set".
   function tidyTemplate(s) {
-    const raw = String(s || '').trim();
-    if (!raw) return '';
-    const m = raw.toUpperCase().match(/\bT\s*-?\s*(\d+)\s*([A-Z])?(?:\s+(SET(?:\s+OF\s+\d+)?))?/);
-    if (!m) return '';
-    let out = 'T' + Number(m[1]);
-    if (m[2]) out += m[2].toLowerCase();
-    if (m[3]) out += ' ' + m[3].toLowerCase().replace(/\s+/g, ' ');
-    return out;
+    const collapsed = String(s || '').trim().replace(/\s+/g, ' ');
+    if (!collapsed) return '';
+    const set = collapsed.match(/^(.*?)(\s+set(?:\s+of\s+\d+)?)$/i);
+    if (set && set[1].trim()) {
+      return set[1].replace(/ /g, '') + set[2].toLowerCase().replace(/\s+/g, ' ');
+    }
+    return collapsed.replace(/ /g, '');
+  }
+
+  // Image and prompt matching. Case and spaces do not matter.
+  function templateMatchKey(s) {
+    return tidyTemplate(s).toLowerCase().replace(/ /g, '');
   }
 
   function templateCodeFromFileName(name) {
-    // Ignore nested paths (subfolders); only top-level image stems like "T38.jpg" / "T 02.png".
+    // Ignore nested paths (subfolders); only top-level files such as "SF1.jpg" / "T 4.png".
     const base = String(name || '').replace(/\\/g, '/').split('/').pop() || '';
     if (!base || base.indexOf('/') >= 0) return '';
-    const stem = base.replace(/\.[^.]+$/, '').trim();
-    return tidyTemplate(stem);
+    return tidyTemplate(base.replace(/\.[^.]+$/, ''));
   }
 
   function rebuildTemplateImageMap(list) {
@@ -961,19 +960,22 @@
     (Array.isArray(list) ? list : []).forEach((img) => {
       if (!img || !img.id) return;
       if (String(img.name || '').indexOf('/') >= 0) return; // skip subfolder files
-      const key = templateCodeFromFileName(img.name);
-      if (!key) return; // ignore non-template files
+      const key = templateMatchKey(templateCodeFromFileName(img.name));
+      if (!key) return;
       if (!TEMPLATE_IMAGES[key]) TEMPLATE_IMAGES[key] = img;
     });
   }
 
-  // Resolve Drive thumb for a sheet template id (T7 set → try T7 set, then T7).
+  // Drive file whose name matches the sheet value, ignoring spaces and case.
+  // "T7 set" also falls back to a file named "T7".
   function templateRefImage(template) {
-    const key = tidyTemplate(template) || String(template || '').trim();
-    if (!key) return null;
+    const label = tidyTemplate(template);
+    if (!label) return null;
+    const key = templateMatchKey(label);
     if (TEMPLATE_IMAGES[key]) return TEMPLATE_IMAGES[key];
-    const base = key.replace(/\s+set(?:\s+of\s+\d+)?$/i, '').trim();
-    if (base && base !== key && TEMPLATE_IMAGES[base]) return TEMPLATE_IMAGES[base];
+    const base = label.replace(/\s+set(?:\s+of\s+\d+)?$/i, '').trim();
+    const baseKey = templateMatchKey(base);
+    if (baseKey && baseKey !== key && TEMPLATE_IMAGES[baseKey]) return TEMPLATE_IMAGES[baseKey];
     return null;
   }
 
@@ -1272,7 +1274,7 @@
         (t.catalog === 'mts' ? 'MTS Furniture sheet' : 'Shoot Tracker') + '.');
     }
     if (t.catalog !== 'mts') {
-      if (!t.template) warn('template', t.templateRaw ? 'Template mapping "' + t.templateRaw + '" is not a recognised template (e.g. T4, T2a, T7 set).' : 'Template mapping is missing.');
+      if (!t.template) warn('template', 'Template mapping is missing.');
     }
     if (!t.shots.length) warn('shots', 'Mandatory shot list is empty.');
     if (/re-?sh(o|oo)t/i.test(t.remarks)) warn('reshoot', 'Photoshoot remarks: "' + t.remarks + '".');
@@ -1368,7 +1370,7 @@
           ? 'GDRIVE cell shows "' + String(p.driveText).slice(0, 60) + '" but no folder link could be read'
           : 'no GDRIVE link yet')
         : !p.template
-          ? (p.templateRaw ? 'template mapping "' + p.templateRaw + '" is not a recognised template' : 'no template mapping yet')
+          ? 'no template mapping yet'
         : artist ? 'already assigned to ' + artist + ' in the Render Tracker'
         : '';
     });
@@ -4495,7 +4497,7 @@
   function findReusedCustomPrompt(t, shot) {
     const rows = state.approvedCustoms || [];
     if (!t || !shot || !rows.length) return null;
-    const tpl = normPromptKey(t.template);
+    const tpl = templateMatchKey(t.template);
     const sub = normPromptKey(t.subCategory);
     const code = normPromptKey(shot.code);
     const name = normPromptKey(shot.name);
@@ -4503,7 +4505,7 @@
     // Newest-first list from the sheet — first match wins.
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      if (normPromptKey(row.template) !== tpl) continue;
+      if (templateMatchKey(row.template) !== tpl) continue;
       if (normPromptKey(row.subCategory) !== sub) continue;
       const rowCode = normPromptKey(row.imageShortCode);
       const rowName = normPromptKey(row.imageName);
@@ -7854,7 +7856,7 @@
           (tplDriveText ? ' (' + tplDriveText + ' still show text in the GDRIVE cell)' : ''));
       }
       const badTpl = drive.filter((p) => !p.template && p.templateRaw).length;
-      if (badTpl) notes.push(cat + ': ' + badTpl + ' template mappings not recognised (need T4, T2a, T7 set, …)');
+      if (badTpl) notes.push(cat + ': ' + badTpl + ' template mappings are blank after reading the sheet.');
       return '<tr><th>' + esc(cat) + '</th><td>' + ps.length + '</td><td>' + drive.length + '</td><td>' +
         tpl.length + '</td><td>' + assigned + '</td><td>' + open.length + '</td><td>' + open.filter(isSet).length + '</td></tr>';
     });
@@ -8017,7 +8019,7 @@
     const title = view === 'renamer' ? 'Renamer'
       : view === 'my' ? 'My Tasks'
       : ('Available Tasks · ' + (isMts() ? 'MTS' : 'HH'));
-    const ver = /preview\.html$/i.test(location.pathname) ? 'PREVIEW V1.8' : 'BETA V1.8';
+    const ver = isPreviewApp() ? 'PREVIEW V1.9' : 'BETA V1.9';
     document.title = title + ' · 3D Playground (' + ver + ')';
     const titleEl = $('view-title');
     if (titleEl) titleEl.textContent = title;
