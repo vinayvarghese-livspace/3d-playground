@@ -572,12 +572,20 @@
     return 'c-' + PALETTE[index % PALETTE.length];
   }
 
+  // "T4" / "T2a" → T. "SF1" / "SF12a" → SF. T and SF are separate prediction series.
+  function templateSeries(t) {
+    const m = String(t || '').match(/^([A-Za-z]+)/);
+    return m ? m[1].toUpperCase() : '';
+  }
+
   function templateOrder(t) {
-    const m = String(t || '').match(/^T(\d+)([a-z])?(?:\s+(set(?:\s+of\s+(\d+))?))?$/i);
-    if (!m) return 9999;
-    const letter = m[2] ? m[2].toLowerCase().charCodeAt(0) - 96 : 0;
-    const setOf = m[3] ? (m[4] ? Number(m[4]) : 50) : 0;
-    return Number(m[1]) * 1000 + letter * 20 + setOf;
+    const m = String(t || '').match(/^([A-Za-z]+)(\d+)([a-z])?(?:\s+(set(?:\s+of\s+(\d+))?))?$/i);
+    if (!m) return 900000000;
+    const series = m[1].toUpperCase();
+    const seriesRank = series === 'T' ? 0 : 1000000 + (series.charCodeAt(0) * 1000) + (series.charCodeAt(1) || 0);
+    const letter = m[3] ? m[3].toLowerCase().charCodeAt(0) - 96 : 0;
+    const setOf = m[4] ? (m[5] ? Number(m[5]) : 50) : 0;
+    return seriesRank + Number(m[2]) * 1000 + letter * 20 + setOf;
   }
 
   /* ---------- Sheet feed ---------- */
@@ -1429,7 +1437,7 @@
     });
 
     // Who rendered what, from the Render Tracker Artist column joined to the Shoot Tracker by EAN.
-    const history = { byKey: new Map(), byTemplate: new Map(), bySub: new Map() };
+    const history = { byKey: new Map(), byTemplate: new Map(), bySub: new Map(), bySeriesSub: new Map() };
     products.forEach((p) => {
       (renderByEan.get(p.ean) || []).forEach((r) => {
         const artist = r.artist.trim();
@@ -1437,6 +1445,8 @@
         if (p.template) {
           bump(history.byKey, p.template + '|' + p.subKey, artist);
           bump(history.byTemplate, p.template, artist);
+          const series = templateSeries(p.template);
+          if (series && p.subKey) bump(history.bySeriesSub, series + '|' + p.subKey, artist);
         }
         bump(history.bySub, p.subKey, artist);
       });
@@ -1560,7 +1570,7 @@
       templates: new Map(),
       stats,
       warnings,
-      history: { byKey: new Map(), byTemplate: new Map(), bySub: new Map() },
+      history: { byKey: new Map(), byTemplate: new Map(), bySub: new Map(), bySeriesSub: new Map() },
       artists: [],
       categories,
       fileSavedAt: furniture.modified || '',
@@ -1569,15 +1579,18 @@
     };
   }
 
-  // Every artist who has done the same sub-category + template, the same template, or the same sub-category,
-  // closest match first and most work first within each level.
+  // Closest match first: exact template in this sub-category, then this template anywhere,
+  // then the same sub-category inside the same series (T stays with T, SF stays with SF).
   function suggestionsFor(template, subKey) {
     const h = state.model.history;
+    const series = templateSeries(template);
     const levels = [
       [template && subKey ? h.byKey.get(template + '|' + subKey) : null, 'same sub-category and template'],
       [template ? h.byTemplate.get(template) : null, 'template ' + template],
-      [subKey ? h.bySub.get(subKey) : null, 'same sub-category']
+      [series && subKey && h.bySeriesSub ? h.bySeriesSub.get(series + '|' + subKey) : null,
+        'same sub-category, ' + series + ' series']
     ];
+    if (!series && subKey) levels.push([h.bySub.get(subKey), 'same sub-category']);
     const out = [];
     const seen = new Set();
     levels.forEach(([map, basis]) => {
