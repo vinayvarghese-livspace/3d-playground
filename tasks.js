@@ -1437,7 +1437,7 @@
     });
 
     // Who rendered what, from the Render Tracker Artist column joined to the Shoot Tracker by EAN.
-    const history = { byKey: new Map(), byTemplate: new Map(), bySub: new Map(), bySeriesSub: new Map() };
+    const history = { byKey: new Map(), byTemplate: new Map(), bySub: new Map(), bySeries: new Map() };
     products.forEach((p) => {
       (renderByEan.get(p.ean) || []).forEach((r) => {
         const artist = r.artist.trim();
@@ -1446,7 +1446,8 @@
           bump(history.byKey, p.template + '|' + p.subKey, artist);
           bump(history.byTemplate, p.template, artist);
           const series = templateSeries(p.template);
-          if (series && p.subKey) bump(history.bySeriesSub, series + '|' + p.subKey, artist);
+          // SF history stays on SF. T history stays on T. Sub-category alone is not used for these.
+          if (series) bump(history.bySeries, series, artist);
         }
         bump(history.bySub, p.subKey, artist);
       });
@@ -1570,7 +1571,7 @@
       templates: new Map(),
       stats,
       warnings,
-      history: { byKey: new Map(), byTemplate: new Map(), bySub: new Map(), bySeriesSub: new Map() },
+      history: { byKey: new Map(), byTemplate: new Map(), bySub: new Map(), bySeries: new Map() },
       artists: [],
       categories,
       fileSavedAt: furniture.modified || '',
@@ -1579,18 +1580,21 @@
     };
   }
 
-  // Closest match first: exact template in this sub-category, then this template anywhere,
-  // then the same sub-category inside the same series (T stays with T, SF stays with SF).
+  // Exact template first. Then anyone who has already worked that same series
+  // (SF only matches earlier SF work, T only matches earlier T work).
+  // Sub-category is not used for T/SF — that was pulling T artists onto new SF templates.
   function suggestionsFor(template, subKey) {
     const h = state.model.history;
     const series = templateSeries(template);
     const levels = [
       [template && subKey ? h.byKey.get(template + '|' + subKey) : null, 'same sub-category and template'],
-      [template ? h.byTemplate.get(template) : null, 'template ' + template],
-      [series && subKey && h.bySeriesSub ? h.bySeriesSub.get(series + '|' + subKey) : null,
-        'same sub-category, ' + series + ' series']
+      [template ? h.byTemplate.get(template) : null, 'template ' + template]
     ];
-    if (!series && subKey) levels.push([h.bySub.get(subKey), 'same sub-category']);
+    if (series && h.bySeries) {
+      levels.push([h.bySeries.get(series), 'earlier ' + series + ' templates']);
+    } else if (!series && subKey) {
+      levels.push([h.bySub.get(subKey), 'same sub-category']);
+    }
     const out = [];
     const seen = new Set();
     levels.forEach(([map, basis]) => {
@@ -8271,7 +8275,7 @@
         shown.map((s) => '<span class="tp-suggest-person"><span class="tp-mini-avatar">' + esc(initials(s.name)) + '</span><b>' + esc(s.name) + '</b></span>').join('') +
         (suggestions.length > shown.length ? '<span class="tp-suggest-more">+' + (suggestions.length - shown.length) + '</span>' : '') +
         '</span>'
-      : '<span class="tp-suggest tp-suggest-none" title="Nobody has done this template or sub-category yet, so it is open to everyone">Open to anyone</span>');
+      : '<span class="tp-suggest tp-suggest-none" title="Nobody has done this ' + esc(templateSeries(g.template) || 'template') + ' template yet, so it is open to everyone">Open to anyone</span>');
     const pickAllHtml = (!isMy && canAssignTasks())
       ? '<button type="button" class="tp-assign-btn" data-action="assign-all-menu" aria-haspopup="menu">Assign to</button>'
       : '';
