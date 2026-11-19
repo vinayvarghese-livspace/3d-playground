@@ -1437,17 +1437,15 @@
     });
 
     // Who rendered what, from the Render Tracker Artist column joined to the Shoot Tracker by EAN.
-    const history = { byKey: new Map(), byTemplate: new Map(), bySub: new Map(), bySeries: new Map() };
+    const history = { byKey: new Map(), byTemplate: new Map(), bySub: new Map() };
     products.forEach((p) => {
       (renderByEan.get(p.ean) || []).forEach((r) => {
         const artist = r.artist.trim();
         if (!artist) return;
         if (p.template) {
+          // Key is the full template, so SF1 never shares history with SF2 or T1.
           bump(history.byKey, p.template + '|' + p.subKey, artist);
           bump(history.byTemplate, p.template, artist);
-          const series = templateSeries(p.template);
-          // SF history stays on SF. T history stays on T. Sub-category alone is not used for these.
-          if (series) bump(history.bySeries, series, artist);
         }
         bump(history.bySub, p.subKey, artist);
       });
@@ -1571,7 +1569,7 @@
       templates: new Map(),
       stats,
       warnings,
-      history: { byKey: new Map(), byTemplate: new Map(), bySub: new Map(), bySeries: new Map() },
+      history: { byKey: new Map(), byTemplate: new Map(), bySub: new Map() },
       artists: [],
       categories,
       fileSavedAt: furniture.modified || '',
@@ -1580,21 +1578,16 @@
     };
   }
 
-  // Exact template first. Then anyone who has already worked that same series
-  // (SF only matches earlier SF work, T only matches earlier T work).
-  // Sub-category is not used for T/SF — that was pulling T artists onto new SF templates.
+  // SF1 matches earlier SF1 work only. SF2 is a different template, and T is a different series.
+  // No series-wide or sub-category fallback for T/SF — that mixed SF1 with SF2 and SF with T.
   function suggestionsFor(template, subKey) {
     const h = state.model.history;
     const series = templateSeries(template);
     const levels = [
-      [template && subKey ? h.byKey.get(template + '|' + subKey) : null, 'same sub-category and template'],
+      [template && subKey ? h.byKey.get(template + '|' + subKey) : null, 'same sub-category and template ' + template],
       [template ? h.byTemplate.get(template) : null, 'template ' + template]
     ];
-    if (series && h.bySeries) {
-      levels.push([h.bySeries.get(series), 'earlier ' + series + ' templates']);
-    } else if (!series && subKey) {
-      levels.push([h.bySub.get(subKey), 'same sub-category']);
-    }
+    if (!series && subKey) levels.push([h.bySub.get(subKey), 'same sub-category']);
     const out = [];
     const seen = new Set();
     levels.forEach(([map, basis]) => {
