@@ -1,0 +1,944 @@
+{
+  "source": "Photoshoot LSH FURNITURE.xlsx column MANDATORY SHOT LIST (SEQUENCE)",
+  "lists": 251,
+  "order": [
+    {
+      "rank": 1,
+      "key": "lifestyle 30 degree",
+      "label": "Lifestyle - 30 degree",
+      "lists": 141,
+      "medianIndex": 0
+    },
+    {
+      "rank": 2,
+      "key": "lifestyle shot 30 degree",
+      "label": "Lifestyle Shot - 30 degree",
+      "lists": 26,
+      "medianIndex": 0
+    },
+    {
+      "rank": 3,
+      "key": "lifestyle image 30 degree",
+      "label": "Lifestyle Image - 30 Degree",
+      "lists": 14,
+      "medianIndex": 0
+    },
+    {
+      "rank": 4,
+      "key": "lifestyle room context product static",
+      "label": "Lifestyle - Room context - Product static",
+      "lists": 11,
+      "medianIndex": 0
+    },
+    {
+      "rank": 5,
+      "key": "lifestyle 30 degrees",
+      "label": "Lifestyle - 30 degrees",
+      "lists": 10,
+      "medianIndex": 0
+    },
+    {
+      "rank": 6,
+      "key": "lifestyle",
+      "label": "Lifestyle",
+      "lists": 9,
+      "medianIndex": 0
+    },
+    {
+      "rank": 7,
+      "key": "lifestyle room context",
+      "label": "Lifestyle - Room context",
+      "lists": 8,
+      "medianIndex": 0
+    },
+    {
+      "rank": 8,
+      "key": "lifestyle product in styled room",
+      "label": "Lifestyle - product in styled room",
+      "lists": 4,
+      "medianIndex": 0
+    },
+    {
+      "rank": 9,
+      "key": "lifestyle only dining table 30 degree",
+      "label": "Lifestyle - Only Dining table - 30 degree",
+      "lists": 3,
+      "medianIndex": 0
+    },
+    {
+      "rank": 10,
+      "key": "lifestyle shot 30 degrees",
+      "label": "Lifestyle Shot - 30 degrees",
+      "lists": 2,
+      "medianIndex": 0
+    },
+    {
+      "rank": 11,
+      "key": "lifestyle 30 degree sofa state",
+      "label": "Lifestyle - 30 degree (sofa state)",
+      "lists": 1,
+      "medianIndex": 0
+    },
+    {
+      "rank": 12,
+      "key": "lifestyle shot",
+      "label": "Lifestyle Shot",
+      "lists": 22,
+      "medianIndex": 0
+    },
+    {
+      "rank": 13,
+      "key": "hero front",
+      "label": "Hero Front",
+      "lists": 204,
+      "medianIndex": 1
+    },
+    {
+      "rank": 14,
+      "key": "hero front full set all chairs need to face the table except one",
+      "label": "Hero Front - Full Set ( all chairs need to face the table except one )",
+      "lists": 8,
+      "medianIndex": 1
+    },
+    {
+      "rank": 15,
+      "key": "hero 3 4 front angle full set",
+      "label": "Hero - 3/4 front angle - Full set",
+      "lists": 4,
+      "medianIndex": 1
+    },
+    {
+      "rank": 16,
+      "key": "lifestyle with chairs 30 degree",
+      "label": "Lifestyle with chairs - 30 degree",
+      "lists": 3,
+      "medianIndex": 1
+    },
+    {
+      "rank": 17,
+      "key": "hero shot front",
+      "label": "Hero Shot - Front",
+      "lists": 2,
+      "medianIndex": 1
+    },
+    {
+      "rank": 18,
+      "key": "lifestyle 30 degree sofa cum bed state",
+      "label": "Lifestyle - 30 degree (sofa cum bed state)",
+      "lists": 1,
+      "medianIndex": 1
+    },
+    {
+      "rank": 19,
+      "key": "hero 3 4 front angle",
+      "label": "Hero - 3/4 front angle",
+      "lists": 40,
+      "medianIndex": 1
+    },
+    {
+      "rank": 20,
+      "key": "hero 3 4 angle dining table only",
+      "label": "Hero 3/4 Angle - Dining Table only",
+      "lists": 8,
+      "medianIndex": 2
+    },
+    {
+      "rank": 21,
+      "key": "hero front open internals empty",
+      "label": "Hero Front Open - Internals Empty",
+      "lists": 8,
+      "medianIndex": 2
+    },
+    {
+      "rank": 22,
+      "key": "top down flat lay full set",
+      "label": "Top-down flat lay - Full set",
+      "lists": 4,
+      "medianIndex": 2
+    },
+    {
+      "rank": 23,
+      "key": "hero front straight on elevation",
+      "label": "Hero Front - straight-on elevation",
+      "lists": 3,
+      "medianIndex": 2
+    },
+    {
+      "rank": 24,
+      "key": "hero 3 4 front angle drawers open",
+      "label": "Hero - 3/4 front angle - Drawers open",
+      "lists": 3,
+      "medianIndex": 2
+    },
+    {
+      "rank": 25,
+      "key": "hero 3 4th",
+      "label": "Hero 3/4th",
+      "lists": 2,
+      "medianIndex": 2
+    },
+    {
+      "rank": 26,
+      "key": "hero front sofa state",
+      "label": "Hero Front (sofa state)",
+      "lists": 1,
+      "medianIndex": 2
+    },
+    {
+      "rank": 27,
+      "key": "top down flat lay",
+      "label": "Top-down flat lay",
+      "lists": 28,
+      "medianIndex": 2
+    },
+    {
+      "rank": 28,
+      "key": "hero 3 4 angle",
+      "label": "Hero 3/4 angle",
+      "lists": 188,
+      "medianIndex": 2
+    },
+    {
+      "rank": 29,
+      "key": "front elevation",
+      "label": "Front elevation",
+      "lists": 30,
+      "medianIndex": 3
+    },
+    {
+      "rank": 30,
+      "key": "hero 3 4 angle reclined",
+      "label": "Hero 3/4 Angle Reclined",
+      "lists": 11,
+      "medianIndex": 3
+    },
+    {
+      "rank": 31,
+      "key": "hero close up dining table top",
+      "label": "Hero Close up - Dining table top",
+      "lists": 8,
+      "medianIndex": 3
+    },
+    {
+      "rank": 32,
+      "key": "hero front open internals styled",
+      "label": "Hero Front Open - Internals Styled",
+      "lists": 8,
+      "medianIndex": 3
+    },
+    {
+      "rank": 33,
+      "key": "hero front folded",
+      "label": "Hero Front - Folded",
+      "lists": 5,
+      "medianIndex": 3
+    },
+    {
+      "rank": 34,
+      "key": "hero front cabinets open internals empty",
+      "label": "Hero Front - Cabinets Open - Internals Empty",
+      "lists": 5,
+      "medianIndex": 3
+    },
+    {
+      "rank": 35,
+      "key": "top down flat lay only needed for ceramic marble other grain based table tops",
+      "label": "Top-down flat lay ( only needed for ceramic, marble, other grain based table tops )",
+      "lists": 3,
+      "medianIndex": 3
+    },
+    {
+      "rank": 36,
+      "key": "front straight on elevation",
+      "label": "Front straight-on elevation",
+      "lists": 3,
+      "medianIndex": 3
+    },
+    {
+      "rank": 37,
+      "key": "hero shot side",
+      "label": "Hero Shot - Side",
+      "lists": 2,
+      "medianIndex": 3
+    },
+    {
+      "rank": 38,
+      "key": "hero 3 4 angle sofa state",
+      "label": "Hero 3/4 Angle (sofa state)",
+      "lists": 1,
+      "medianIndex": 3
+    },
+    {
+      "rank": 39,
+      "key": "hero side",
+      "label": "Hero Side",
+      "lists": 169,
+      "medianIndex": 3
+    },
+    {
+      "rank": 40,
+      "key": "hero front shutters open internals empty",
+      "label": "Hero front - Shutters Open - Internals Empty",
+      "lists": 11,
+      "medianIndex": 3
+    },
+    {
+      "rank": 41,
+      "key": "hero front shutters open internal view if applicable",
+      "label": "Hero front - Shutters Open - Internal view (If applicable)",
+      "lists": 10,
+      "medianIndex": 4
+    },
+    {
+      "rank": 42,
+      "key": "close up drawer open",
+      "label": "Close up - Drawer Open",
+      "lists": 9,
+      "medianIndex": 4
+    },
+    {
+      "rank": 43,
+      "key": "hero close up dining table base",
+      "label": "Hero Close up - Dining Table base",
+      "lists": 8,
+      "medianIndex": 4
+    },
+    {
+      "rank": 44,
+      "key": "hero internal drawer close up",
+      "label": "Hero Internal Drawer - Close Up",
+      "lists": 8,
+      "medianIndex": 4
+    },
+    {
+      "rank": 45,
+      "key": "hero front cabinets open internals filled",
+      "label": "Hero Front - Cabinets Open - Internals Filled",
+      "lists": 5,
+      "medianIndex": 4
+    },
+    {
+      "rank": 46,
+      "key": "hero 3 4 front angle large table",
+      "label": "Hero - 3/4 front angle - Large table",
+      "lists": 4,
+      "medianIndex": 4
+    },
+    {
+      "rank": 47,
+      "key": "close up with drawer open",
+      "label": "Close up - With Drawer Open",
+      "lists": 2,
+      "medianIndex": 4
+    },
+    {
+      "rank": 48,
+      "key": "hero side sofa state",
+      "label": "Hero Side (sofa state)",
+      "lists": 1,
+      "medianIndex": 4
+    },
+    {
+      "rank": 49,
+      "key": "hero front shutter open internals empty",
+      "label": "Hero Front - Shutter Open - Internals Empty",
+      "lists": 1,
+      "medianIndex": 4
+    },
+    {
+      "rank": 50,
+      "key": "hero back",
+      "label": "Hero Back",
+      "lists": 157,
+      "medianIndex": 4
+    },
+    {
+      "rank": 51,
+      "key": "side profile close up",
+      "label": "Side profile Close-up",
+      "lists": 30,
+      "medianIndex": 4
+    },
+    {
+      "rank": 52,
+      "key": "hero front shutters open internals filled",
+      "label": "Hero front - Shutters Open - Internals Filled",
+      "lists": 11,
+      "medianIndex": 4
+    },
+    {
+      "rank": 53,
+      "key": "hero close up backrest",
+      "label": "Hero Close-up Backrest",
+      "lists": 14,
+      "medianIndex": 4
+    },
+    {
+      "rank": 54,
+      "key": "hero close up seat",
+      "label": "Hero Close Up - Seat",
+      "lists": 6,
+      "medianIndex": 5
+    },
+    {
+      "rank": 55,
+      "key": "headboard close up",
+      "label": "Headboard Close-up",
+      "lists": 100,
+      "medianIndex": 5
+    },
+    {
+      "rank": 56,
+      "key": "hero close up wheels",
+      "label": "Hero Close Up ( Wheels )",
+      "lists": 12,
+      "medianIndex": 5
+    },
+    {
+      "rank": 57,
+      "key": "lifestyle room context product reclined",
+      "label": "Lifestyle - Room context - Product reclined",
+      "lists": 11,
+      "medianIndex": 5
+    },
+    {
+      "rank": 58,
+      "key": "hero front internals filled",
+      "label": "Hero Front - Internals Filled",
+      "lists": 10,
+      "medianIndex": 5
+    },
+    {
+      "rank": 59,
+      "key": "close up hinge",
+      "label": "Close up - Hinge",
+      "lists": 8,
+      "medianIndex": 5
+    },
+    {
+      "rank": 60,
+      "key": "hero 3 4 angle chair",
+      "label": "Hero 3/4 Angle - Chair",
+      "lists": 8,
+      "medianIndex": 5
+    },
+    {
+      "rank": 61,
+      "key": "hero base close up",
+      "label": "Hero Base close Up",
+      "lists": 8,
+      "medianIndex": 5
+    },
+    {
+      "rank": 62,
+      "key": "hero close up drawer open internals empty",
+      "label": "Hero Close up -Drawer Open -Internals Empty",
+      "lists": 6,
+      "medianIndex": 5
+    },
+    {
+      "rank": 63,
+      "key": "hero 3 4 front angle small table",
+      "label": "Hero - 3/4 front angle - Small table",
+      "lists": 4,
+      "medianIndex": 5
+    },
+    {
+      "rank": 64,
+      "key": "hero side profile",
+      "label": "Hero Side profile",
+      "lists": 3,
+      "medianIndex": 5
+    },
+    {
+      "rank": 65,
+      "key": "hero front shutters open internal empty",
+      "label": "Hero front - Shutters Open - Internal empty",
+      "lists": 3,
+      "medianIndex": 5
+    },
+    {
+      "rank": 66,
+      "key": "close up base",
+      "label": "Close up - Base",
+      "lists": 2,
+      "medianIndex": 5
+    },
+    {
+      "rank": 67,
+      "key": "table top close up",
+      "label": "Table top close up",
+      "lists": 2,
+      "medianIndex": 5
+    },
+    {
+      "rank": 68,
+      "key": "hero back sofa state",
+      "label": "Hero Back (sofa state)",
+      "lists": 1,
+      "medianIndex": 5
+    },
+    {
+      "rank": 69,
+      "key": "hero front shutter open internals filled",
+      "label": "Hero Front - Shutter Open - Internals Filled",
+      "lists": 1,
+      "medianIndex": 5
+    },
+    {
+      "rank": 70,
+      "key": "close up table top",
+      "label": "Close up - Table top",
+      "lists": 10,
+      "medianIndex": 5
+    },
+    {
+      "rank": 71,
+      "key": "top surface close up",
+      "label": "Top surface Close-up",
+      "lists": 36,
+      "medianIndex": 5
+    },
+    {
+      "rank": 72,
+      "key": "fabric close up",
+      "label": "Fabric Close-up",
+      "lists": 30,
+      "medianIndex": 5
+    },
+    {
+      "rank": 73,
+      "key": "hero close up armrest fabric shot",
+      "label": "Hero Close Up ( Armrest +Fabric Shot )",
+      "lists": 12,
+      "medianIndex": 6
+    },
+    {
+      "rank": 74,
+      "key": "hero close up shutters open hinges if applicable",
+      "label": "Hero Close Up -Shutters Open - Hinges (If applicable)",
+      "lists": 10,
+      "medianIndex": 6
+    },
+    {
+      "rank": 75,
+      "key": "hero close up chair leg",
+      "label": "Hero Close up - Chair Leg",
+      "lists": 8,
+      "medianIndex": 6
+    },
+    {
+      "rank": 76,
+      "key": "hero handle close up",
+      "label": "Hero Handle Close Up",
+      "lists": 8,
+      "medianIndex": 6
+    },
+    {
+      "rank": 77,
+      "key": "hero close up drawer open internals filled",
+      "label": "Hero Close up -Drawer Open -Internals Filled",
+      "lists": 6,
+      "medianIndex": 6
+    },
+    {
+      "rank": 78,
+      "key": "hero close up handle and table top",
+      "label": "Hero Close up - Handle & Table top",
+      "lists": 5,
+      "medianIndex": 6
+    },
+    {
+      "rank": 79,
+      "key": "handle detail close up",
+      "label": "Handle detail Close-up",
+      "lists": 5,
+      "medianIndex": 6
+    },
+    {
+      "rank": 80,
+      "key": "hero front shutters open internal filled",
+      "label": "Hero front - Shutters Open - Internal filled",
+      "lists": 3,
+      "medianIndex": 6
+    },
+    {
+      "rank": 81,
+      "key": "close up top",
+      "label": "Close up - Top",
+      "lists": 2,
+      "medianIndex": 6
+    },
+    {
+      "rank": 82,
+      "key": "table top material close up if applicable",
+      "label": "Table top - Material close up (If applicable)",
+      "lists": 2,
+      "medianIndex": 6
+    },
+    {
+      "rank": 83,
+      "key": "hero 3 4 angle sofa cum bed state",
+      "label": "Hero 3/4 Angle (sofa cum bed state)",
+      "lists": 1,
+      "medianIndex": 6
+    },
+    {
+      "rank": 84,
+      "key": "close up leg base detail",
+      "label": "Close up - Leg/ Base detail",
+      "lists": 10,
+      "medianIndex": 6
+    },
+    {
+      "rank": 85,
+      "key": "base detail close up",
+      "label": "Base detail close-up",
+      "lists": 36,
+      "medianIndex": 6
+    },
+    {
+      "rank": 86,
+      "key": "leg base detail",
+      "label": "Leg/ Base detail",
+      "lists": 154,
+      "medianIndex": 6
+    },
+    {
+      "rank": 87,
+      "key": "hero table top close up",
+      "label": "Hero Table Top Close-up",
+      "lists": 19,
+      "medianIndex": 6
+    },
+    {
+      "rank": 88,
+      "key": "hero close up fabric",
+      "label": "Hero Close-up - Fabric",
+      "lists": 6,
+      "medianIndex": 7
+    },
+    {
+      "rank": 89,
+      "key": "hero close up drawer open",
+      "label": "Hero Close up - Drawer Open",
+      "lists": 18,
+      "medianIndex": 7
+    },
+    {
+      "rank": 90,
+      "key": "hero close up chair fabric",
+      "label": "Hero Close up - Chair fabric",
+      "lists": 8,
+      "medianIndex": 7
+    },
+    {
+      "rank": 91,
+      "key": "hero knob close up",
+      "label": "Hero Knob close up",
+      "lists": 6,
+      "medianIndex": 7
+    },
+    {
+      "rank": 92,
+      "key": "hero shot stackable",
+      "label": "Hero Shot Stackable",
+      "lists": 5,
+      "medianIndex": 7
+    },
+    {
+      "rank": 93,
+      "key": "hero close up legs",
+      "label": "Hero Close up - Legs",
+      "lists": 5,
+      "medianIndex": 7
+    },
+    {
+      "rank": 94,
+      "key": "table top material close up only needed for ceramic marble other grain based table tops",
+      "label": "Table top - Material Close-up ( only needed for ceramic, marble, other grain based table tops )",
+      "lists": 3,
+      "medianIndex": 7
+    },
+    {
+      "rank": 95,
+      "key": "open drawer close up",
+      "label": "Open drawer - Close-up",
+      "lists": 3,
+      "medianIndex": 7
+    },
+    {
+      "rank": 96,
+      "key": "hero close up hinge",
+      "label": "Hero Close up - Hinge",
+      "lists": 3,
+      "medianIndex": 7
+    },
+    {
+      "rank": 97,
+      "key": "close up hinges",
+      "label": "Close up - Hinges",
+      "lists": 3,
+      "medianIndex": 7
+    },
+    {
+      "rank": 98,
+      "key": "hero side sofa cum bed state",
+      "label": "Hero Side (sofa cum bed state)",
+      "lists": 1,
+      "medianIndex": 7
+    },
+    {
+      "rank": 99,
+      "key": "human scale reference",
+      "label": "Human scale reference",
+      "lists": 189,
+      "medianIndex": 7
+    },
+    {
+      "rank": 100,
+      "key": "product dimensions",
+      "label": "Product Dimensions",
+      "lists": 41,
+      "medianIndex": 7
+    },
+    {
+      "rank": 101,
+      "key": "hero close up leg",
+      "label": "Hero Close Up - Leg",
+      "lists": 6,
+      "medianIndex": 8
+    },
+    {
+      "rank": 102,
+      "key": "product dimension",
+      "label": "Product Dimension",
+      "lists": 8,
+      "medianIndex": 8
+    },
+    {
+      "rank": 103,
+      "key": "hero side bed open hydraulic",
+      "label": "Hero Side - Bed Open - Hydraulic",
+      "lists": 32,
+      "medianIndex": 8
+    },
+    {
+      "rank": 104,
+      "key": "hero front bed open flaps up",
+      "label": "Hero Front - Bed Open - Flaps Up",
+      "lists": 28,
+      "medianIndex": 8
+    },
+    {
+      "rank": 105,
+      "key": "height adjustable",
+      "label": "Height adjustable",
+      "lists": 12,
+      "medianIndex": 8
+    },
+    {
+      "rank": 106,
+      "key": "hero fully reclined side multi angle recline shot to show various sitting sleeping positions",
+      "label": "Hero Fully Reclined Side (Multi angle recline shot) - To show various sitting/ sleeping positions",
+      "lists": 11,
+      "medianIndex": 8
+    },
+    {
+      "rank": 107,
+      "key": "hero close up handle and lock",
+      "label": "Hero Close Up - Handle & Lock",
+      "lists": 10,
+      "medianIndex": 8
+    },
+    {
+      "rank": 108,
+      "key": "handle close up",
+      "label": "Handle Close up",
+      "lists": 8,
+      "medianIndex": 8
+    },
+    {
+      "rank": 109,
+      "key": "human scale reference dining table",
+      "label": "Human scale reference - Dining Table",
+      "lists": 8,
+      "medianIndex": 8
+    },
+    {
+      "rank": 110,
+      "key": "hero 3 4 front angle set",
+      "label": "Hero - 3/4 front angle - Set",
+      "lists": 5,
+      "medianIndex": 8
+    },
+    {
+      "rank": 111,
+      "key": "hero top of bed mattress retainer holder",
+      "label": "Hero Top of Bed - Mattress Retainer/ holder",
+      "lists": 32,
+      "medianIndex": 9
+    },
+    {
+      "rank": 112,
+      "key": "swivel mechanism",
+      "label": "Swivel mechanism",
+      "lists": 12,
+      "medianIndex": 9
+    },
+    {
+      "rank": 113,
+      "key": "human scale reference chair",
+      "label": "Human scale reference - Chair",
+      "lists": 8,
+      "medianIndex": 9
+    },
+    {
+      "rank": 114,
+      "key": "human scale reference full set",
+      "label": "Human scale reference - Full set",
+      "lists": 4,
+      "medianIndex": 9
+    },
+    {
+      "rank": 115,
+      "key": "hero close up table top",
+      "label": "Hero Close Up - Table top",
+      "lists": 3,
+      "medianIndex": 9
+    },
+    {
+      "rank": 116,
+      "key": "hero side bed open hinge close up",
+      "label": "Hero Side - Bed Open - Hinge Close-Up",
+      "lists": 32,
+      "medianIndex": 10
+    },
+    {
+      "rank": 117,
+      "key": "center tilt mechanism",
+      "label": "Center tilt mechanism",
+      "lists": 8,
+      "medianIndex": 10
+    },
+    {
+      "rank": 118,
+      "key": "set of 2 chairs if applicable",
+      "label": "Set of 2 Chairs ( if applicable )",
+      "lists": 4,
+      "medianIndex": 10
+    },
+    {
+      "rank": 119,
+      "key": "cosmic multi lock mechanism",
+      "label": "cosmic multi lock Mechanism.",
+      "lists": 2,
+      "medianIndex": 10
+    },
+    {
+      "rank": 120,
+      "key": "royal synchro mechanism",
+      "label": "royal synchro Mechanism",
+      "lists": 2,
+      "medianIndex": 10
+    },
+    {
+      "rank": 121,
+      "key": "human scale reference sofa state",
+      "label": "Human Scale Reference (sofa state)",
+      "lists": 1,
+      "medianIndex": 10
+    },
+    {
+      "rank": 122,
+      "key": "hero side bed closed handle for opening",
+      "label": "Hero Side - Bed Closed - Handle for opening",
+      "lists": 32,
+      "medianIndex": 11
+    },
+    {
+      "rank": 123,
+      "key": "side manual button detail",
+      "label": "Side Manual Button Detail",
+      "lists": 7,
+      "medianIndex": 11
+    },
+    {
+      "rank": 124,
+      "key": "2d armrest",
+      "label": "2D armrest",
+      "lists": 4,
+      "medianIndex": 11
+    },
+    {
+      "rank": 125,
+      "key": "side electric button detail",
+      "label": "Side Electric Button Detail",
+      "lists": 4,
+      "medianIndex": 11
+    },
+    {
+      "rank": 126,
+      "key": "human scale reference sofa cum bed state",
+      "label": "Human Scale Reference (sofa cum bed state)",
+      "lists": 1,
+      "medianIndex": 11
+    },
+    {
+      "rank": 127,
+      "key": "bed internals empty",
+      "label": "Bed Internals - Empty",
+      "lists": 60,
+      "medianIndex": 12
+    },
+    {
+      "rank": 128,
+      "key": "lumbar support",
+      "label": "Lumbar support",
+      "lists": 4,
+      "medianIndex": 12
+    },
+    {
+      "rank": 129,
+      "key": "bed internals filled",
+      "label": "Bed Internals - Filled",
+      "lists": 60,
+      "medianIndex": 13
+    },
+    {
+      "rank": 130,
+      "key": "rocker",
+      "label": "Rocker",
+      "lists": 4,
+      "medianIndex": 13
+    },
+    {
+      "rank": 131,
+      "key": "hero close up cup holder",
+      "label": "Hero Close Up ( Cup Holder )",
+      "lists": 3,
+      "medianIndex": 13
+    },
+    {
+      "rank": 132,
+      "key": "video",
+      "label": "Video",
+      "lists": 44,
+      "medianIndex": 14
+    },
+    {
+      "rank": 133,
+      "key": "recliner",
+      "label": "Recliner",
+      "lists": 4,
+      "medianIndex": 14
+    },
+    {
+      "rank": 134,
+      "key": "swivel",
+      "label": "Swivel",
+      "lists": 4,
+      "medianIndex": 15
+    }
+  ]
+}

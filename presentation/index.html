@@ -5,10 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Presentation Board · 3D Playground</title>
   <link rel="icon" type="image/png" sizes="32x32" href="../images/3d-view_32px.png">
-  <link rel="stylesheet" href="styles.css?v=5">
+  <link rel="stylesheet" href="styles.css?v=16">
 </head>
 <body>
-  <div class="board">
+  <div class="workspace">
+    <header class="finder" aria-label="Find a sub-category">
+      <p class="finder-note">Loading categories…</p>
+      <label class="finder-field">
+        <span>Division</span>
+        <select id="navDivision">
+          <option value="">Select</option>
+        </select>
+      </label>
+      <label class="finder-field">
+        <span>Dept</span>
+        <select id="navDept" disabled>
+          <option value="">Select</option>
+        </select>
+      </label>
+      <label class="finder-field">
+        <span>Category</span>
+        <select id="navCategory" disabled>
+          <option value="">Select</option>
+        </select>
+      </label>
+      <label class="finder-field">
+        <span>Sub-category</span>
+        <select id="navSub" disabled>
+          <option value="">Select</option>
+        </select>
+      </label>
+      <button type="button" class="copy-url" id="copyUrl" disabled>Copy URL</button>
+      <span class="copy-url-status" id="copyUrlStatus" aria-live="polite"></span>
+    </header>
+
+    <div class="workspace-row">
+      <aside class="mode-rail" id="modeRail" aria-label="USP, set, collection, custom">
+        <div class="mode-rail-inner" id="modeRailInner"></div>
+      </aside>
+
+      <div class="board is-empty">
     <header class="master-bar">
       <h1 class="master-title" id="masterTitle">Loading…</h1>
       <div class="view-toggle" id="viewToggle" role="group" aria-label="View mode">
@@ -31,7 +67,9 @@
     </header>
 
     <div class="board-body">
+      <div class="selection-bar" id="selectionBar" hidden></div>
       <section class="gallery" aria-label="Images">
+        <p class="data-missing" id="dataMissing" hidden>Data missing</p>
         <!-- Classic: grid. 3D/PDP: thumbs + hero -->
         <div class="image-grid" id="imageGrid"></div>
         <div class="pdp-layout" id="pdpLayout" hidden>
@@ -41,9 +79,19 @@
       </section>
 
       <aside class="sequence-panel" aria-label="Sequence">
-        <h2 class="sequence-heading">Sequence</h2>
+        <div class="sequence-heading-row">
+          <h2 class="sequence-heading">Sequence</h2>
+          <button type="button" class="sequence-copy" id="sequenceCopy" title="Copy sequence" aria-label="Copy sequence" disabled>
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <path fill="currentColor" d="M16 1H6a2 2 0 0 0-2 2v12h2V3h10V1zm3 4H10a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H10V7h9v14z"/>
+            </svg>
+          </button>
+        </div>
         <ol class="sequence-list" id="sequenceList"></ol>
+        <ul class="sequence-videos" id="sequenceVideos" hidden></ul>
       </aside>
+    </div>
+      </div>
     </div>
   </div>
 
@@ -63,7 +111,8 @@
     </div>
   </div>
 
-  <script src="config.js?v=3"></script>
-  <script src="app.js?v=5"></script>
+  <script src="config.js?v=6"></script>
+  <script src="app.js?v=13"></script>
+  <script src="nav.js?v=8"></script>
 </body>
 </html>

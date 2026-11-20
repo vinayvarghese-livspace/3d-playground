@@ -131,8 +131,157 @@ function resolveImages(items) {
   });
 }
 
-function shotLabelFor(item, index) {
-  var n = index + 1;
+function isVideoSequence(label) {
+  return /\bvideo\b/i.test(String(label || ""));
+}
+
+/** Rank from presentation/shot-order.json. Unknown shots sort after the known ones. */
+var shotOrderRank = {};
+
+function shotOrderKey(label) {
+  return String(label || "")
+    .replace(/¾/g, "3/4")
+    .replace(/½/g, "1/2")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function shotRank(label) {
+  var key = shotOrderKey(label);
+  if (key && Object.prototype.hasOwnProperty.call(shotOrderRank, key)) return shotOrderRank[key];
+  return 100000;
+}
+
+function sortByShotOrder(images) {
+  return (images || [])
+    .map(function (img, i) {
+      return { img: img, i: i };
+    })
+    .sort(function (a, b) {
+      var diff = shotRank(a.img.sequence) - shotRank(b.img.sequence);
+      return diff || a.i - b.i;
+    })
+    .map(function (entry) {
+      return entry.img;
+    });
+}
+
+function loadShotOrder() {
+  return fetch("shot-order.json")
+    .then(function (res) {
+      return res.ok ? res.json() : null;
+    })
+    .then(function (data) {
+      var list = (data && data.order) || [];
+      list.forEach(function (item) {
+        if (item && item.key) shotOrderRank[item.key] = item.rank;
+      });
+    })
+    .catch(function () {});
+}
+
+function isGalleryItem(item) {
+  return !!String((item && item.url) || "").trim() && !isVideoSequence(item.sequence);
+}
+
+/** Rail keys a sheet row belongs to: usp:<id>, custom:<id>, set, collection. */
+function imageKeys(img) {
+  var keys = [];
+  if (!img) return keys;
+  if (img.usp && img.usp.id) keys.push("usp:" + img.usp.id);
+  if (img.custom && img.custom.id) keys.push("custom:" + img.custom.id);
+  if (img.set) keys.push("set");
+  if (img.collection) keys.push("collection");
+  return keys;
+}
+
+/**
+ * Rail options present on a board, in rail order (USP, Set, Collection, Custom).
+ * An option carried by every row is "fixed": always applied, nothing to toggle.
+ */
+function boardOptions(board) {
+  var images = (board && board.images) || [];
+  var found = {};
+  var order = [];
+  images.forEach(function (img) {
+    imageKeys(img).forEach(function (key) {
+      if (!found[key]) {
+        var param = key.split(":")[0];
+        var tag = param === "usp" ? img.usp : param === "custom" ? img.custom : null;
+        found[key] = {
+          key: key,
+          param: param,
+          id: tag ? String(tag.id) : "1",
+          label: railLabel(param, tag),
+          count: 0
+        };
+        order.push(key);
+      }
+      found[key].count += 1;
+    });
+  });
+  var rank = { usp: 0, set: 1, collection: 2, custom: 3 };
+  return order
+    .map(function (key) {
+      var opt = found[key];
+      opt.fixed = opt.count === images.length;
+      return opt;
+    })
+    .sort(function (a, b) {
+      return rank[a.param] - rank[b.param] || order.indexOf(a.key) - order.indexOf(b.key);
+    });
+}
+
+/** USP and Custom read "1-Manual". Set and Collection are the word itself. */
+function railLabel(param, tag) {
+  if (param === "set") return "set";
+  if (param === "collection") return "collection";
+  var id = String((tag && tag.id) || "").trim();
+  var text = String((tag && tag.label) || "").trim();
+  if (text && text !== id) return id + "-" + text;
+  return id || text;
+}
+
+/** null until the board feed has loaded (or when the sub-category has no board). */
+function boardOptionsForSlug(slug) {
+  var idx = findBoardIndexBySlug(slug);
+  return idx < 0 ? null : boardOptions(boards[idx]);
+}
+
+function pickedModes() {
+  var nav = window.presentationNav;
+  return nav && nav.picked ? nav.picked() : {};
+}
+
+/** Untagged rows always show; a tagged row shows once all its rail options are on. */
+function visibleImages(board) {
+  var picked = pickedModes();
+  var fixed = {};
+  boardOptions(board).forEach(function (opt) {
+    if (opt.fixed) fixed[opt.key] = true;
+  });
+  return ((board && board.images) || []).filter(function (img) {
+    return imageKeys(img).every(function (key) {
+      return fixed[key] || picked[key];
+    });
+  });
+}
+
+function shotNumber(images, index) {
+  var n = 0;
+  var list = images || [];
+  var last = Math.min(index, list.length - 1);
+  for (var i = 0; i <= last; i++) {
+    if (!isVideoSequence(list[i] && list[i].sequence)) n += 1;
+  }
+  return n || index + 1;
+}
+
+function shotLabelFor(item, index, images) {
+  var n = images ? shotNumber(images, index) : index + 1;
   var name = (item && item.sequence) || "";
   if (name) return n + ". " + name;
   return String(n);
@@ -159,7 +308,7 @@ function writeViewMode(mode) {
   } catch (err) { /* ignore */ }
   syncViewToggle();
   applyViewVisibility();
-  renderBoard();
+  showBoard();
 }
 
 function syncViewToggle() {
@@ -220,6 +369,7 @@ function findBoardIndexBySlug(slug) {
 
 function updateUrlForBoard(board) {
   if (!board) return;
+  if (window.presentationNav && window.presentationNav.ownsUrl()) return;
   var slug = slugify(cleanMasterTitle(board.subCategory) || board.subCategory);
   if (!slug) return;
   var url = new URL(window.location.href);
@@ -240,13 +390,13 @@ function bindViewToggle() {
   });
 }
 
-function buildCard(item, index) {
+function buildCard(item, index, images) {
   var card = document.createElement("div");
   card.className = "image-card";
 
   var shot = document.createElement("div");
   shot.className = "shot-label";
-  shot.textContent = shotLabelFor(item, index) || "\u00A0";
+  shot.textContent = shotLabelFor(item, index, images) || "\u00A0";
   card.appendChild(shot);
 
   var frame = document.createElement("div");
@@ -254,17 +404,15 @@ function buildCard(item, index) {
 
   var media = document.createElement("div");
   media.className = "image-media";
-  if (item.url) {
-    var img = document.createElement("img");
-    img.src = item.url;
-    img.alt = brandLabelFor(item) || shotLabelFor(item, index);
-    img.loading = "lazy";
-    img.referrerPolicy = "no-referrer";
-    img.onerror = function () {
-      this.remove();
-    };
-    media.appendChild(img);
-  }
+  var img = document.createElement("img");
+  img.src = item.url;
+  img.alt = brandLabelFor(item) || shotLabelFor(item, index, images);
+  img.loading = "lazy";
+  img.referrerPolicy = "no-referrer";
+  img.onerror = function () {
+    this.remove();
+  };
+  media.appendChild(img);
   frame.appendChild(media);
 
   var brand = brandLabelFor(item);
@@ -279,12 +427,39 @@ function buildCard(item, index) {
   return card;
 }
 
+function paintMissing(images) {
+  var note = document.getElementById("dataMissing");
+  if (!note) return;
+  var missing = (images || []).filter(function (item) {
+    return !String(item.url || "").trim() && !isVideoSequence(item.sequence);
+  });
+  if (!missing.length) {
+    note.hidden = true;
+    note.textContent = "";
+    return;
+  }
+  var names = missing.map(function (item) {
+    return item.sequence || "Untitled shot";
+  });
+  note.hidden = false;
+  note.textContent = missing.length === (images || []).filter(function (item) {
+    return !isVideoSequence(item.sequence);
+  }).length
+    ? "Data missing"
+    : "Data missing: " + names.join(", ");
+}
+
 function renderClassic(images) {
   var grid = document.getElementById("imageGrid");
-  grid.className = "image-grid " + gridClassForCount(images.length || 1);
-  grid.innerHTML = "";
+  var shown = [];
   images.forEach(function (item, i) {
-    grid.appendChild(buildCard(item, i));
+    if (isGalleryItem(item)) shown.push({ item: item, index: i });
+  });
+  grid.className = "image-grid " + gridClassForCount(shown.length || 1);
+  grid.innerHTML = "";
+  if (!shown.length) grid.className = "image-grid";
+  shown.forEach(function (entry) {
+    grid.appendChild(buildCard(entry.item, entry.index, images));
   });
 }
 
@@ -294,30 +469,35 @@ function renderPdp(images) {
   thumbs.innerHTML = "";
   hero.innerHTML = "";
 
-  if (!images.length) return;
-
-  if (selectedImageIndex >= images.length) selectedImageIndex = 0;
-
+  var shown = [];
   images.forEach(function (item, i) {
+    if (isGalleryItem(item)) shown.push({ item: item, index: i });
+  });
+  if (!shown.length) return;
+
+  var currentEntry = shown[0];
+  for (var s = 0; s < shown.length; s++) {
+    if (shown[s].index === selectedImageIndex) currentEntry = shown[s];
+  }
+  selectedImageIndex = currentEntry.index;
+
+  shown.forEach(function (entry) {
+    var item = entry.item;
+    var i = entry.index;
     var btn = document.createElement("button");
     btn.type = "button";
-    btn.className =
-      "pdp-thumb" +
-      (i === selectedImageIndex ? " is-active" : "") +
-      (!item.url ? " is-empty" : "");
-    btn.title = shotLabelFor(item, i);
-    btn.setAttribute("aria-label", shotLabelFor(item, i));
-    if (item.url) {
-      var img = document.createElement("img");
-      img.src = item.url;
-      img.alt = "";
-      img.loading = "lazy";
-      img.referrerPolicy = "no-referrer";
-      img.onerror = function () {
-        this.remove();
-      };
-      btn.appendChild(img);
-    }
+    btn.className = "pdp-thumb" + (i === selectedImageIndex ? " is-active" : "");
+    btn.title = shotLabelFor(item, i, images);
+    btn.setAttribute("aria-label", shotLabelFor(item, i, images));
+    var img = document.createElement("img");
+    img.src = item.url;
+    img.alt = "";
+    img.loading = "lazy";
+    img.referrerPolicy = "no-referrer";
+    img.onerror = function () {
+      this.remove();
+    };
+    btn.appendChild(img);
     btn.addEventListener("click", function () {
       selectedImageIndex = i;
       renderBoard();
@@ -325,45 +505,101 @@ function renderPdp(images) {
     thumbs.appendChild(btn);
   });
 
-  var current = images[selectedImageIndex];
+  var current = currentEntry.item;
   var shot = document.createElement("div");
   shot.className = "pdp-hero-shot";
-  shot.textContent = shotLabelFor(current, selectedImageIndex);
+  shot.textContent = shotLabelFor(current, currentEntry.index, images);
   hero.appendChild(shot);
 
   var media = document.createElement("div");
   media.className = "pdp-hero-media";
-  if (current.url) {
-    var himg = document.createElement("img");
-    himg.src = current.url;
-    himg.alt = brandLabelFor(current) || shotLabelFor(current, selectedImageIndex);
-    himg.referrerPolicy = "no-referrer";
-    himg.onerror = function () {
-      this.remove();
-    };
-    media.appendChild(himg);
-  }
+  var himg = document.createElement("img");
+  himg.src = current.url;
+  himg.alt = brandLabelFor(current) || shotLabelFor(current, currentEntry.index, images);
+  himg.referrerPolicy = "no-referrer";
+  himg.onerror = function () {
+    this.remove();
+  };
+  media.appendChild(himg);
   hero.appendChild(media);
+}
+
+var sequenceCopyText = "";
+
+function setSequenceCopy(lines) {
+  sequenceCopyText = (lines || []).join("\n");
+  var btn = document.getElementById("sequenceCopy");
+  if (!btn) return;
+  btn.disabled = !sequenceCopyText;
+  btn.classList.remove("is-copied");
+  btn.setAttribute("aria-label", "Copy sequence");
+  btn.title = "Copy sequence";
+}
+
+function copySequenceList() {
+  if (!sequenceCopyText) return;
+  var btn = document.getElementById("sequenceCopy");
+  function done() {
+    if (!btn) return;
+    btn.classList.add("is-copied");
+    btn.setAttribute("aria-label", "Copied");
+    btn.title = "Copied";
+    setTimeout(function () {
+      if (!btn.classList.contains("is-copied")) return;
+      btn.classList.remove("is-copied");
+      btn.setAttribute("aria-label", "Copy sequence");
+      btn.title = "Copy sequence";
+    }, 1400);
+  }
+  function fallback() {
+    var area = document.createElement("textarea");
+    area.value = sequenceCopyText;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.left = "-9999px";
+    document.body.appendChild(area);
+    area.select();
+    try {
+      document.execCommand("copy");
+    } catch (err) {}
+    document.body.removeChild(area);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(sequenceCopyText).then(done, function () {
+      fallback();
+      done();
+    });
+    return;
+  }
+  fallback();
+  done();
+}
+
+function bindSequenceCopy() {
+  var btn = document.getElementById("sequenceCopy");
+  if (!btn) return;
+  btn.addEventListener("click", copySequenceList);
 }
 
 function renderSequence(board, images) {
   var list = document.getElementById("sequenceList");
+  var videos = document.getElementById("sequenceVideos");
   list.innerHTML = "";
+  if (videos) videos.innerHTML = "";
 
-  var seqItems = board.sequence || [];
-  if (!seqItems.length) {
-    // Fallback: unique sequence values from image rows
-    var seen = {};
-    images.forEach(function (img) {
-      if (img.sequence && !seen[img.sequence]) {
-        seen[img.sequence] = true;
-        seqItems.push(img.sequence);
-      }
-    });
-  }
+  var seqItems = [];
+  var seen = {};
+  images.forEach(function (img) {
+    if (img.sequence && !seen[img.sequence]) {
+      seen[img.sequence] = true;
+      seqItems.push(img.sequence);
+    }
+  });
 
+  var number = 0;
+  var videoEntries = [];
+  var copyLines = [];
   seqItems.forEach(function (label, i) {
-    var li = document.createElement("li");
     var matchIndex = -1;
     for (var j = 0; j < images.length; j++) {
       if (images[j].sequence === label) {
@@ -372,15 +608,24 @@ function renderSequence(board, images) {
       }
     }
     if (matchIndex < 0) matchIndex = i;
+    var image = images[matchIndex] || {};
 
-    if (viewMode === "pdp" && matchIndex === selectedImageIndex) {
-      li.className = "is-active";
+    if (isVideoSequence(label)) {
+      videoEntries.push({ label: label, image: image });
+      return;
     }
 
+    number += 1;
+    copyLines.push(number + ". " + label);
+    var li = document.createElement("li");
+    if (viewMode === "pdp" && matchIndex === selectedImageIndex && isGalleryItem(image)) {
+      li.className = "is-active";
+    }
     var btn = document.createElement("button");
     btn.type = "button";
-    btn.textContent = i + 1 + ". " + label;
+    btn.textContent = number + ". " + label;
     btn.addEventListener("click", function () {
+      if (!isGalleryItem(image)) return;
       selectedImageIndex = matchIndex;
       if (viewMode !== "pdp") writeViewMode("pdp");
       else renderBoard();
@@ -388,24 +633,48 @@ function renderSequence(board, images) {
     li.appendChild(btn);
     list.appendChild(li);
   });
+
+  videoEntries.forEach(function (entry) {
+    if (!videos) return;
+    var videoItem = document.createElement("li");
+    var link = document.createElement(entry.image.url ? "a" : "span");
+    link.className = "sequence-video";
+    if (entry.image.url) {
+      link.href = entry.image.url;
+      link.target = "_blank";
+      link.rel = "noopener";
+    }
+    link.innerHTML =
+      '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>';
+    var videoName = document.createElement("span");
+    videoName.textContent = entry.image.url ? entry.label : entry.label + " — Data missing";
+    link.appendChild(videoName);
+    videoItem.appendChild(link);
+    videos.appendChild(videoItem);
+  });
+
+  if (videos) videos.hidden = !videos.children.length;
+  setSequenceCopy(copyLines);
 }
 
 function renderBoard() {
   var board = boards[activeIndex];
   if (!board) {
-    document.getElementById("masterTitle").textContent = "No data";
-    document.getElementById("imageGrid").innerHTML = "";
-    document.getElementById("pdpThumbs").innerHTML = "";
-    document.getElementById("pdpHero").innerHTML = "";
-    document.getElementById("sequenceList").innerHTML = "";
+    showMissingBoard("No data");
     return;
   }
 
   document.getElementById("masterTitle").textContent =
     cleanMasterTitle(board.subCategory) || "—";
 
-  var images = resolveImages(board.images);
+  var images = sortByShotOrder(resolveImages(visibleImages(board)));
   renderSequence(board, images);
+  paintMissing(images);
+  if (!images.length && (board.images || []).length) {
+    var note = document.getElementById("dataMissing");
+    note.hidden = false;
+    note.textContent = "Pick an option on the left to see these shots.";
+  }
 
   // Render only the active view — never both.
   if (viewMode === "pdp") {
@@ -420,19 +689,76 @@ function renderBoard() {
   applyViewVisibility();
 }
 
+function clearBoard() {
+  document.getElementById("imageGrid").innerHTML = "";
+  document.getElementById("pdpThumbs").innerHTML = "";
+  document.getElementById("pdpHero").innerHTML = "";
+  document.getElementById("sequenceList").innerHTML = "";
+  setSequenceCopy([]);
+  var videos = document.getElementById("sequenceVideos");
+  if (videos) {
+    videos.innerHTML = "";
+    videos.hidden = true;
+  }
+  var note = document.getElementById("dataMissing");
+  if (note) {
+    note.hidden = true;
+    note.textContent = "";
+  }
+}
+
+function showMissingBoard(title) {
+  clearBoard();
+  document.getElementById("masterTitle").textContent = title || "Data missing";
+  var note = document.getElementById("dataMissing");
+  if (note) {
+    note.hidden = false;
+    note.textContent = "Data missing";
+  }
+}
+
+/** Sub-category picked in the finder, else the ?sub= deep link until the finder takes over. */
+function currentSlug() {
+  var nav = window.presentationNav;
+  if (nav && (nav.ownsUrl() || nav.subSlug())) return nav.subSlug();
+  return requestedSlug;
+}
+
+function setBoardEmpty(empty) {
+  var boardEl = document.querySelector(".board");
+  if (boardEl) boardEl.classList.toggle("is-empty", empty);
+}
+
+/** Nothing is shown until a sub-category is chosen. */
+function showBoard() {
+  var slug = currentSlug();
+  if (!slug) {
+    clearBoard();
+    setBoardEmpty(true);
+    return;
+  }
+  if (!boards.length) return;
+  setBoardEmpty(false);
+  var idx = findBoardIndexBySlug(slug);
+  if (idx < 0) {
+    var nav = window.presentationNav;
+    showMissingBoard((nav && nav.subName()) || slug);
+    return;
+  }
+  if (idx !== activeIndex) {
+    activeIndex = idx;
+    selectedImageIndex = 0;
+  }
+  updateUrlForBoard(boards[idx]);
+  renderBoard();
+}
+
 function applyFeed(data) {
   boards = (data && data.boards) || [];
   rebuildDomainTitles(boards);
-
-  var slugIndex = findBoardIndexBySlug(requestedSlug);
-  if (slugIndex >= 0) activeIndex = slugIndex;
-  else if (activeIndex >= boards.length) activeIndex = 0;
-
-  if (selectedImageIndex < 0) selectedImageIndex = 0;
-
   lastModified = (data && data.modified) || "";
-  updateUrlForBoard(boards[activeIndex]);
-  renderBoard();
+  if (window.presentationNav) window.presentationNav.refresh();
+  showBoard();
 }
 
 function jsonp(query, timeoutMs) {
@@ -618,17 +944,15 @@ viewMode = readViewMode();
 requestedSlug = parseRequestedSlug();
 bindViewToggle();
 bindAuthDialog();
+bindSequenceCopy();
 syncViewToggle();
 applyViewVisibility();
-loadBoard();
-startPoll();
+loadShotOrder().then(function () {
+  loadBoard();
+  startPoll();
+});
 
 window.addEventListener("popstate", function () {
   requestedSlug = parseRequestedSlug();
-  var idx = findBoardIndexBySlug(requestedSlug);
-  if (idx >= 0) {
-    activeIndex = idx;
-    selectedImageIndex = 0;
-    renderBoard();
-  }
+  showBoard();
 });
