@@ -294,7 +294,7 @@
 
   function vsRosterNote(perAuthor) {
     if (perAuthor == null || !isFinite(perAuthor)) return '';
-    return 'Team: ' + fmtSmart(perAuthor, 'score');
+    return 'team ' + fmtSmart(perAuthor, 'score');
   }
 
   function firstDataDate() {
@@ -1201,7 +1201,7 @@
       if (n > best.images) best = { images: n, key: key };
     });
 
-    // YOU section: Your images vs team = your count (big) + Team: avg (like other comparison tiles).
+    // YOU section: Your images vs team = your count (big) + team avg (like other comparison tiles).
     var aboveNote = vsRosterNote(fig.perAuthor);
     var vsAvgTone = tonePrefer('images', youFig.images, fig.perAuthor, 'up');
     var perAuthorTip = 'Your images in this ' + rw +
