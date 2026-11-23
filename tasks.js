@@ -50,7 +50,7 @@
   function isPreviewApp() {
     return /preview\.html$/i.test(typeof location !== 'undefined' ? location.pathname : '');
   }
-  const APP_VERSION = isPreviewApp() ? 'Preview V1.9' : 'Beta V1.9';
+  const APP_VERSION = isPreviewApp() ? 'Preview V2.0' : 'Beta V1.9';
   // How often to re-read the assign sheet while this tab is visible (other users' picks).
   // ~2 reads/min per open browser — well under the Sheets ~60 reads/min/user cap.
   const ASSIGN_POLL_MS = 30000;
@@ -4981,19 +4981,34 @@
     return state.workspace.mdimWsCache;
   }
 
+  function mdimCacheKeyIsActiveWorkspace(key) {
+    if (!state.workspace) return false;
+    const cur = String(state.workspace.mdimBaseKey || '');
+    if (cur === '__override__') return key === '__override__';
+    if (cur === '__custom__') return key === '__custom__';
+    return String(key) === cur;
+  }
+
+  // Prefetch fills the cache only; live preview globals update when the key is the active base.
+  function mdimAdoptWorkspaceFromCacheEntry(key, entry) {
+    if (!mdimCacheKeyIsActiveWorkspace(key) || !entry) return;
+    state.workspace.mdimWorkspaceUrl = entry.url;
+    state.workspace.mdimWorkspaceBlob = entry.blob;
+    if (entry.sourceAsset) state.workspace.mdimSourceAsset = entry.sourceAsset;
+    const draft = window.MdimPlayground
+      ? window.MdimPlayground.ensureDraft(state.workspace, taskByEan(state.workspace.ean))
+      : (state.workspace.mdimDraft || window.MdimCore.emptyDoc());
+    if (entry.meta) Object.assign(draft.sourceImage || (draft.sourceImage = {}), entry.meta);
+    state.workspace.mdimDraft = draft;
+  }
+
   async function mdimEnsureWorkspaceFromAsset(asset, fileNameHint, cacheKey) {
     if (!window.MdimCore || !asset) return null;
     const key = cacheKey || fileNameHint || asset.name || 'base';
     const cache = mdimWorkspaceCache();
     if (cache[key] && cache[key].url && cache[key].blob) {
-      state.workspace.mdimWorkspaceUrl = cache[key].url;
-      state.workspace.mdimWorkspaceBlob = cache[key].blob;
-      const draft = window.MdimPlayground
-        ? window.MdimPlayground.ensureDraft(state.workspace, taskByEan(state.workspace.ean))
-        : (state.workspace.mdimDraft || window.MdimCore.emptyDoc());
-      if (cache[key].meta) Object.assign(draft.sourceImage || (draft.sourceImage = {}), cache[key].meta);
-      state.workspace.mdimDraft = draft;
-      return state.workspace.mdimWorkspaceUrl;
+      mdimAdoptWorkspaceFromCacheEntry(key, cache[key]);
+      return cache[key].url;
     }
     const url = ensureAssetDisplayUrl(asset) || ensureExportDisplayUrl(asset);
     if (!url) return null;
@@ -5015,15 +5030,8 @@
       workspaceSize: window.MdimCore.WORKSPACE_SIZE
     };
     cache[key] = { url: wsUrl, blob: built.blob, meta: meta, sourceAsset: asset };
-    state.workspace.mdimWorkspaceUrl = wsUrl;
-    state.workspace.mdimWorkspaceBlob = built.blob;
-    state.workspace.mdimSourceAsset = asset;
-    const draft = window.MdimPlayground
-      ? window.MdimPlayground.ensureDraft(state.workspace, taskByEan(state.workspace.ean))
-      : (state.workspace.mdimDraft || window.MdimCore.emptyDoc());
-    draft.sourceImage = Object.assign(draft.sourceImage || {}, meta);
-    state.workspace.mdimDraft = draft;
-    return state.workspace.mdimWorkspaceUrl;
+    mdimAdoptWorkspaceFromCacheEntry(key, cache[key]);
+    return cache[key].url;
   }
 
   function mountMdimWorkbench() {
@@ -5034,6 +5042,10 @@
     const shots = shotListFor(t);
     const i = Math.min(state.workspaceShot, Math.max(0, shots.length - 1));
     const options = mdimBaseOptions(t, shots, i);
+    // Re-sync active base from cache so background prefetch cannot leave a stale preview URL.
+    const activeKey = state.workspace.mdimBaseKey;
+    const activeHit = activeKey && mdimWorkspaceCache()[activeKey];
+    if (activeHit) mdimAdoptWorkspaceFromCacheEntry(activeKey, activeHit);
     window.MdimPlayground.unmount();
     window.MdimPlayground.mount(root, {
       workspace: state.workspace,
@@ -8125,7 +8137,7 @@
     const title = view === 'renamer' ? 'Renamer'
       : view === 'my' ? 'My Tasks'
       : ('Available Tasks · ' + (isMts() ? 'MTS' : 'HH'));
-    const ver = isPreviewApp() ? 'PREVIEW V1.9' : 'BETA V1.9';
+    const ver = isPreviewApp() ? 'PREVIEW V2.0' : 'BETA V1.9';
     document.title = title + ' · 3D Playground (' + ver + ')';
     const titleEl = $('view-title');
     if (titleEl) titleEl.textContent = title;
@@ -12009,6 +12021,13 @@
     refreshAnswerlyTokenState().then(() => syncAnswerlyTokenChip());
   }, 60000);
 
+  const menuStats = $('menu-stats');
+  if (menuStats) {
+    menuStats.addEventListener('click', () => {
+      closeSettings();
+      window.open('stats/index.html', '_blank', 'noopener,noreferrer');
+    });
+  }
   $('menu-refresh').addEventListener('click', () => { closeSettings(); load(); });
   $('btn-refresh').addEventListener('click', () => load());
   $('name-cancel').addEventListener('click', () => {

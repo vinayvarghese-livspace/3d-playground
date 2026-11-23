@@ -112,7 +112,7 @@
               '<option value="">— Select generated shot —</option>' +
               baseOpts +
               (hasOverride
-                ? '<option value="__override__" selected>Override (dropped)</option>'
+                ? '<option value="__override__"' + (ctx.selectedBase === '__override__' ? ' selected' : '') + '>Override (dropped)</option>'
                 : '') +
               '<option value="__custom__"' + (ctx.selectedBase === '__custom__' ? ' selected' : '') + '>Custom</option>' +
             '</select>' +
