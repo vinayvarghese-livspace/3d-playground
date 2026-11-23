@@ -89,6 +89,29 @@ body {
   margin-left: 4px;
 }
 
+body.is-present {
+  background: #fff;
+}
+
+body.is-present .finder,
+body.is-present .mode-rail,
+body.is-present .selection-bar,
+body.is-present .sequence-copy {
+  display: none !important;
+}
+
+body.is-present .workspace-row {
+  padding: 0;
+  gap: 0;
+}
+
+body.is-present .board {
+  width: 100%;
+  max-width: 1400px;
+  min-height: 100vh;
+  box-shadow: none;
+}
+
 .copy-url {
   height: 34px;
   padding: 0 14px;
@@ -253,6 +276,11 @@ body {
   display: none;
 }
 
+.board.is-classic {
+  width: 100%;
+  max-width: 1400px;
+}
+
 .board {
   flex: 1;
   width: auto;
@@ -413,11 +441,8 @@ a.sequence-video:hover {
 
 .image-grid.grid-1 { grid-template-columns: 1fr; }
 .image-grid.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.image-grid.grid-4,
-.image-grid.grid-8,
-.image-grid.grid-8-plus {
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-}
+.image-grid.grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.image-grid.grid-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 
 .image-card {
   min-width: 0;
@@ -663,9 +688,12 @@ a.sequence-video:hover {
     padding-top: 20px;
   }
 
+  .board.is-classic {
+    max-width: none;
+  }
+
   .image-grid.grid-4,
-  .image-grid.grid-8,
-  .image-grid.grid-8-plus {
+  .image-grid.grid-6 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

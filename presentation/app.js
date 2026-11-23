@@ -107,8 +107,7 @@ function gridClassForCount(n) {
   if (n <= 1) return "grid-1";
   if (n <= 2) return "grid-2";
   if (n <= 4) return "grid-4";
-  if (n <= 8) return "grid-8";
-  return "grid-8-plus";
+  return "grid-6";
 }
 
 function resolveImages(items) {
@@ -931,6 +930,24 @@ function loadBoard() {
     });
 }
 
+/**
+ * Present (view-only) mode. Chosen by the link, never switched off in the page:
+ * ?present=1 (Copy URL adds it). Finder and rail stay hidden.
+ * Classic / 3D stays on the board.
+ */
+function urlWantsPresent() {
+  var params = new URLSearchParams(window.location.search);
+  return params.get("present") === "1";
+}
+
+function enterPresent() {
+  document.body.classList.add("is-present");
+}
+
+function bindPresent() {
+  if (urlWantsPresent()) enterPresent();
+}
+
 function startPoll() {
   if (pollTimer) clearInterval(pollTimer);
   var ms =
@@ -944,6 +961,7 @@ viewMode = readViewMode();
 requestedSlug = parseRequestedSlug();
 bindViewToggle();
 bindAuthDialog();
+bindPresent();
 bindSequenceCopy();
 syncViewToggle();
 applyViewVisibility();

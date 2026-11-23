@@ -4,25 +4,30 @@
  *
  * Spreadsheet:
  *   https://docs.google.com/spreadsheets/d/1B9qtXKT0CVDt1aXFEhHyAHCWLHBp682pdL3egqNfr4w
- * Tab: first sheet (gid=0) by default.
+ * Tab: generated (gid=510920739). USP, Set/EACH, Collection, and Custom come from this tab.
  *
  * Columns (header row, flexible names):
  *   SUB-CATEGORY → master title (fill-down)
  *   TITLE        → label above image (else brand from IMAGE URL)
  *   IMAGE URL    → image src (blank square if empty)
  *   SEQUENCE     → right-side numbered list
+ *   USP + USP TEXT         → number and name of that USP
+ *   REMARKS (Set/EACH)      → "SET" marks a set shot (EACH / 1 / blank = default)
+ *   COLLECTION SHOOT        → "collection" or "1" marks a collection shot
+ *   CUSTOM + CUSTOM TEXT   → number and name of that custom
  *
  * Actions (JSON / JSONP via ?callback=):
  *   action=board  — presentation payload
  *   action=ping   — health check
  *
- * Uses SpreadsheetApp (needs spreadsheets scope in appsscript.json).
+ * Reads through the Sheets API (advanced service) with spreadsheets.readonly.
+ * SpreadsheetApp.openById and DriveApp both require wider scopes, so they are not used.
  * Paste /exec URL into presentation/config.js as PRESENTATION_FEED_URL.
  */
 
 var SHEET_ID = '1B9qtXKT0CVDt1aXFEhHyAHCWLHBp682pdL3egqNfr4w';
-var SHEET_GID = 0;
-var FEED_VERSION = 3;
+var SHEET_GID = 510920739;
+var FEED_VERSION = 7;
 var CACHE_SECONDS = 30;
 var CACHE_CHUNK = 30000;
 
@@ -54,8 +59,7 @@ function apiResponse_(p) {
 }
 
 function getBoardFeed() {
-  var modified = DriveApp.getFileById(SHEET_ID).getLastUpdated();
-  var cacheKey = ['presBoard', FEED_VERSION, SHEET_ID, SHEET_GID, modified.getTime()].join(':');
+  var cacheKey = ['presBoard', FEED_VERSION, SHEET_ID, SHEET_GID].join(':');
   var cached = cacheGet_(cacheKey);
   if (cached) {
     cached.readAt = new Date().toISOString();
@@ -68,7 +72,6 @@ function getBoardFeed() {
     version: FEED_VERSION,
     sheetId: SHEET_ID,
     tab: parsed.tab,
-    modified: modified.toISOString(),
     readAt: new Date().toISOString(),
     cached: false,
     boards: parsed.boards
@@ -78,14 +81,13 @@ function getBoardFeed() {
 }
 
 function readBoardSheet_() {
-  var ss = SpreadsheetApp.openById(SHEET_ID);
-  var sheet = sheetByGid_(ss, SHEET_GID) || ss.getSheets()[0];
-  if (!sheet) throw new Error('No sheet found.');
+  var tab = findBoardTab_();
+  var rows = sheetCells_(tab.title);
+  if (!rows.length) return { tab: tab.title, boards: [] };
 
-  var values = sheet.getDataRange().getDisplayValues();
-  if (!values || !values.length) {
-    return { tab: sheet.getName(), boards: [] };
-  }
+  var values = rows.map(function (row) {
+    return row.map(function (cell) { return cellText_(cell); });
+  });
 
   var headerInfo = findHeaderRow_(values);
   var headers = headerInfo.headers;
@@ -103,10 +105,14 @@ function readBoardSheet_() {
     /^url$/i
   ]);
   var colSeq = findCol_(headers, [/^sequence$/i, /^shot\s*list$/i, /^seq$/i]);
+  var uspPair = tagColumns_(headers, /^usp$/i, /^usp\s*text$/i);
+  var colSet = findCol_(headers, [/set\s*\/\s*each/i, /^remarks?\b/i]);
+  var colCollection = findCol_(headers, [/collection/i]);
+  var customPair = tagColumns_(headers, /^custom$/i, /^custom\s*text$/i);
 
   if (colImage < 0 && colSub < 0) {
     throw new Error(
-      'Could not find SUB-CATEGORY / IMAGE URL headers on "' + sheet.getName() + '". ' +
+      'Could not find SUB-CATEGORY / IMAGE URL headers on "' + tab.title + '". ' +
       'Found: ' + headers.join(' | ')
     );
   }
@@ -122,12 +128,7 @@ function readBoardSheet_() {
     var sub = lastSub;
     if (!sub) continue;
 
-    var url = colImage >= 0 ? extractUrl_(row[colImage]) : '';
-    if (!url && colImage >= 0) {
-      try {
-        url = urlFromRichText_(sheet.getRange(r + 1, colImage + 1).getRichTextValue());
-      } catch (err) { /* ignore */ }
-    }
+    var url = colImage >= 0 ? cellUrl_((rows[r] || [])[colImage]) : '';
 
     var titleCell = colTitle >= 0 ? String(row[colTitle] || '').trim() : '';
     var seq = colSeq >= 0 ? String(row[colSeq] || '').trim() : '';
@@ -148,7 +149,11 @@ function readBoardSheet_() {
     board.images.push({
       title: titleCell,
       url: url,
-      sequence: seq
+      sequence: seq,
+      usp: tagOf_(row, uspPair.num, uspPair.text, 'USP'),
+      custom: tagOf_(row, customPair.num, customPair.text, 'Custom'),
+      set: colSet >= 0 && /\bset\b/i.test(String(row[colSet] || '')),
+      collection: colCollection >= 0 && collectionIsOn_(row[colCollection])
     });
 
     if (seq && !board._seqSeen[seq]) {
@@ -166,15 +171,56 @@ function readBoardSheet_() {
     };
   });
 
-  return { tab: sheet.getName(), boards: boards };
+  return { tab: tab.title, boards: boards };
 }
 
-function sheetByGid_(ss, gid) {
-  var sheets = ss.getSheets();
+function findBoardTab_() {
+  var meta = Sheets.Spreadsheets.get(SHEET_ID, { fields: 'sheets.properties' });
+  var sheets = (meta && meta.sheets) || [];
   for (var i = 0; i < sheets.length; i++) {
-    if (sheets[i].getSheetId() === Number(gid)) return sheets[i];
+    var props = sheets[i].properties || {};
+    if (Number(props.sheetId) === Number(SHEET_GID)) {
+      return { title: props.title, sheetId: props.sheetId };
+    }
   }
-  return null;
+  throw new Error('Tab gid ' + SHEET_GID + ' (generated) was not found.');
+}
+
+function sheetCells_(title) {
+  var range = "'" + String(title).replace(/'/g, "''") + "'";
+  var meta = Sheets.Spreadsheets.get(SHEET_ID, {
+    ranges: [range],
+    includeGridData: true,
+    fields: 'sheets(data(rowData(values(formattedValue,hyperlink,userEnteredValue,textFormatRuns(format(link))))))'
+  });
+  var data = meta && meta.sheets && meta.sheets[0] && meta.sheets[0].data && meta.sheets[0].data[0];
+  var rowData = (data && data.rowData) || [];
+  return rowData.map(function (row) {
+    return (row && row.values) || [];
+  });
+}
+
+function cellText_(cell) {
+  if (!cell) return '';
+  return String(cell.formattedValue || '').replace(/\s+/g, ' ').trim();
+}
+
+function cellUrl_(cell) {
+  if (!cell) return '';
+  var fromText = extractUrl_(cell.formattedValue);
+  if (fromText) return fromText;
+  if (cell.hyperlink) return cell.hyperlink;
+  var runs = cell.textFormatRuns || [];
+  for (var i = 0; i < runs.length; i++) {
+    var link = runs[i].format && runs[i].format.link;
+    if (link && link.uri) return link.uri;
+  }
+  var formula = cell.userEnteredValue && cell.userEnteredValue.formulaValue;
+  if (formula) {
+    var match = String(formula).match(/HYPERLINK\(\s*"([^"]+)"/i);
+    if (match) return match[1];
+  }
+  return '';
 }
 
 function findHeaderRow_(values) {
@@ -208,24 +254,56 @@ function findCol_(headers, patterns) {
   return -1;
 }
 
+// "USP" holds the number and "USP TEXT" holds the name. Same for CUSTOM.
+function tagColumns_(headers, numberPattern, textPattern) {
+  var num = findCol_(headers, [numberPattern]);
+  var text = findCol_(headers, [textPattern]);
+  if (text < 0 && num >= 0) return tagPair_(headers, num);
+  if (num < 0 && text >= 0) return tagPair_(headers, text);
+  if (text < 0) return { num: num, text: num };
+  return { num: num, text: text };
+}
+
+function tagPair_(headers, headerCol) {
+  if (headerCol < 0) return { num: -1, text: -1 };
+  var next = headerCol + 1;
+  if (next < headers.length && !String(headers[next] || '').trim()) {
+    return { num: headerCol, text: next };
+  }
+  var prev = headerCol - 1;
+  if (prev >= 0 && !String(headers[prev] || '').trim()) {
+    return { num: prev, text: headerCol };
+  }
+  return { num: -1, text: headerCol };
+}
+
+function tagOf_(row, numCol, textCol, fallback) {
+  var num = numCol >= 0 ? String(row[numCol] || '').trim() : '';
+  var text = textCol >= 0 ? String(row[textCol] || '').trim() : '';
+  if (!num && !text) return null;
+  var id = num || slugify_(text);
+  return { id: id, label: text || (fallback + ' ' + num) };
+}
+
+function collectionIsOn_(value) {
+  var s = String(value || '').trim();
+  return s === '1' || /collection/i.test(s);
+}
+
+function slugify_(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 function extractUrl_(cell) {
   var s = String(cell || '').trim();
   if (!s) return '';
   if (/^https?:\/\//i.test(s)) return s;
   var m = s.match(/https?:\/\/[^\s<>"']+/i);
   return m ? m[0] : '';
-}
-
-function urlFromRichText_(rich) {
-  if (!rich) return '';
-  var link = rich.getLinkUrl();
-  if (link) return link;
-  var runs = rich.getRuns();
-  for (var i = 0; i < runs.length; i++) {
-    var u = runs[i].getLinkUrl();
-    if (u) return u;
-  }
-  return extractUrl_(rich.getText());
 }
 
 function cacheGet_(key) {

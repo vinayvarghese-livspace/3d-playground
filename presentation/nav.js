@@ -282,9 +282,17 @@ function navReadUrl() {
   if (slug || Object.keys(navState.picked).length) navState.ownsUrl = true;
 }
 
+/** Clean, view-only link: the current selection plus present=1. The page itself is not changed. */
+function navPresentUrl() {
+  var url = new URL(window.location.href);
+  url.searchParams.set("present", "1");
+  url.hash = "";
+  return url.toString();
+}
+
 function navCopyUrl() {
   var status = document.getElementById("copyUrlStatus");
-  var text = window.location.href;
+  var text = navPresentUrl();
   function done() {
     status.textContent = "Copied";
     setTimeout(function () {
