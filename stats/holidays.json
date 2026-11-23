@@ -1,0 +1,23 @@
+{
+  "timezone": "Asia/Kolkata",
+  "exclude": ["vinay"],
+  "roster": [],
+  "dataStart": "2026-11-05",
+  "milestones": [
+    { "date": "2026-11-05", "name": "V1.6", "label": "Beta V1.6 · first approvals" },
+    { "date": "2026-11-06", "name": "V1.7", "label": "Beta V1.7" },
+    { "date": "2026-11-12", "name": "V1.8", "label": "Beta V1.8" },
+    { "date": "2026-11-18", "name": "V1.9", "label": "Beta V1.9" }
+  ],
+  "holidays": [
+    { "date": "2025-01-26", "name": "Republic Day" },
+    { "date": "2025-08-15", "name": "Independence Day" },
+    { "date": "2025-10-02", "name": "Gandhi Jayanti" },
+    { "date": "2025-12-25", "name": "Christmas" },
+    { "date": "2026-01-26", "name": "Republic Day" },
+    { "date": "2026-08-15", "name": "Independence Day" },
+    { "date": "2026-10-02", "name": "Gandhi Jayanti" },
+    { "date": "2026-10-20", "name": "Diwali" },
+    { "date": "2026-12-25", "name": "Christmas" }
+  ]
+}

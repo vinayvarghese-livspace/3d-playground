@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Production statistics</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="../images/3d-view_32px.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=11">
+</head>
+<body>
+  <div class="gate" id="gate" hidden>
+    <form class="gate-card" id="gate-form">
+      <h1>Enter your name</h1>
+      <p>This is the name already used for My Tasks. You will only see your own figures.</p>
+      <label class="gate-label" for="gate-name">Your name</label>
+      <input id="gate-name" name="name" type="text" autocomplete="name" required>
+      <button type="submit" class="gate-go">Continue</button>
+    </form>
+  </div>
+
+  <div class="page" id="page" hidden>
+    <header class="top">
+      <div class="top-title">
+        <h1>Production statistics</h1>
+        <p>Approved images from the prompt database</p>
+      </div>
+      <div class="top-tools">
+        <div class="seg" role="group" aria-label="Range">
+          <button type="button" data-act="range" data-value="week">Week</button>
+          <button type="button" data-act="range" data-value="month">Month</button>
+          <button type="button" data-act="range" data-value="all">All time</button>
+        </div>
+        <p class="signed" id="signed">Signed in as —</p>
+        <p class="updated" id="updated">Updated —</p>
+      </div>
+    </header>
+    <main id="main"></main>
+    <p class="foot" id="foot">Weekends and public holidays are left out of every figure. Edit holidays, roster, milestones, and dataStart in holidays.json.</p>
+  </div>
+
+  <div class="fs" id="fs" hidden>
+    <div class="fs-card" role="dialog" aria-modal="true" aria-labelledby="fs-title">
+      <div class="fs-head">
+        <h2 id="fs-title"></h2>
+        <button type="button" class="fs-close" id="fs-close" aria-label="Close">Close</button>
+      </div>
+      <div class="fs-body" id="fs-body"></div>
+    </div>
+  </div>
+
+  <div class="tip" id="tip" role="tooltip" hidden></div>
+
+  <script src="config.js?v=11"></script>
+  <script src="app.js?v=11"></script>
+</body>
+</html>

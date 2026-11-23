@@ -11,6 +11,7 @@
  *   action=approvedCustoms  — latest Custom prompts for Sub-category + Template reuse (v8+)
  *   action=mdimSave         — upsert Product Dimension JSON by EAN (one row per EAN; v15+)
  *   action=mdimGet          — read Product Dimension JSON by EAN (v15+)
+ *   action=stats            — daily approval + M-DIM buckets for the statistics page (v17+; no prompt text)
  *   action=ping             — health check ({ version, sheet })
  *
  * After editing this file: Deploy → Manage deployments → ✎ Edit →
@@ -23,7 +24,7 @@ var PROMPT_DB_ID = '12NU2Ru7Jnxok4M0Ylva1n8CKBxScnOs3k4gPs35a4Ec';
 var UNIVERSAL_TAB = 'Universal';
 var ALL_USER_TAB = 'All user';
 var MDIM_TAB = 'M-DIM';
-var SCRIPT_VERSION = 15;
+var SCRIPT_VERSION = 17;
 
 var MDIM_COLUMNS = [
   'EAN Number',
@@ -88,9 +89,10 @@ function doGet(e) {
     else if (p.action === 'approvedCustoms') body = { ok: true, data: readApprovedCustoms_(p) };
     else if (p.action === 'mdimSave') body = { ok: true, data: writeMdimSave_(p) };
     else if (p.action === 'mdimGet') body = { ok: true, data: readMdimGet_(p) };
+    else if (p.action === 'stats') body = { ok: true, data: readStats_() };
     else if (p.action === 'ping') body = { ok: true, data: { version: SCRIPT_VERSION, sheet: PROMPT_DB_ID } };
     else throw new Error('Unknown action: ' + (p.action || '(none)') +
-      '. Use universal, promptChunk, promptApprove, approvedCustoms, mdimSave, mdimGet, or ping.');
+      '. Use universal, promptChunk, promptApprove, approvedCustoms, mdimSave, mdimGet, stats, or ping.');
   } catch (err) {
     body = { ok: false, error: String((err && err.message) || err) };
   }
@@ -605,6 +607,186 @@ function readMdimGet_(p) {
     }
   }
   return { version: SCRIPT_VERSION, ean: ean, found: false, json: '' };
+}
+
+/**
+ * Daily buckets from All user for the statistics page.
+ * No prompt text. One object per author per approval day.
+ */
+function approvalDay_(value) {
+  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, 'Asia/Kolkata', 'yyyy-MM-dd');
+  }
+  var s = String(value == null ? '' : value).trim();
+  var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
+  var dmy = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
+  if (dmy) {
+    return dmy[3] + '-' + ('0' + dmy[2]).slice(-2) + '-' + ('0' + dmy[1]).slice(-2);
+  }
+  return '';
+}
+
+function blankStatsBucket_(author, date) {
+  return {
+    author: author,
+    date: date,
+    images: 0,
+    approve: 0,
+    mdim: 0,
+    automated: 0,
+    custom: 0,
+    unknown: 0,
+    qualitySum: 0,
+    qualityN: 0,
+    generationSum: 0,
+    generationN: 0,
+    firstTry: 0,
+    eans: {}
+  };
+}
+
+function readStats_() {
+  var ss = getSpreadsheet_();
+  var buckets = {};
+  var firstAt = '';
+
+  function takeBucket(author, date) {
+    var key = author + '\t' + date;
+    if (!buckets[key]) buckets[key] = blankStatsBucket_(author, date);
+    if (!firstAt || date < firstAt) firstAt = date;
+    return buckets[key];
+  }
+
+  // Rate & Approve rows (All user).
+  var sheet = findSheet_(ss, ALL_USER_TAB);
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow >= 2 && lastCol >= 1) {
+    var values = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+    var header = values[0] || [];
+    var colIndex = {};
+    header.forEach(function (h, i) {
+      var key = norm_(h);
+      if (key && colIndex[key] == null) colIndex[key] = i;
+    });
+    function idx(name) {
+      var i = colIndex[norm_(name)];
+      return i == null ? -1 : i;
+    }
+    function cell(row, name) {
+      var i = idx(name);
+      if (i < 0) return '';
+      var v = row[i];
+      if (v == null) return '';
+      return String(v).trim();
+    }
+    var dateCol = idx('Approved At');
+    for (var r = 1; r < values.length; r++) {
+      var row = values[r] || [];
+      var author = cell(row, 'Author');
+      if (!author) continue;
+      var date = dateCol < 0 ? '' : approvalDay_(row[dateCol]);
+      if (!date) continue;
+      var b = takeBucket(author, date);
+      b.images++;
+      b.approve++;
+      var origin = cell(row, 'Prompt origin');
+      if (/^automated$/i.test(origin)) b.automated++;
+      else if (/^custom$/i.test(origin)) b.custom++;
+      else b.unknown++;
+      var rating = cell(row, 'Quality Rating');
+      if (/^[1-5]$/.test(rating)) {
+        b.qualitySum += Number(rating);
+        b.qualityN++;
+      }
+      var gen = cell(row, 'Generation count');
+      if (/^\d+$/.test(gen)) {
+        var n = Number(gen);
+        b.generationSum += n;
+        b.generationN++;
+        if (n === 1) b.firstTry++;
+      }
+      var ean = cell(row, 'EAN Number');
+      if (ean) b.eans[ean] = 1;
+    }
+  }
+
+  // M-DIM rows count as images (one saved dimension image per EAN row / update day).
+  try {
+    var mdimSheet = findSheet_(ss, MDIM_TAB);
+    var mLast = mdimSheet.getLastRow();
+    var mCol = mdimSheet.getLastColumn();
+    if (mLast >= 2 && mCol >= 1) {
+      var mValues = mdimSheet.getRange(1, 1, mLast, mCol).getValues();
+      var mHeader = mValues[0] || [];
+      var mIndex = {};
+      mHeader.forEach(function (h, i) {
+        var key = norm_(h);
+        if (key && mIndex[key] == null) mIndex[key] = i;
+      });
+      function mIdx(name) {
+        var i = mIndex[norm_(name)];
+        return i == null ? -1 : i;
+      }
+      function mCell(row, name) {
+        var i = mIdx(name);
+        if (i < 0) return '';
+        var v = row[i];
+        if (v == null) return '';
+        return String(v).trim();
+      }
+      var mDateCol = mIdx('Updated At');
+      for (var mr = 1; mr < mValues.length; mr++) {
+        var mRow = mValues[mr] || [];
+        var mAuthor = mCell(mRow, 'Author');
+        if (!mAuthor) continue;
+        var mDate = mDateCol < 0 ? '' : approvalDay_(mRow[mDateCol]);
+        if (!mDate) continue;
+        var mb = takeBucket(mAuthor, mDate);
+        mb.images++;
+        mb.mdim++;
+        var mEan = mCell(mRow, 'EAN Number');
+        if (mEan) mb.eans[mEan] = 1;
+      }
+    }
+  } catch (mdimErr) {
+    // M-DIM tab missing — approve-only stats still work.
+  }
+
+  var days = [];
+  Object.keys(buckets).forEach(function (k) {
+    var b = buckets[k];
+    days.push({
+      author: b.author,
+      date: b.date,
+      images: b.images,
+      approve: b.approve,
+      mdim: b.mdim,
+      automated: b.automated,
+      custom: b.custom,
+      unknown: b.unknown,
+      qualitySum: b.qualitySum,
+      qualityN: b.qualityN,
+      generationSum: b.generationSum,
+      generationN: b.generationN,
+      firstTry: b.firstTry,
+      eans: Object.keys(b.eans)
+    });
+  });
+  days.sort(function (a, b) {
+    if (a.date < b.date) return -1;
+    if (a.date > b.date) return 1;
+    if (a.author < b.author) return -1;
+    if (a.author > b.author) return 1;
+    return 0;
+  });
+  return {
+    version: SCRIPT_VERSION,
+    readAt: new Date().toISOString(),
+    firstAt: firstAt,
+    days: days
+  };
 }
 
 /** Run once from the editor to verify tabs + authorize write. */
