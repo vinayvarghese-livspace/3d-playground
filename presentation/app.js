@@ -17,6 +17,12 @@ var domainTitles = {};
 var authPopup = null;
 var authWatch = null;
 var authBusy = false;
+var authTarget = "board";
+/** Both must succeed before any shots render (empty > wrong / partial). */
+var boardFeedOk = false;
+var categoriesFeedOk = false;
+/** True after categories nav succeeds or fails (not while the first request is in flight). */
+var categoriesSettled = false;
 
 function cleanMasterTitle(text) {
   return String(text || "")
@@ -255,8 +261,13 @@ function pickedModes() {
   return nav && nav.picked ? nav.picked() : {};
 }
 
+function feedsReady() {
+  return boardFeedOk && categoriesFeedOk;
+}
+
 /** Untagged rows always show; a tagged row shows once all its rail options are on. */
 function visibleImages(board) {
+  if (!feedsReady()) return [];
   var picked = pickedModes();
   var fixed = {};
   boardOptions(board).forEach(function (opt) {
@@ -719,7 +730,8 @@ function showMissingBoard(title) {
 /** Sub-category picked in the finder, else the ?sub= deep link until the finder takes over. */
 function currentSlug() {
   var nav = window.presentationNav;
-  if (nav && (nav.ownsUrl() || nav.subSlug())) return nav.subSlug();
+  var fromNav = nav && nav.subSlug();
+  if (fromNav) return fromNav;
   return requestedSlug;
 }
 
@@ -728,8 +740,21 @@ function setBoardEmpty(empty) {
   if (boardEl) boardEl.classList.toggle("is-empty", empty);
 }
 
-/** Nothing is shown until a sub-category is chosen. */
+/** Nothing is shown until both feeds are allowed and a sub-category is chosen. */
 function showBoard() {
+  if (!feedsReady()) {
+    clearBoard();
+    setBoardEmpty(true);
+    var title = document.getElementById("masterTitle");
+    if (title) {
+      if (!boardFeedOk || (categoriesSettled && !categoriesFeedOk)) {
+        title.textContent = "Access needed";
+      } else {
+        title.textContent = "Loading…";
+      }
+    }
+    return;
+  }
   var slug = currentSlug();
   if (!slug) {
     clearBoard();
@@ -756,9 +781,33 @@ function applyFeed(data) {
   boards = (data && data.boards) || [];
   rebuildDomainTitles(boards);
   lastModified = (data && data.modified) || "";
+  boardFeedOk = true;
   if (window.presentationNav) window.presentationNav.refresh();
+  if (feedsReady()) hideAuthDialog();
+  else if (categoriesSettled && !categoriesFeedOk) {
+    requestSheetAccess(
+      "categories",
+      "Board is ready. Categories still needs Allow access."
+    );
+  }
   showBoard();
 }
+
+/** Categories / MTS nav feed — must be true with the board before shots render. */
+function setCategoriesFeedOk(ok) {
+  categoriesSettled = true;
+  categoriesFeedOk = !!ok;
+  if (feedsReady()) hideAuthDialog();
+  else if (boardFeedOk && !categoriesFeedOk) {
+    requestSheetAccess(
+      "categories",
+      "Board is ready. Categories still needs Allow access."
+    );
+  }
+  showBoard();
+}
+
+window.setCategoriesFeedOk = setCategoriesFeedOk;
 
 function jsonp(query, timeoutMs) {
   var root =
@@ -822,7 +871,11 @@ function feedRoot() {
 }
 
 function authPageUrl() {
-  var root = feedRoot();
+  var root = "";
+  if (authTarget === "categories") {
+    root = typeof CATEGORIES_FEED_URL === "string" ? CATEGORIES_FEED_URL.trim() : "";
+  }
+  if (!root) root = feedRoot();
   if (!root) return "";
   return root + (root.indexOf("?") >= 0 ? "&" : "?") + "action=ping";
 }
@@ -832,10 +885,23 @@ function showAuthDialog(status) {
   if (!dlg) return;
   dlg.hidden = false;
   var note = document.getElementById("authStatus");
-  if (note && status) note.textContent = status;
+  if (note) note.textContent = status || "";
   var title = document.getElementById("masterTitle");
   if (title && !boards.length) title.textContent = "Access needed";
 }
+
+/** Show the full auth card (board or categories). Used when present=1 is removed and access is still needed. */
+function requestSheetAccess(target, status) {
+  authTarget = target === "categories" ? "categories" : "board";
+  showAuthDialog(
+    status ||
+      (authTarget === "categories"
+        ? "Categories needs your permission."
+        : "")
+  );
+}
+
+window.requestSheetAccess = requestSheetAccess;
 
 function hideAuthDialog() {
   var dlg = document.getElementById("authDialog");
@@ -847,6 +913,15 @@ function hideAuthDialog() {
 function needsAuth(err) {
   var msg = String((err && err.message) || err || "");
   return msg === "AUTH_REQUIRED" || /authoriz|permission|timeout/i.test(msg);
+}
+
+function retryAfterAuth() {
+  showAuthDialog("Checking access…");
+  return loadBoard().then(function () {
+    if (window.presentationNav && typeof window.presentationNav.reload === "function") {
+      return window.presentationNav.reload();
+    }
+  });
 }
 
 function openAuthPopup() {
@@ -873,7 +948,7 @@ function openAuthPopup() {
     if (authPopup && !authPopup.closed) return;
     clearInterval(authWatch);
     authWatch = null;
-    loadBoard();
+    retryAfterAuth();
   }, 600);
 }
 
@@ -887,8 +962,7 @@ function bindAuthDialog() {
   }
   if (retry) {
     retry.addEventListener("click", function () {
-      showAuthDialog("Checking access…");
-      loadBoard();
+      retryAfterAuth();
     });
   }
 }
@@ -902,26 +976,28 @@ function loadBoard() {
         throw new Error((body && body.error) || "Feed error");
       }
       applyFeed(body.data);
-      hideAuthDialog();
       return true;
     })
     .catch(function (err) {
+      boardFeedOk = false;
+      boards = [];
+      clearBoard();
+      setBoardEmpty(true);
       if (err && err.message === "NO_FEED_URL") {
         document.getElementById("masterTitle").textContent = "Not connected";
         return false;
       }
-      if (!boards.length && needsAuth(err)) {
-        showAuthDialog(
+      if (needsAuth(err)) {
+        requestSheetAccess(
+          "board",
           err && err.message === "AUTH_REQUIRED"
-            ? ""
-            : "Still waiting for access. Click Allow access."
+            ? "Board needs your permission. Click Allow access."
+            : "Still waiting for board access. Click Allow access."
         );
         return false;
       }
-      if (!boards.length) {
-        document.getElementById("masterTitle").textContent =
-          "Error: " + (err && err.message ? err.message : err);
-      }
+      document.getElementById("masterTitle").textContent =
+        "Error: " + (err && err.message ? err.message : err);
       return false;
     })
     .then(function (ok) {

@@ -11,8 +11,8 @@ var PRESENTATION_FEED_URL =
 var PRESENTATION_POLL_MS = 8000;
 
 /**
- * Categories & Subcategories Apps Script (dashboard/apps-script-categories).
- * Feeds the finder: Division → Dept → Category → Sub-category.
+ * Finder tree (Division → Sub) via MTS Furniture Apps Script (`action=nav`).
+ * Same /exec + Allow as playground MTS. dashboard/apps-script-mts-furniture
  */
 var CATEGORIES_FEED_URL =
-  'https://script.google.com/a/macros/livspace.com/s/AKfycbwoL3q6yJdwU44-2HGu_ltwjaAM8bnRbkwq6ngQf7wAPS8FFKmak39wi-v08vYqroS0_g/exec';
+  'https://script.google.com/a/macros/livspace.com/s/AKfycbyMZSpmOfCpu4Dx45DjLN8et1TLqFcKRMATFgNwnZLZD_JYpn5WA0qMNuAM8tc_t-91mA/exec';

@@ -1,6 +1,6 @@
 /**
  * Finder: Division → Dept → Category → Sub-category.
- * Tree comes from the Categories sheet only (CATEGORIES_FEED_URL).
+ * Tree comes from Categories sheet via MTS Furniture web app (CATEGORIES_FEED_URL, action=nav).
  * USP / Set / Collection / Custom come from the presentation board (generated tab).
  * Query: ?sub=crockery-units&usp=1&set=1&collection=1&custom=1
  */
@@ -220,12 +220,28 @@ function navPaintBoard() {
 
 function navWriteUrl() {
   var url = new URL(window.location.href);
-  if (navState.sub) url.searchParams.set("sub", navSlug(navState.sub));
+  var slug = navState.sub
+    ? navSlug(navState.sub)
+    : (navState.pendingSlug || "");
+  if (slug) url.searchParams.set("sub", slug);
   else url.searchParams.delete("sub");
+
   var grouped = { usp: [], set: [], collection: [], custom: [] };
-  navActiveModes().forEach(function (item) {
-    grouped[item.param].push(item.id);
-  });
+  var active = navActiveModes();
+  if (active.length) {
+    active.forEach(function (item) {
+      grouped[item.param].push(item.id);
+    });
+  } else {
+    /* Board/rail not ready yet — keep picks already taken from the link. */
+    Object.keys(navState.picked).forEach(function (key) {
+      var parts = key.split(":");
+      var param = parts[0];
+      if (!grouped[param]) return;
+      if (param === "set" || param === "collection") grouped[param].push("1");
+      else if (parts[1]) grouped[param].push(parts[1]);
+    });
+  }
   ["usp", "set", "collection", "custom"].forEach(function (param) {
     if (grouped[param].length) url.searchParams.set(param, grouped[param].join(","));
     else url.searchParams.delete(param);
@@ -273,6 +289,9 @@ function navReadUrl() {
     navState.dept = found.dept;
     navState.category = found.category;
     navState.sub = found.sub;
+  } else if (slug) {
+    /* Deep link before the categories tree loads — keep slug for the board. */
+    navState.pendingSlug = slug;
   }
   navState.picked = {};
   navParamIds(params, "usp").forEach(function (id) { navState.picked["usp:" + id] = true; });
@@ -410,6 +429,7 @@ function navLoadTree() {
   var root = String(CATEGORIES_FEED_URL || "").trim();
   if (!root) {
     navSetNote("Categories not connected");
+    if (typeof setCategoriesFeedOk === "function") setCategoriesFeedOk(false);
     return;
   }
   navJsonp("action=nav", 20000)
@@ -421,16 +441,28 @@ function navLoadTree() {
       navReady = true;
       navSetNote("Categories & Subcategories");
       navReadUrl();
+      if (navState.sub) navState.pendingSlug = "";
+      if (typeof setCategoriesFeedOk === "function") setCategoriesFeedOk(true);
       navApply(false, navState.ownsUrl);
     })
     .catch(function (err) {
+      navReady = false;
+      if (typeof setCategoriesFeedOk === "function") setCategoriesFeedOk(false);
       var msg = String((err && err.message) || err || "");
       var needsAccess = msg === "AUTH_REQUIRED" || /timeout/i.test(msg);
       if (needsAccess) {
-        navSetNote(
-          "Allow access once, then reload this page.",
-          root + (root.indexOf("?") >= 0 ? "&" : "?") + "action=ping"
-        );
+        navSetNote("Allow access to load categories…");
+        if (typeof requestSheetAccess === "function") {
+          requestSheetAccess(
+            "categories",
+            "Categories needs your permission. Click Allow access."
+          );
+        } else {
+          navSetNote(
+            "Allow access once, then reload this page.",
+            root + (root.indexOf("?") >= 0 ? "&" : "?") + "action=ping"
+          );
+        }
       } else {
         navSetNote("Could not load categories: " + msg);
       }
@@ -472,6 +504,8 @@ function navBind() {
 }
 
 navBind();
+/* Apply ?usp= / ?sub= from the link immediately — do not wait on categories Allow. */
+navReadUrl();
 navApply(false, false);
 navLoadTree();
 
@@ -480,7 +514,8 @@ window.presentationNav = {
     return navState.ownsUrl;
   },
   subSlug: function () {
-    return navState.sub ? navSlug(navState.sub) : "";
+    if (navState.sub) return navSlug(navState.sub);
+    return navState.pendingSlug || "";
   },
   subName: function () {
     return navState.sub || "";
@@ -488,5 +523,6 @@ window.presentationNav = {
   picked: function () {
     return navState.picked;
   },
-  refresh: navSyncRail
+  refresh: navSyncRail,
+  reload: navLoadTree
 };
