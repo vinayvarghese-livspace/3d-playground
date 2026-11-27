@@ -4904,18 +4904,17 @@
   }
 
   function shotExecutionId(shotIndex) {
-    // Prefer the shared EAN Answerly thread (first gen id) so all shots open the same job.
-    const root = state.workspace && String(state.workspace.answerlyRootExecutionId || '').trim();
-    if (root) return root;
+    // This shot's own Answerly execution (so Jobs UI shows that shot's A/B refs).
     const assets = shotAssets(shotIndex);
     const out = assets && assets.output;
     if (out && out.executionId) return String(out.executionId).trim();
     const approved = state.workspace && state.workspace.approved && state.workspace.approved[shotIndex];
     if (approved && approved.executionId) return String(approved.executionId).trim();
-    return '';
+    // Fallback: shared EAN thread root (first gen) when this shot has no id yet.
+    return (state.workspace && String(state.workspace.answerlyRootExecutionId || '').trim()) || '';
   }
 
-  /** First Answerly execution id for this EAN workspace — reused as parent/thread for later gens. */
+  /** First Answerly execution id for this EAN — parent_execution_id for later gens (same job thread). */
   function rememberAnswerlyRootExecution(executionId) {
     if (!state.workspace) return;
     const id = String(executionId || '').trim();
@@ -4923,6 +4922,35 @@
     if (!state.workspace.answerlyRootExecutionId) {
       state.workspace.answerlyRootExecutionId = id;
     }
+  }
+
+  /** Capture thread root as soon as the bridge reports an Answerly execution id (before job done). */
+  function noteAnswerlyExecutionFromPoll(job) {
+    if (!job || !state.workspace) return;
+    const id = String(job.executionId || job.rootExecutionId || '').trim();
+    if (id) rememberAnswerlyRootExecution(id);
+  }
+
+  function waitForAnswerlyRootExecution(timeoutMs) {
+    const ms = Math.max(1000, Number(timeoutMs) || 120000);
+    if (state.workspace && state.workspace.answerlyRootExecutionId) {
+      return Promise.resolve(String(state.workspace.answerlyRootExecutionId));
+    }
+    return new Promise((resolve, reject) => {
+      const start = Date.now();
+      const timer = setInterval(() => {
+        const id = state.workspace && String(state.workspace.answerlyRootExecutionId || '').trim();
+        if (id) {
+          clearInterval(timer);
+          resolve(id);
+          return;
+        }
+        if (!state.workspace || Date.now() - start > ms) {
+          clearInterval(timer);
+          reject(new Error('Timed out waiting for the first Answerly job id (EAN thread).'));
+        }
+      }, 400);
+    });
   }
 
   function answerlyJobTitleForShot(task, shot, shotIndex) {
@@ -4945,9 +4973,9 @@
     if (state.workspace && !state.workspace.answerlyNamedOnce) {
       state.workspace.answerlyNamedOnce = true;
     }
-    return {
+    const extras = {
       title: title,
-      parent_execution_id: root || undefined,
+      name: title,
       metadata: {
         ean: ean,
         shot_code: String((shot && shot.code) || ''),
@@ -4956,6 +4984,12 @@
         thread_id: root || ean || undefined
       }
     };
+    // Only attach parent when we already have a root — first gen creates the thread.
+    if (root) {
+      extras.parent_execution_id = root;
+      extras.parentExecutionId = root;
+    }
+    return extras;
   }
 
   function buildEanDraftRecord() {
@@ -6296,6 +6330,7 @@
       }
       let lastStage = '';
       const job = await pollAnswerlyJob(queued.id, (j) => {
+        noteAnswerlyExecutionFromPoll(j);
         if (!state.workspace || state.workspace.mode !== 'replace') return;
         const stage = (j.stage || j.status || 'running') +
           (typeof j.progress === 'number' ? ' · ' + j.progress + '%' : '');
@@ -6477,6 +6512,7 @@
       }
       let lastStage = '';
       const job = await pollAnswerlyJob(queued.id, (j) => {
+        noteAnswerlyExecutionFromPoll(j);
         if (!state.workspace || state.workspace.mode !== 'primary') return;
         const stage = (j.stage || j.status || 'running') +
           (typeof j.progress === 'number' ? ' · ' + j.progress + '%' : '');
@@ -9452,8 +9488,9 @@
 
   function modelMaxReferenceImages(modelId, opts) {
     const low = String(modelId || '').toLowerCase();
+    // Model-level caps only — do not invent lower product limits here.
     if (/krea|grok|xai\//.test(low)) return 1;
-    // Primary: A1+A2+A3 + up to 4 B. Replace: prior + up to 4 B.
+    // Primary can be A1+A2+A3 + 4 B (=8). Replace: prior + 4 B (=5).
     if (opts && opts.primary) return 8;
     return 5;
   }
@@ -10046,22 +10083,24 @@
       false
     );
 
-    // Non-MAIN in parallel; MAIN after Hero Front D (wait inside genAllPrimaryOneShot).
-    Promise.all(otherItems.map((item) =>
-      genAllPrimaryOneShot(task, shots, item).catch((err) => {
+    // Establish one Answerly thread (parent_execution_id) from the first shot, then
+    // run the rest in parallel so same-EAN gens stay under one Answerly job group.
+    function runPrimaryOne(item) {
+      return genAllPrimaryOneShot(task, shots, item).catch((err) => {
         if (!isCancelError(err)) {
           shotAssets(item.shotIdx).error = (err && err.message) || 'Generation failed';
         }
         clearShotBusy(item.shotIdx);
-      })
-    )).then(() => Promise.all(mainItems.map((item) =>
-      genAllPrimaryOneShot(task, shots, item).catch((err) => {
-        if (!isCancelError(err)) {
-          shotAssets(item.shotIdx).error = (err && err.message) || 'Generation failed';
-        }
-        clearShotBusy(item.shotIdx);
-      })
-    ))).then(() => {
+      });
+    }
+    const firstOther = otherItems[0] || null;
+    const restOther = otherItems.slice(1);
+    // First shot completes (and pins answerlyRootExecutionId); later shots send parent_execution_id.
+    const startOthers = firstOther
+      ? runPrimaryOne(firstOther).then(() => Promise.all(restOther.map(runPrimaryOne)))
+      : Promise.resolve();
+
+    startOthers.then(() => Promise.all(mainItems.map(runPrimaryOne))).then(() => {
       if (!state.workspace || String(state.workspace.ean) !== batchEan) return;
       delete state.workspace.genAllBatch;
       syncGenFocus();
@@ -10398,16 +10437,27 @@
         });
     }
 
-    // 1) Parallel non-MAIN shots  2) Then MAIN after Hero Front / 01 D exists.
+    // 1) First non-MAIN establishes the Answerly EAN thread, then the rest in parallel
+    // 2) Then MAIN after Hero Front / 01 D exists.
     Promise.resolve()
-      .then(() => Promise.allSettled(otherItems.map(settleOne)))
-      .then((otherSettled) => {
-        const otherResults = otherSettled.map((r) =>
-          r.status === 'fulfilled' ? r.value : { ok: false, error: String(r.reason) }
+      .then(() => {
+        if (!otherItems.length) return Promise.resolve([]);
+        const first = otherItems[0];
+        const rest = otherItems.slice(1);
+        // First shot pins the Answerly EAN thread; then the rest run in parallel with parent id.
+        return settleOne(first).then((firstVal) =>
+          Promise.allSettled(rest.map(settleOne)).then((restSettled) => {
+            const restVals = restSettled.map((r) =>
+              r.status === 'fulfilled' ? r.value : { ok: false, error: String(r.reason) }
+            );
+            return [firstVal].concat(restVals);
+          })
         );
+      })
+      .then((otherResults) => {
         return mainItems.reduce((chain, item) => chain.then((acc) =>
           settleOne(item).then((val) => acc.concat([val]))
-        ), Promise.resolve(otherResults));
+        ), Promise.resolve(otherResults || []));
       })
       .then((results) => {
       let okCount = 0;

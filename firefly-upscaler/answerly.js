@@ -412,15 +412,16 @@ function buildInput(workflowMeta, opts) {
       ? opts.imageUrls.filter(Boolean)
       : (opts.imageUrl ? [opts.imageUrl] : []);
     if (!urls.length) throw new Error(workflowMeta.label + ' needs an input image');
-    // Image to Image: one field per slot only — aliases duplicate rows in Answerly Jobs UI.
-    // Slot 1 = reference_image_url; slots 2–8 = second… / third… (Primary A* + up to 4 B).
+    // Image to Image multi-ref:
+    // - Named slots (second/third/…) are capped by the Answerly workflow schema (~3 total).
+    // - reference_image_urls[] is the full ordered list (up to 8) so A1+A2+A3+B×4 all arrive.
+    // Do not also set *_reference_image_url aliases — those duplicate rows in Jobs UI.
     if (workflowMeta.id === 'image-to-image-workflow') {
-      input.reference_image_url = urls[0];
       const modelLow = String(opts.model || '').toLowerCase();
       // Krea / Grok / xAI accept at most 1 reference — never set extra slots.
+      // Model-specific caps beyond that are enforced by the caller; bridge allows up to 8.
       const maxRefs = /krea|grok|xai\//.test(modelLow) ? 1 : 8;
       const take = urls.slice(0, maxRefs);
-      // Strip every multi-ref key (including legacy aliases) so Jobs UI stays clean.
       [
         'second_reference_url', 'third_reference_url', 'fourth_reference_url', 'fifth_reference_url',
         'sixth_reference_url', 'seventh_reference_url', 'eighth_reference_url',
@@ -428,8 +429,10 @@ function buildInput(workflowMeta, opts) {
         'fifth_reference_image_url', 'sixth_reference_image_url', 'seventh_reference_image_url',
         'eighth_reference_image_url', 'reference_image_urls'
       ].forEach((k) => { delete input[k]; });
-      if (maxRefs > 1) {
-        // Short form matches Jobs UI + model (same as Replace: prior + B).
+      input.reference_image_url = take[0];
+      if (maxRefs > 1 && take.length > 1) {
+        input.reference_image_urls = take.slice();
+        // Keep the first few named slots for older Jobs UI that only reads those fields.
         const slotKeys = [
           'second_reference_url', 'third_reference_url', 'fourth_reference_url', 'fifth_reference_url',
           'sixth_reference_url', 'seventh_reference_url', 'eighth_reference_url'
