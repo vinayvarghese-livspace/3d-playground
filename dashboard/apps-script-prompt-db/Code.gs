@@ -24,7 +24,7 @@ var PROMPT_DB_ID = '12NU2Ru7Jnxok4M0Ylva1n8CKBxScnOs3k4gPs35a4Ec';
 var UNIVERSAL_TAB = 'Universal';
 var ALL_USER_TAB = 'All user';
 var MDIM_TAB = 'M-DIM';
-var SCRIPT_VERSION = 17;
+var SCRIPT_VERSION = 18;
 
 var MDIM_COLUMNS = [
   'EAN Number',
@@ -76,6 +76,11 @@ var APPROVE_COLUMNS = [
   'Answerly input URL B2',
   'Answerly input URL B3',
   'Answerly input URL B4',
+  // Primary can send A1+A2+A3+B×4 (7 refs) — keep columns beyond Replacement’s B4.
+  'Answerly input URL B5',
+  'Answerly input URL B6',
+  'Answerly input URL B7',
+  'Answerly input URL B8',
   'Approved At'
 ];
 
@@ -307,6 +312,10 @@ function writePromptApprove_(p) {
   set('Answerly input URL B2', String(p.answerlyInputUrlB2 || p.inputUrlB2 || '').trim());
   set('Answerly input URL B3', String(p.answerlyInputUrlB3 || p.inputUrlB3 || '').trim());
   set('Answerly input URL B4', String(p.answerlyInputUrlB4 || p.inputUrlB4 || '').trim());
+  set('Answerly input URL B5', String(p.answerlyInputUrlB5 || p.inputUrlB5 || '').trim());
+  set('Answerly input URL B6', String(p.answerlyInputUrlB6 || p.inputUrlB6 || '').trim());
+  set('Answerly input URL B7', String(p.answerlyInputUrlB7 || p.inputUrlB7 || '').trim());
+  set('Answerly input URL B8', String(p.answerlyInputUrlB8 || p.inputUrlB8 || '').trim());
   set('Approved At', approvedAt);
 
   var next = sheet.getLastRow() + 1;

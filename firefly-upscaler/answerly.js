@@ -439,18 +439,38 @@ function buildInput(workflowMeta, opts) {
   return input;
 }
 
-async function queueWorkflow(workflowId, input) {
+/**
+ * Queue a workflow execution.
+ * opts.title / parent_execution_id / metadata group related gens under one Answerly job thread.
+ * Unknown fields are typically ignored by the API if unsupported.
+ */
+async function queueWorkflow(workflowId, input, opts) {
   const meta = WORKFLOWS[workflowId];
   if (!meta) throw new Error('Unknown workflow: ' + workflowId);
   const workspaceId = activeWorkspaceId();
+  const options = opts || {};
+  const body = {
+    workflow_id: workflowId,
+    workspace_id: workspaceId,
+    input
+  };
+  const title = String(options.title || options.name || '').trim();
+  if (title) {
+    body.title = title;
+    body.name = title;
+  }
+  const parentId = String(options.parent_execution_id || options.parentExecutionId || '').trim();
+  if (parentId) {
+    body.parent_execution_id = parentId;
+    body.root_execution_id = parentId;
+  }
+  if (options.metadata && typeof options.metadata === 'object') {
+    body.metadata = options.metadata;
+  }
   return api('/api/v2/workflow-executions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      workflow_id: workflowId,
-      workspace_id: workspaceId,
-      input
-    })
+    body: JSON.stringify(body)
   });
 }
 

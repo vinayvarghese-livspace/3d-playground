@@ -275,6 +275,7 @@ function publicAnswerlyJob(job) {
     workflow: job.workflow,
     model: job.model,
     executionId: job.executionId,
+    rootExecutionId: job.rootExecutionId || job.parentExecutionId || job.executionId || null,
     resultUrl: job.resultUrl,
     inputUrl: job.inputUrl || null,
     inputUrls: Array.isArray(job.inputUrls) ? job.inputUrls.slice() : [],
@@ -342,9 +343,19 @@ async function runAnswerlyJob(job) {
     const refKeys = Object.keys(input).filter((k) => /reference/i.test(k));
     ff.log('[answerly] ' + job.id + ': refs=' + imageUrls.length +
       ' keys=' + refKeys.map((k) => k + (Array.isArray(input[k]) ? '[' + input[k].length + ']' : '')).join(','));
-    const queued = await answerly.queueWorkflow(job.workflow, input);
+    const queued = await answerly.queueWorkflow(job.workflow, input, {
+      title: job.title || '',
+      parent_execution_id: job.parentExecutionId || '',
+      metadata: job.metadata || undefined
+    });
     throwIfAnswerlyCancelled(job);
-    job.executionId = queued.execution_id;
+    job.executionId = queued.execution_id || queued.id || null;
+    // If API nested this under a parent, prefer the root/thread id for UI reuse.
+    job.rootExecutionId = queued.root_execution_id ||
+      queued.parent_execution_id ||
+      job.parentExecutionId ||
+      job.executionId ||
+      null;
     if (!job.executionId) throw new Error('No execution_id returned from Answerly');
 
     const deadline = Date.now() + (cfg.answerlyJobTimeoutMs || 5 * 60 * 1000);
@@ -451,7 +462,12 @@ function parseAnswerlyJobBody(raw) {
     images,
     buffer: first ? first.buffer : null,
     imageName: first ? first.name : 'upload.png',
-    imageMime: first ? first.mime : 'image/png'
+    imageMime: first ? first.mime : 'image/png',
+    title: String(data.title || data.name || '').trim(),
+    parentExecutionId: String(
+      data.parent_execution_id || data.parentExecutionId || data.root_execution_id || ''
+    ).trim(),
+    metadata: (data.metadata && typeof data.metadata === 'object') ? data.metadata : null
   };
 }
 
@@ -594,6 +610,9 @@ async function handle(req, res) {
       buffer: parsed.buffer,
       imageName: parsed.imageName,
       imageMime: parsed.imageMime,
+      title: parsed.title || '',
+      parentExecutionId: parsed.parentExecutionId || '',
+      metadata: parsed.metadata || null,
       status: 'queued',
       stage: 'queued',
       createdAt: Date.now(),

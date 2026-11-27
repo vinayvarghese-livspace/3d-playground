@@ -43,6 +43,8 @@
   const PROMPT_DB_URL = 'https://script.google.com/a/macros/livspace.com/s/AKfycbwjLPIuL9J_XtHmnEm7jdbnJHlUIEjscACqYiSIB3ISTQNXHDhKHAVyuOc9VuPaobHT/exec';
   // MTS Furniture Sheet Reader (Sheet1 only). Separate from FEED_URL — deploy dashboard/apps-script-mts-furniture.
   const MTS_FEED_URL = 'https://script.google.com/a/macros/livspace.com/s/AKfycbyMZSpmOfCpu4Dx45DjLN8et1TLqFcKRMATFgNwnZLZD_JYpn5WA0qMNuAM8tc_t-91mA/exec';
+  // PDP Slides image extractor (Primary A2). Separate from FEED_URL — deploy dashboard/apps-script-pdp-slides.
+  const PDP_SLIDES_URL = 'https://script.google.com/a/macros/livspace.com/s/AKfycbwqqezNL3I4DqQQEJoXWIbJyj-61oJpQrRr4ovIud8-V9CoMEJyJ8KPZcjswi5mJDNzIQ/exec';
   const FEED_TIMEOUT_MS = 90000;
   const FEED_VERSION = 40;
   const MTS_FEED_VERSION = 3;
@@ -50,7 +52,7 @@
   function isPreviewApp() {
     return /preview\.html$/i.test(typeof location !== 'undefined' ? location.pathname : '');
   }
-  const APP_VERSION = isPreviewApp() ? 'Preview V2.0' : 'Beta V2.0';
+  const APP_VERSION = isPreviewApp() ? 'Preview V2.1' : 'Beta V2.0';
   // How often to re-read the assign sheet while this tab is visible (other users' picks).
   // ~2 reads/min per open browser — well under the Sheets ~60 reads/min/user cap.
   const ASSIGN_POLL_MS = 30000;
@@ -68,6 +70,10 @@
   const TEMPLATE_REF_FOLDER_ID = '1-Z-zDxQgUCI7AaPDcJCYveBihssvpEG1';
   const TEMPLATE_IMAGES = {}; // match key → { id, name, thumb }
   let templateImagesLoading = false;
+  let templateImagesPromise = null;
+  // PDP slide image bytes keyed by objectId / contentUrl (shared across shot switches).
+  const PDP_BYTE_CACHE = {};
+  const PDP_BYTE_PENDING = {};
   const NAMING_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1BCUOtOmzYyMcfxptuwpSNOtvyN7PC7k792pljITUM8w/edit?pli=1&gid=476653278#gid=476653278';
   // Open as a Google Sheet (not the Drive file page) when checking pasted prop images.
   const PROP_SHEET_URL = 'https://docs.google.com/spreadsheets/d/12ckZ3NVf2bF08A7Lq6rFf08qK-gIz5mdQL65C-3l--U/';
@@ -210,6 +216,7 @@
     driveFiles: null,
     answerlyModels: null,
     replaceDraftCache: {}, // in-memory EAN drafts so switching tasks keeps A/B/C/D
+    primaryDraftCache: {}, // in-memory Primary drafts (A1/A2/A3/B/C/D + panel)
     renderMarkedInProgress: {},
     railScrollTop: null,
     mtsAuthNeeded: false,
@@ -325,6 +332,7 @@
     cropBox: $('crop-box'),
     cropCancel: $('crop-cancel'),
     cropConfirm: $('crop-confirm'),
+    cropKeepProportion: $('crop-keep-proportion'),
     cropReset: $('crop-reset'),
     workspace: $('task-workspace'),
     myCountActive: $('my-count-active'),
@@ -465,9 +473,10 @@
       p.set('ws', state.workspace.mode || 'choose');
       p.set('ean', String(state.workspace.ean));
       if (state.workspace.matchEan) p.set('match', String(state.workspace.matchEan));
-      if (state.workspace.mode === 'replace') {
+      if (state.workspace.mode === 'replace' || state.workspace.mode === 'primary') {
         p.set('shot', String(state.workspaceShot || 0));
-        if (state.workspace.driveImgIndex != null && state.workspace.driveImgIndex !== '') {
+        if (state.workspace.mode === 'replace' &&
+            state.workspace.driveImgIndex != null && state.workspace.driveImgIndex !== '') {
           p.set('drive', String(state.workspace.driveImgIndex));
         }
       }
@@ -1063,15 +1072,25 @@
     Object.keys(TEMPLATE_IMAGES).forEach((k) => { delete TEMPLATE_IMAGES[k]; });
     (Array.isArray(list) ? list : []).forEach((img) => {
       if (!img || !img.id) return;
-      if (String(img.name || '').indexOf('/') >= 0) return; // skip subfolder files
-      const key = templateMatchKey(templateCodeFromFileName(img.name));
+      const rawName = String(img.name || '');
+      // Prefer root-level files; still index nested ones by basename (e.g. Edited/T9.jpg).
+      const baseName = rawName.replace(/\\/g, '/').split('/').pop() || '';
+      const nested = rawName.indexOf('/') >= 0;
+      const key = templateMatchKey(templateCodeFromFileName(baseName));
       if (!key) return;
-      if (!TEMPLATE_IMAGES[key]) TEMPLATE_IMAGES[key] = img;
+      const existing = TEMPLATE_IMAGES[key];
+      if (!existing) {
+        TEMPLATE_IMAGES[key] = img;
+        return;
+      }
+      // Root-level wins over nested when both match the same code.
+      const existingNested = String(existing.name || '').indexOf('/') >= 0;
+      if (existingNested && !nested) TEMPLATE_IMAGES[key] = img;
     });
   }
 
   // Drive file whose name matches the sheet value, ignoring spaces and case.
-  // "T7 set" also falls back to a file named "T7".
+  // "T7 set" also falls back to a file named "T7". T9 also tries T09.
   function templateRefImage(template) {
     const label = tidyTemplate(template);
     if (!label) return null;
@@ -1080,31 +1099,60 @@
     const base = label.replace(/\s+set(?:\s+of\s+\d+)?$/i, '').trim();
     const baseKey = templateMatchKey(base);
     if (baseKey && baseKey !== key && TEMPLATE_IMAGES[baseKey]) return TEMPLATE_IMAGES[baseKey];
+    // Letter + digits: try zero-padded / unpadded variants (T9 ↔ T09).
+    const m = String(baseKey || key).match(/^([a-z]+)0*(\d+)$/i);
+    if (m) {
+      const letter = m[1].toLowerCase();
+      const num = String(Number(m[2]));
+      const candidates = [
+        letter + num,
+        letter + num.padStart(2, '0'),
+        letter + num.padStart(3, '0')
+      ];
+      for (let i = 0; i < candidates.length; i++) {
+        if (TEMPLATE_IMAGES[candidates[i]]) return TEMPLATE_IMAGES[candidates[i]];
+      }
+      const keys = Object.keys(TEMPLATE_IMAGES);
+      for (let i = 0; i < keys.length; i++) {
+        const km = keys[i].match(/^([a-z]+)0*(\d+)$/i);
+        if (km && km[1].toLowerCase() === letter && String(Number(km[2])) === num) {
+          return TEMPLATE_IMAGES[keys[i]];
+        }
+      }
+    }
     return null;
   }
 
-  async function loadTemplateRefImages() {
-    if (templateImagesLoading) return;
+  async function loadTemplateRefImages(force) {
     const cached = state.images[TEMPLATE_REF_FOLDER_ID];
-    if (Array.isArray(cached)) {
+    if (!force && Array.isArray(cached)) {
       if (!Object.keys(TEMPLATE_IMAGES).length) rebuildTemplateImageMap(cached);
-      return;
+      return cached;
     }
-    if (cached === 'error') return;
+    if (!force && cached === 'error') {
+      throw new Error('Template folder failed to load earlier — refresh the page.');
+    }
+    if (templateImagesPromise) return templateImagesPromise;
     templateImagesLoading = true;
     state.images[TEMPLATE_REF_FOLDER_ID] = 'loading';
-    try {
-      const found = await jsonp('action=thumbs&ids=' + encodeURIComponent(TEMPLATE_REF_FOLDER_ID), 60000);
-      const list = (found && found[TEMPLATE_REF_FOLDER_ID]) || [];
-      state.images[TEMPLATE_REF_FOLDER_ID] = list;
-      rebuildTemplateImageMap(list);
-      applyTemplateImages();
-    } catch (err) {
-      console.error(err);
-      state.images[TEMPLATE_REF_FOLDER_ID] = 'error';
-    } finally {
-      templateImagesLoading = false;
-    }
+    templateImagesPromise = jsonp('action=thumbs&ids=' + encodeURIComponent(TEMPLATE_REF_FOLDER_ID), 60000)
+      .then((found) => {
+        const list = (found && found[TEMPLATE_REF_FOLDER_ID]) || [];
+        state.images[TEMPLATE_REF_FOLDER_ID] = list;
+        rebuildTemplateImageMap(list);
+        applyTemplateImages();
+        return list;
+      })
+      .catch((err) => {
+        console.error(err);
+        state.images[TEMPLATE_REF_FOLDER_ID] = 'error';
+        throw err;
+      })
+      .finally(() => {
+        templateImagesLoading = false;
+        templateImagesPromise = null;
+      });
+    return templateImagesPromise;
   }
 
   function applyTemplateImages() {
@@ -2070,7 +2118,10 @@
   }
 
   function shotListFor(t) {
-    const naming = (state.workspace && state.workspace.mode === 'replace') ? namingShotsForWorkspace() : null;
+    const naming = (state.workspace &&
+      (state.workspace.mode === 'replace' || state.workspace.mode === 'primary'))
+      ? namingShotsForWorkspace()
+      : null;
     if (naming && naming.length) {
       return naming.map((s, i) => ({
         seq: Number(s.seq) || i,
@@ -2104,8 +2155,16 @@
     return !!(state.workspace && state.workspace.productTypeName && selectedNamingType());
   }
 
-  function isLifestyleShot(name) {
-    return /lifestyle/i.test(name || '');
+  /** Lifestyle family / L-CTX / LS-* / name containing Lifestyle (incl. variants). */
+  function isLifestyleShot(shotOrName) {
+    if (shotOrName == null) return false;
+    if (typeof shotOrName === 'string') return /lifestyle/i.test(shotOrName);
+    const name = String(shotOrName.name || '');
+    const family = String(shotOrName.family || '');
+    const code = String(shotOrName.code || '');
+    if (/lifestyle/i.test(name) || /lifestyle/i.test(family)) return true;
+    if (/^L-CTX/i.test(code) || /^LS-/i.test(code)) return true;
+    return false;
   }
 
   function isDimensionShotName(name) {
@@ -2235,6 +2294,1185 @@
     if (!state.workspace.prompts) state.workspace.prompts = {};
   }
 
+  function ensurePrimaryState(t) {
+    if (!state.workspace) return;
+    if (!state.workspace.primaryInit) {
+      state.workspace.primaryInit = true;
+      // Primary defaults Detail & Compare collapsed to free space for A1/A2/B/C/D.
+      if (state.workspace.panelOpen == null) state.workspace.panelOpen = false;
+      if (state.workspace.panelMax == null) state.workspace.panelMax = false;
+      if (state.workspace.rating == null) state.workspace.rating = 0;
+      if (!state.workspace.ratings) state.workspace.ratings = {};
+      if (!state.workspace.promptBaselines) state.workspace.promptBaselines = {};
+      if (!state.workspace.promptManualEdit) state.workspace.promptManualEdit = {};
+      if (state.workspace.comparePos == null) state.workspace.comparePos = 50;
+      if (state.workspace.generating === undefined) state.workspace.generating = null;
+      if (!state.workspace.shotInputs) state.workspace.shotInputs = {};
+      if (!state.workspace.assets) state.workspace.assets = {};
+      if (!state.workspace.prompts) state.workspace.prompts = {};
+      if (!state.workspace.outputs) state.workspace.outputs = {};
+      if (!state.workspace.approved) state.workspace.approved = {};
+      if (state.workspace.dimSeparate == null) state.workspace.dimSeparate = false;
+      if (state.workspace.mdimShowAbcd == null) state.workspace.mdimShowAbcd = false;
+      if (!state.workspace.mdimDraft) state.workspace.mdimDraft = null;
+      if (state.workspace.mdimBaseKey == null) state.workspace.mdimBaseKey = '';
+      if (!state.workspace.mdimWorkspaceUrl) state.workspace.mdimWorkspaceUrl = null;
+      if (state.workspace.mdimOverride === undefined) state.workspace.mdimOverride = null;
+      if (state.workspace.mdimMainMax == null) state.workspace.mdimMainMax = false;
+      if (state.workspace.mdimDbChecked == null) state.workspace.mdimDbChecked = false;
+      if (state.workspace.mdimDbAvailable == null) state.workspace.mdimDbAvailable = false;
+      if (state.workspace.mdimDbDoc === undefined) state.workspace.mdimDbDoc = null;
+      if (state.workspace.productTypeName == null) state.workspace.productTypeName = '';
+      if (state.workspace.productTypeVariant == null) state.workspace.productTypeVariant = '';
+      if (state.workspace.productTypeQuery == null) state.workspace.productTypeQuery = '';
+      if (state.workspace.productTypeOpen == null) state.workspace.productTypeOpen = false;
+      if (state.workspace.productTypeWarn == null) state.workspace.productTypeWarn = false;
+      if (state.workspace.fileTarget === undefined) state.workspace.fileTarget = null;
+      applyStoredProductTypeOnce();
+    }
+    if (!state.workspace.primary) {
+      state.workspace.primary = {
+        a1: null,
+        a1Loading: false,
+        a1Error: '',
+        a1Attempted: false,
+        a1Cleared: false,
+        // Lifestyle-only optional A1 (per shot) — blank by default, never auto-loaded.
+        lifestyleA1: {},
+        a2: {},
+        a3: {},
+        showA3: {},
+        pdp: null,
+        pdpLoading: false,
+        pdpError: '',
+        pdpAttempted: false,
+        a2Loading: {},
+        a2Manual: {},
+        a2Override: {}
+      };
+    }
+    if (!state.workspace.primary.lifestyleA1) state.workspace.primary.lifestyleA1 = {};
+    if (!state.workspace.assets) state.workspace.assets = {};
+    if (!state.workspace.prompts) state.workspace.prompts = {};
+    if (state.workspace.panelOpen == null) state.workspace.panelOpen = false;
+  }
+
+  function primarySlotAsset(slot, shotIndex) {
+    const p = state.workspace && state.workspace.primary;
+    if (!p) return null;
+    if (slot === 'a1') {
+      const task = taskByEan(state.workspace && state.workspace.ean);
+      const shot = (shotListFor(task || {})[shotIndex]);
+      // Lifestyle keeps its own optional A1 (blank unless user adds one).
+      if (isLifestyleShot(shot)) {
+        return (p.lifestyleA1 && p.lifestyleA1[String(shotIndex)]) || null;
+      }
+      return p.a1 || null;
+    }
+    const map = slot === 'a3' ? p.a3 : p.a2;
+    return (map && map[String(shotIndex)]) || null;
+  }
+
+  function primaryShowA3(shotIndex) {
+    const p = state.workspace && state.workspace.primary;
+    return !!(p && p.showA3 && p.showA3[String(shotIndex)]);
+  }
+
+  function setPrimaryShowA3(shotIndex, on) {
+    if (!state.workspace || !state.workspace.primary) return;
+    if (!state.workspace.primary.showA3) state.workspace.primary.showA3 = {};
+    state.workspace.primary.showA3[String(shotIndex)] = !!on;
+    if (!on) {
+      const prev = primarySlotAsset('a3', shotIndex);
+      revokeAssetUrl(prev);
+      if (state.workspace.primary.a3) delete state.workspace.primary.a3[String(shotIndex)];
+    }
+    maybeRefreshAutomatedPrimaryPrompt(shotIndex);
+  }
+
+  async function setPrimarySlotFromFile(slot, shotIndex, file) {
+    if (!state.workspace || !isAcceptedImageFile(file)) {
+      showToast('Use JPG or PNG images only.', false);
+      return;
+    }
+    ensurePrimaryState();
+    warnIfOverAnswerlyLimit(file, file.name || 'Primary ref');
+    try {
+      const loaded = await readLocalImageFile(file);
+      const p = state.workspace.primary;
+      if (slot === 'a1') {
+        const task = taskByEan(state.workspace.ean);
+        const shot = shotListFor(task || {})[shotIndex];
+        if (isLifestyleShot(shot)) {
+          if (!p.lifestyleA1) p.lifestyleA1 = {};
+          revokeAssetUrl(p.lifestyleA1[String(shotIndex)]);
+          p.lifestyleA1[String(shotIndex)] = loaded;
+        } else {
+          revokeAssetUrl(p.a1);
+          const code = tidyTemplate(task && task.template);
+          if (code) {
+            loaded.label = code;
+            loaded.name = code;
+          }
+          p.a1 = loaded;
+          p.a1Error = '';
+          p.a1Loading = false;
+          p.a1Attempted = true;
+          p.a1Cleared = false;
+        }
+      } else if (slot === 'a3') {
+        if (!p.a3) p.a3 = {};
+        revokeAssetUrl(p.a3[String(shotIndex)]);
+        p.a3[String(shotIndex)] = loaded;
+        setPrimaryShowA3(shotIndex, true);
+      } else {
+        if (!p.a2) p.a2 = {};
+        if (!p.a2Manual) p.a2Manual = {};
+        revokeAssetUrl(p.a2[String(shotIndex)]);
+        p.a2[String(shotIndex)] = loaded;
+        p.a2Manual[String(shotIndex)] = true;
+      }
+      maybeRefreshAutomatedPrimaryPrompt(shotIndex);
+      renderWorkspace();
+      persistCurrentPrimaryDraft();
+      const shotNow = shotListFor(taskByEan(state.workspace && state.workspace.ean) || {})[shotIndex];
+      const lifeNow = isLifestyleShot(shotNow);
+      showToast(
+        (slot === 'a1'
+          ? (lifeNow ? 'A1 · Optional lifestyle ref' : 'A1 · Template image')
+          : (slot === 'a3'
+            ? 'A3 · Custom ref'
+            : (lifeNow
+              ? 'A2 · PDP Lifestyle reference'
+              : 'A2 · PDP camera reference'))) +
+          ' · ' + esc(loaded.name || 'image') +
+          (loaded.w && loaded.h ? ' (' + loaded.w + '×' + loaded.h + ')' : ''),
+        false
+      );
+    } catch (err) {
+      showToast(err.message || 'Could not set image.', false, { error: true });
+    }
+  }
+
+  function clearPrimarySlot(slot, shotIndex) {
+    if (!state.workspace || !state.workspace.primary) return;
+    const p = state.workspace.primary;
+    if (slot === 'a1') {
+      const task = taskByEan(state.workspace.ean);
+      const shot = shotListFor(task || {})[shotIndex];
+      if (isLifestyleShot(shot)) {
+        if (p.lifestyleA1) {
+          revokeAssetUrl(p.lifestyleA1[String(shotIndex)]);
+          delete p.lifestyleA1[String(shotIndex)];
+        }
+      } else {
+        // Keep Drive template recoverable — same idea as Clear override on Replace A.
+        if (p.a1 && !p.a1Cleared) p.a1Cleared = true;
+        revokeAssetUrl(p.a1);
+        p.a1 = null;
+        p.a1Error = '';
+        p.a1Attempted = true;
+        p.a1Loading = false;
+      }
+    } else if (slot === 'a3') {
+      if (p.a3) {
+        revokeAssetUrl(p.a3[String(shotIndex)]);
+        delete p.a3[String(shotIndex)];
+      }
+      // Keep A3 card visible after Clear — Hide is the only way to remove the slot.
+    } else if (p.a2) {
+      revokeAssetUrl(p.a2[String(shotIndex)]);
+      delete p.a2[String(shotIndex)];
+      if (p.a2Manual) delete p.a2Manual[String(shotIndex)];
+      if (p.a2Loading) delete p.a2Loading[String(shotIndex)];
+    }
+    maybeRefreshAutomatedPrimaryPrompt(shotIndex);
+    renderWorkspace();
+    persistCurrentPrimaryDraft();
+    if (slot === 'a2' && state.workspace.mode === 'primary') {
+      schedulePrimaryA2ForShot(shotIndex);
+    }
+  }
+
+  function primaryPdpLink(t) {
+    const links = pdpLinksOf(t || {});
+    const prefer = links.find((u) => /presentation\/d\//i.test(u)) || links[0] || '';
+    return String(prefer || (t && t.pdpLink) || '').trim();
+  }
+
+  function primaryPdpImages() {
+    const p = state.workspace && state.workspace.primary;
+    return (p && p.pdp && Array.isArray(p.pdp.images)) ? p.pdp.images : [];
+  }
+
+  function pdpCacheKey(meta) {
+    if (!meta) return '';
+    return String(meta.objectId || meta.contentUrl || ('seq:' + meta.seq) || '');
+  }
+
+  function shotNameForPdpSeq(seq, shots) {
+    const list = shots || [];
+    const n = Number(seq);
+    if (n > 0) {
+      const bySeq = list.find((s) => Number(s.seq) === n);
+      if (bySeq && bySeq.name) return String(bySeq.name);
+    }
+    // Non-MAIN shots in naming order align to PDP reading order when seq is missing.
+    const nonMain = list.filter((s) => !isMainShot(s));
+    const hit = nonMain[n > 0 ? n - 1 : -1];
+    return (hit && hit.name) || (n > 0 ? ('Seq ' + n) : 'PDP image');
+  }
+
+  function primaryA2DisplayName(shot, meta, asset) {
+    if (asset && asset.label) return String(asset.label);
+    if (shot && shot.name) return String(shot.name);
+    if (meta && meta.seq != null) return shotNameForPdpSeq(meta.seq, shotListFor(taskByEan(state.workspace && state.workspace.ean) || {}));
+    return isLifestyleShot(shot) ? 'PDP Lifestyle reference' : 'PDP camera reference';
+  }
+
+  function pdpMetaForShot(shot, shotIndex) {
+    const p = state.workspace && state.workspace.primary;
+    const images = primaryPdpImages();
+    if (!images.length) return null;
+    const key = String(shotIndex);
+    const override = p && p.a2Override && p.a2Override[key];
+    if (override) {
+      if (override.objectId) {
+        const byId = images.find((img) => img.objectId === override.objectId);
+        if (byId) return byId;
+      }
+      if (override.seq != null) {
+        const bySeq = images.find((img) => Number(img.seq) === Number(override.seq));
+        if (bySeq) return bySeq;
+      }
+    }
+    // MAIN has no auto PDP camera (Replace uses Hero Front / 01 D as A).
+    if (isMainShot(shot)) return null;
+    const seq = Number(shot && shot.seq);
+    if (seq > 0) {
+      const bySeq = images.find((img) => Number(img.seq) === seq);
+      if (bySeq) return bySeq;
+      if (images[seq - 1]) return images[seq - 1];
+    }
+    // Fall back: position among non-MAIN shots ↔ PDP reading order.
+    const task = taskByEan(state.workspace && state.workspace.ean);
+    const shots = shotListFor(task || {});
+    const nonMain = shots
+      .map((s, idx) => ({ s: s, idx: idx }))
+      .filter((x) => !isMainShot(x.s));
+    const pos = nonMain.findIndex((x) => x.idx === Number(shotIndex));
+    if (pos >= 0 && images[pos]) return images[pos];
+    return images[Number(shotIndex) || 0] || null;
+  }
+
+  function assetFromPdpBytes(data, meta, label) {
+    const mime = (data && data.mime) || 'image/jpeg';
+    const blob = base64ToBlob(data.base64, mime);
+    const url = URL.createObjectURL(blob);
+    const display = String(label || shotNameForPdpSeq(meta && meta.seq, []) || ('Seq ' + ((meta && meta.seq) || '?')))
+      .replace(/\.(jpe?g|png|webp)$/i, '')
+      .trim();
+    return {
+      id: 'pdp_' + ((meta && meta.objectId) || display),
+      name: display,
+      label: display,
+      source: 'pdp-slides',
+      blob: blob,
+      file: blob,
+      url: url,
+      _blobRef: blob,
+      mime: mime,
+      size: (data && data.size) || blob.size,
+      w: 0,
+      h: 0,
+      pdpSeq: meta && meta.seq,
+      pdpObjectId: meta && meta.objectId,
+      contentUrl: meta && meta.contentUrl
+    };
+  }
+
+  function clonePdpAsset(asset, label) {
+    if (!asset) return null;
+    const display = String(label || asset.label || asset.name || 'PDP')
+      .replace(/\.(jpe?g|png|webp)$/i, '')
+      .trim();
+    // Reuse the same blob URL — do not revoke while other shots may share the cache entry.
+    return {
+      id: asset.id,
+      name: display,
+      label: display,
+      source: asset.source || 'pdp-slides',
+      blob: asset.blob,
+      file: asset.file || asset.blob,
+      url: asset.url || asset.contentUrl || '',
+      _blobRef: asset._blobRef || asset.blob,
+      mime: asset.mime,
+      size: asset.size,
+      w: asset.w || 0,
+      h: asset.h || 0,
+      pdpSeq: asset.pdpSeq,
+      pdpObjectId: asset.pdpObjectId,
+      contentUrl: asset.contentUrl,
+      sharedCache: true
+    };
+  }
+
+  function loadPdpBytesCached(meta) {
+    const key = pdpCacheKey(meta);
+    if (!key || !meta || !meta.contentUrl) {
+      return Promise.reject(new Error('Missing PDP image meta'));
+    }
+    if (PDP_BYTE_CACHE[key]) return Promise.resolve(PDP_BYTE_CACHE[key]);
+    if (PDP_BYTE_PENDING[key]) return PDP_BYTE_PENDING[key];
+    const q = 'action=pdpImage&contentUrl=' + encodeURIComponent(meta.contentUrl) +
+      (meta.seq != null ? '&seq=' + encodeURIComponent(meta.seq) : '') +
+      (meta.objectId ? '&objectId=' + encodeURIComponent(meta.objectId) : '');
+    PDP_BYTE_PENDING[key] = jsonp(q, 120000, PDP_SLIDES_URL)
+      .then((data) => {
+        if (!data || !data.base64) throw new Error('PDP image had no bytes.');
+        const label = shotNameForPdpSeq(meta.seq, shotListFor(taskByEan(state.workspace && state.workspace.ean) || {}));
+        const asset = assetFromPdpBytes(data, meta, label);
+        PDP_BYTE_CACHE[key] = asset;
+        return asset;
+      })
+      .finally(() => {
+        delete PDP_BYTE_PENDING[key];
+      });
+    return PDP_BYTE_PENDING[key];
+  }
+
+  function prefetchPrimaryPdpBytes(t) {
+    const images = primaryPdpImages();
+    if (!images.length) return;
+    const shots = shotListFor(t || {});
+    // Warm cache for every PDP cell; active shot is prioritized first.
+    const activeMeta = pdpMetaForShot(shots[state.workspaceShot || 0], state.workspaceShot || 0);
+    const ordered = images.slice().sort((a, b) => {
+      const aActive = activeMeta && pdpCacheKey(a) === pdpCacheKey(activeMeta) ? 0 : 1;
+      const bActive = activeMeta && pdpCacheKey(b) === pdpCacheKey(activeMeta) ? 0 : 1;
+      if (aActive !== bActive) return aActive - bActive;
+      return (Number(a.seq) || 0) - (Number(b.seq) || 0);
+    });
+    let i = 0;
+    const workers = 3;
+    function next() {
+      if (i >= ordered.length) return;
+      if (!state.workspace || state.workspace.mode !== 'primary') return;
+      const meta = ordered[i++];
+      loadPdpBytesCached(meta).then(() => next()).catch(() => next());
+    }
+    for (let w = 0; w < workers; w++) next();
+  }
+
+  function schedulePrimaryA2ForShot(shotIndex) {
+    if (!state.workspace || state.workspace.mode !== 'primary') return;
+    const p = state.workspace.primary;
+    if (!p || !p.pdp) return;
+    const key = String(shotIndex);
+    if (p.a2Manual && p.a2Manual[key]) return;
+    if (p.a2 && p.a2[key] && p.a2[key].blob) return;
+    if (p.a2Loading && p.a2Loading[key]) return;
+    const task = taskByEan(state.workspace.ean);
+    const shots = shotListFor(task || {});
+    const shot = shots[shotIndex];
+    const meta = pdpMetaForShot(shot, shotIndex);
+    if (!meta || !meta.contentUrl) return;
+    if (!p.a2Loading) p.a2Loading = {};
+    const cacheKey = pdpCacheKey(meta);
+    const label = primaryA2DisplayName(shot, meta, null);
+    if (PDP_BYTE_CACHE[cacheKey]) {
+      if (!p.a2) p.a2 = {};
+      p.a2[key] = clonePdpAsset(PDP_BYTE_CACHE[cacheKey], label);
+      delete p.a2Loading[key];
+      maybeRefreshAutomatedPrimaryPrompt(shotIndex);
+      renderWorkspace();
+      return;
+    }
+    if (p.a2Loading[key]) return;
+    p.a2Loading[key] = true;
+    // Show contentUrl preview immediately while bytes fetch.
+    if (!p.a2) p.a2 = {};
+    if (!p.a2[key] || !p.a2[key].blob) {
+      p.a2[key] = {
+        id: 'pdp_url_' + (meta.objectId || meta.seq),
+        name: label,
+        label: label,
+        source: 'pdp-slides-url',
+        url: meta.contentUrl,
+        contentUrl: meta.contentUrl,
+        pdpSeq: meta.seq,
+        pdpObjectId: meta.objectId,
+        w: 0,
+        h: 0
+      };
+      maybeRefreshAutomatedPrimaryPrompt(shotIndex);
+      requestAnimationFrame(() => {
+        if (state.workspace && state.workspace.mode === 'primary') renderWorkspace();
+      });
+    }
+    loadPdpBytesCached(meta)
+      .then((asset) => {
+        if (!state.workspace || state.workspace.mode !== 'primary' || !state.workspace.primary) return;
+        if (state.workspace.primary.a2Manual && state.workspace.primary.a2Manual[key]) return;
+        // Still the same PDP cell for this shot?
+        const still = pdpMetaForShot(shotListFor(taskByEan(state.workspace.ean) || {})[shotIndex], shotIndex);
+        if (still && pdpCacheKey(still) !== cacheKey) return;
+        if (!state.workspace.primary.a2) state.workspace.primary.a2 = {};
+        state.workspace.primary.a2[key] = clonePdpAsset(asset, label);
+        if (state.workspace.primary.a2Loading) delete state.workspace.primary.a2Loading[key];
+        maybeRefreshAutomatedPrimaryPrompt(shotIndex);
+        renderWorkspace();
+      })
+      .catch((err) => {
+        if (!state.workspace || !state.workspace.primary) return;
+        if (state.workspace.primary.a2Loading) delete state.workspace.primary.a2Loading[key];
+        console.warn('PDP A2 load', err);
+        if (state.workspace.mode === 'primary') renderWorkspace();
+      });
+  }
+
+  function assignPrimaryA2FromPdp(shotIndex, meta) {
+    if (!state.workspace || !state.workspace.primary || !meta) return;
+    const p = state.workspace.primary;
+    const key = String(shotIndex);
+    if (!p.a2Override) p.a2Override = {};
+    p.a2Override[key] = { seq: meta.seq, objectId: meta.objectId || '' };
+    if (p.a2Manual) delete p.a2Manual[key];
+    if (p.a2) {
+      revokeAssetUrl(p.a2[key]);
+      delete p.a2[key];
+    }
+    if (p.a2Loading) delete p.a2Loading[key];
+    renderWorkspace();
+    schedulePrimaryA2ForShot(shotIndex);
+  }
+
+  function openPrimaryA2Picker(shotIndex) {
+    const p = state.workspace && state.workspace.primary;
+    const images = primaryPdpImages();
+    if (!p || !images.length) {
+      showToast('PDP images are not loaded yet.', false, { error: true });
+      return;
+    }
+    const task = taskByEan(state.workspace.ean);
+    const shots = shotListFor(task || {});
+    const shot = shots[shotIndex] || shots[0];
+    const current = pdpMetaForShot(shot, shotIndex);
+    let overlay = document.getElementById('wr-primary-a2-picker');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'wr-primary-a2-picker';
+      overlay.className = 'wr-prompt-modal wr-a2-picker-modal';
+      overlay.hidden = true;
+      document.body.appendChild(overlay);
+      overlay.addEventListener('click', (e) => {
+        if (e.target.closest('[data-wr-a2-close]')) {
+          overlay.hidden = true;
+          return;
+        }
+        const pick = e.target.closest('[data-wr-a2-pick]');
+        if (!pick) return;
+        const seq = Number(pick.getAttribute('data-wr-a2-pick'));
+        const objectId = pick.getAttribute('data-wr-a2-oid') || '';
+        const rawIdx = overlay.dataset.shotIndex;
+        const idx = rawIdx != null && rawIdx !== '' ? Number(rawIdx) : NaN;
+        if (isNaN(idx)) return;
+        const meta = primaryPdpImages().find((img) =>
+          (objectId && img.objectId === objectId) || Number(img.seq) === seq
+        );
+        if (!meta) return;
+        assignPrimaryA2FromPdp(idx, meta);
+        overlay.hidden = true;
+        showToast('A2 set to ' + esc(shotNameForPdpSeq(meta.seq, shotListFor(taskByEan(state.workspace.ean) || {}))), false);
+      });
+    }
+    overlay.dataset.shotIndex = String(shotIndex);
+    const tiles = images.map((img) => {
+      const label = shotNameForPdpSeq(img.seq, shots);
+      const cacheKey = pdpCacheKey(img);
+      const cached = PDP_BYTE_CACHE[cacheKey];
+      const thumb = (cached && ensureAssetDisplayUrl(cached)) || img.contentUrl || '';
+      const selected = current && (
+        (current.objectId && current.objectId === img.objectId) ||
+        Number(current.seq) === Number(img.seq)
+      );
+      return '<button type="button" class="wr-a2-pick' + (selected ? ' is-selected' : '') +
+        '" data-wr-a2-pick="' + esc(String(img.seq)) +
+        '" data-wr-a2-oid="' + esc(img.objectId || '') +
+        '" title="' + esc(label) + '">' +
+        '<span class="wr-a2-pick-thumb">' +
+          (thumb
+            ? '<img src="' + esc(thumb) + '" alt="" referrerpolicy="no-referrer">'
+            : '<span class="wr-ph">—</span>') +
+        '</span>' +
+        '<span class="wr-a2-pick-seq">Seq ' + esc(String(img.seq)) + '</span>' +
+        '<span class="wr-a2-pick-name">' + esc(label) + '</span>' +
+      '</button>';
+    }).join('');
+    const a2PickerLabel = isLifestyleShot(shot)
+      ? 'Change PDP Lifestyle reference'
+      : 'Change PDP camera reference';
+    overlay.innerHTML =
+      '<div class="wr-prompt-modal-backdrop" data-wr-a2-close></div>' +
+      '<div class="wr-prompt-modal-panel wr-a2-picker-panel" role="dialog" aria-modal="true" aria-label="' +
+        esc(a2PickerLabel) + '">' +
+        '<div class="wr-prompt-modal-head">' +
+          '<div class="wr-prompt-modal-title">' + esc(a2PickerLabel) +
+            (shot && shot.name ? ' · ' + esc(shot.name) : '') +
+          '</div>' +
+          '<button type="button" class="wr-icon-btn" data-wr-a2-close title="Close" aria-label="Close">✕</button>' +
+        '</div>' +
+        '<p class="wr-a2-picker-note">' +
+          (isLifestyleShot(shot)
+            ? 'Pick the PDP lifestyle scene for this shot. Product B replaces the main product in that scene.'
+            : 'Pick the PDP sequence that matches this shot. Names follow Required shots order.') +
+        '</p>' +
+        '<div class="wr-a2-picker-grid">' + tiles + '</div>' +
+      '</div>';
+    overlay.hidden = false;
+    // Prefetch any missing thumbs into cache while the picker is open.
+    images.forEach((img) => {
+      loadPdpBytesCached(img).then(() => {
+        if (overlay.hidden) return;
+        const btn = overlay.querySelector('[data-wr-a2-pick="' + String(img.seq) + '"] img');
+        const cached = PDP_BYTE_CACHE[pdpCacheKey(img)];
+        const url = cached && ensureAssetDisplayUrl(cached);
+        if (btn && url) btn.src = url;
+      }).catch(() => {});
+    });
+  }
+
+  function schedulePrimaryPdpLoad(t) {
+    if (!state.workspace || state.workspace.mode !== 'primary') return;
+    ensurePrimaryState(t);
+    const p = state.workspace.primary;
+    if (!p || p.pdpLoading || p.pdpAttempted) return;
+    const link = primaryPdpLink(t);
+    if (!link) {
+      p.pdpAttempted = true;
+      p.pdpError = 'No PDP guideline link on this task.';
+      return;
+    }
+    if (!PDP_SLIDES_URL) {
+      p.pdpAttempted = true;
+      p.pdpError = 'PDP_SLIDES_URL is not set.';
+      return;
+    }
+    p.pdpAttempted = true;
+    p.pdpLoading = true;
+    p.pdpError = '';
+    requestAnimationFrame(() => {
+      if (state.workspace && state.workspace.mode === 'primary') renderWorkspace();
+    });
+    let q = 'action=pdpSlideImages&url=' + encodeURIComponent(link);
+    const title = String((t && (t.title || t.productName)) || '').trim();
+    // If the sheet link has no slide=id.…, search by product title.
+    if (title && !/[#&?]slide=id\./i.test(link)) {
+      q += '&q=' + encodeURIComponent(title);
+    }
+    jsonp(q, 120000, PDP_SLIDES_URL)
+      .then((data) => {
+        if (!state.workspace || state.workspace.mode !== 'primary' || !state.workspace.primary) return;
+        state.workspace.primary.pdp = data || null;
+        state.workspace.primary.pdpLoading = false;
+        const count = (data && data.images && data.images.length) || 0;
+        if (!count) {
+          state.workspace.primary.pdpError = 'No product images found on that PDP slide.';
+        } else {
+          state.workspace.primary.pdpError = '';
+          const shots = shotListFor(t);
+          const nonMainCount = shots.filter((s) => !isMainShot(s)).length;
+          const mismatch = nonMainCount && count !== nonMainCount
+            ? ' · PDP ' + count + ' vs ' + nonMainCount + ' angle shots'
+            : '';
+          showToast('PDP camera refs loaded · ' + count + ' image' + (count === 1 ? '' : 's') +
+            ' (seq order)' + mismatch, false);
+        }
+        renderWorkspace();
+        schedulePrimaryA2ForShot(state.workspaceShot || 0);
+        prefetchPrimaryPdpBytes(t);
+      })
+      .catch((err) => {
+        if (!state.workspace || !state.workspace.primary) return;
+        state.workspace.primary.pdpLoading = false;
+        state.workspace.primary.pdpError = (err && err.message) || 'Could not load PDP slide images.';
+        if (state.workspace.mode === 'primary') renderWorkspace();
+      });
+  }
+
+  function schedulePrimaryA1Load(t, opts) {
+    opts = opts || {};
+    if (!state.workspace || state.workspace.mode !== 'primary') return;
+    ensurePrimaryState(t);
+    const p = state.workspace.primary;
+    if (!p || p.a1 || p.a1Loading) return;
+    // Lifestyle (+ variants) never use the template plate — do not auto-load A1.
+    const shots = shotListFor(t || {});
+    const cur = shots[state.workspaceShot || 0];
+    if (isLifestyleShot(cur) && !opts.force) return;
+    if (!opts.force && p.a1Attempted) return;
+    p.a1Attempted = true;
+    p.a1Cleared = false;
+    const tpl = t && t.template;
+    if (!tpl) {
+      p.a1Error = 'No template mapped for this product.';
+      return;
+    }
+    p.a1Loading = true;
+    p.a1Error = '';
+    // Refresh badge after paint; fetch runs async.
+    requestAnimationFrame(() => {
+      if (state.workspace && state.workspace.mode === 'primary') renderWorkspace();
+    });
+    Promise.resolve()
+      .then(() => loadTemplateRefImages(!!opts.force))
+      .then(() => {
+        let img = templateRefImage(tpl);
+        if (!img || !img.id) {
+          // Folder list may have been empty/stale — force one refresh.
+          return loadTemplateRefImages(true).then(() => {
+            img = templateRefImage(tpl);
+            if (!img || !img.id) {
+              throw new Error('No reference image mapped for ' + tpl + ' yet.');
+            }
+            return fetchDriveFileAsset(img.id);
+          });
+        }
+        return fetchDriveFileAsset(img.id);
+      })
+      .then((asset) => {
+        if (!state.workspace || state.workspace.mode !== 'primary' || !state.workspace.primary) return;
+        // Prefer sheet template code for the meta label (avoid long Drive names / ellipsis).
+        const code = tidyTemplate(tpl);
+        if (code) {
+          asset.label = code;
+          asset.name = code;
+        }
+        state.workspace.primary.a1 = asset;
+        state.workspace.primary.a1Loading = false;
+        state.workspace.primary.a1Error = '';
+        state.workspace.primary.a1Cleared = false;
+        maybeRefreshAutomatedPrimaryPrompt(state.workspaceShot || 0);
+        renderWorkspace();
+      })
+      .catch((err) => {
+        if (!state.workspace || !state.workspace.primary) return;
+        state.workspace.primary.a1Loading = false;
+        state.workspace.primary.a1Error = (err && err.message) || 'Could not load template.';
+        if (state.workspace.mode === 'primary') renderWorkspace();
+      });
+  }
+
+  function restorePrimaryA1() {
+    if (!state.workspace || state.workspace.mode !== 'primary') return;
+    ensurePrimaryState();
+    const p = state.workspace.primary;
+    if (!p) return;
+    p.a1Attempted = false;
+    p.a1Cleared = false;
+    p.a1Error = '';
+    const task = taskByEan(state.workspace.ean);
+    schedulePrimaryA1Load(task, { force: true });
+  }
+
+  /** Inject primary-prompt-core.js once if the page forgot the script tag (e.g. old index.html). */
+  function ensurePrimaryPromptCoreScript() {
+    if (window.PrimaryPromptCore && window.PrimaryPromptCore.compilePrompt) return;
+    if (document.querySelector('script[data-primary-prompt-core]')) return;
+    const s = document.createElement('script');
+    s.src = 'primary-prompt/primary-prompt-core.js?v=6';
+    s.setAttribute('data-primary-prompt-core', '1');
+    s.onload = function () {
+      if (!(window.PrimaryPromptCore && window.PrimaryPromptCore.compilePrompt)) return;
+      if (state.workspace && state.workspace.mode === 'primary') {
+        const task = taskByEan(state.workspace.ean);
+        if (task) syncAutomatedPrimaryPromptsToLatestCompile(task);
+        renderWorkspace();
+      }
+    };
+    s.onerror = function () {
+      console.warn('Could not load primary-prompt/primary-prompt-core.js');
+    };
+    (document.head || document.documentElement).appendChild(s);
+  }
+
+  /**
+   * Ordered Answerly slots for Primary: A1 → A2 → A3 → B1..B4 (skip missing A*).
+   * B is compulsory (1–4); only the starting index changes with A* presence.
+   * Logic shared with primary-prompt/primary-prompt-lab.html via PrimaryPromptCore.
+   */
+  /** Hero Front / seq 01 generated D as a Primary A2-style asset for MAIN. */
+  function primaryMainHeroOutputAsset(shots) {
+    const list = shots || shotListFor(taskByEan(state.workspace && state.workspace.ean) || {});
+    const angleIdx = angleSourceShotIndex(list);
+    if (angleIdx < 0) return null;
+    const out = shotAssets(angleIdx).output;
+    if (!(out && (out.blob || out.file || out.url))) return null;
+    const angle = list[angleIdx] || {};
+    return Object.assign({}, out, {
+      name: out.name || ((angle.name || angle.code || 'Hero Front') + ' D'),
+      label: (angle.name || angle.code || 'Hero Front') + ' · generated D',
+      fromHeroFront: true,
+      angleShotIndex: angleIdx
+    });
+  }
+
+  function primaryInputPlan(shotIndex, opts) {
+    const options = opts || {};
+    const idx = shotIndex != null ? Number(shotIndex) : (state.workspaceShot || 0);
+    const task = taskByEan(state.workspace && state.workspace.ean);
+    const shots = options.shots || shotListFor(task || {});
+    const shot = shots[idx];
+    const lifestyle = isLifestyleShot(shot);
+    // Lifestyle: optional A1 only if user added one for this shot (never template auto-load).
+    const a1 = lifestyle
+      ? (options.a1 !== undefined ? options.a1 : primarySlotAsset('a1', idx))
+      : (options.a1 !== undefined
+        ? options.a1
+        : (state.workspace && state.workspace.primary && state.workspace.primary.a1) || null);
+    // MAIN: camera/composition from Hero Front / 01 D (same rule as Replace), not PDP.
+    let a2;
+    let mainFromHero = false;
+    if (options.a2 !== undefined) {
+      a2 = options.a2;
+      mainFromHero = !!(a2 && a2.fromHeroFront);
+    } else if (isMainShot(shot)) {
+      a2 = primaryMainHeroOutputAsset(shots);
+      mainFromHero = !!a2;
+    } else {
+      a2 = primarySlotAsset('a2', idx);
+    }
+    // Lifestyle: no A3 — A2 scene + B (+ optional A1) mirrors Product Replacement.
+    const a3Asset = lifestyle
+      ? null
+      : (options.a3 !== undefined ? options.a3 : primarySlotAsset('a3', idx));
+    const showA3 = lifestyle
+      ? false
+      : (options.showA3 != null
+        ? !!options.showA3
+        : (primaryShowA3(idx) || !!a3Asset));
+    const a3 = showA3 ? a3Asset : null;
+    // MAIN may borrow Hero Front / 01 B at generate time (not shown on MAIN rail).
+    const ownInputs = (shotAssets(idx).inputs || []).slice(0, 4);
+    const borrowed = isMainShot(shot) && !ownInputs.length
+      ? productInputsForShot(idx, shots)
+      : { inputs: ownInputs, borrowed: false };
+    const inputs = options.inputs || (borrowed.inputs || []).slice(0, 4);
+    // B compulsory: at least 1 product slot in the plan / prompt numbering.
+    const bCount = options.bCount != null
+      ? (window.PrimaryPromptCore
+        ? window.PrimaryPromptCore.clampBCount(options.bCount)
+        : Math.max(1, Math.min(4, Number(options.bCount) || 1)))
+      : Math.max(1, Math.min(4, inputs.length || 1));
+
+    // Lifestyle replace-style order: A2 scene = url_1, optional A1, then B (matches Replacement).
+    if (lifestyle) {
+      const slots = [];
+      let n = 1;
+      if (a2) {
+        slots.push({
+          role: 'a2',
+          refKey: 'reference_image_url_' + n,
+          inputImage: n,
+          label: 'LIFESTYLE SCENE / CAMERA REFERENCE',
+          asset: a2
+        });
+        n += 1;
+      }
+      if (a1) {
+        slots.push({
+          role: 'a1',
+          refKey: 'reference_image_url_' + n,
+          inputImage: n,
+          label: 'OPTIONAL REFERENCE',
+          asset: a1
+        });
+        n += 1;
+      }
+      const bStart = n;
+      for (let i = 0; i < bCount; i++) {
+        slots.push({
+          role: 'b',
+          bIndex: i,
+          refKey: 'reference_image_url_' + n,
+          inputImage: n,
+          label: 'PRODUCT REFERENCE',
+          asset: inputs[i] || null
+        });
+        n += 1;
+      }
+      return {
+        shotIndex: idx,
+        hasA1: !!a1,
+        hasA2: !!a2,
+        hasA3: false,
+        bCount: bCount,
+        bStartNum: bStart,
+        slots: slots,
+        a1: a1,
+        a2: a2,
+        a3: null,
+        inputs: inputs,
+        isMain: isMainShot(shot),
+        isLifestyle: true,
+        mainFromHero: mainFromHero,
+        borrowedProductFromAngle: !!borrowed.borrowed
+      };
+    }
+
+    const corePlan = window.PrimaryPromptCore
+      ? window.PrimaryPromptCore.buildPlan({
+          hasA1: !!a1,
+          hasA2: !!a2,
+          hasA3: !!a3,
+          bCount: bCount
+        })
+      : null;
+    const slots = (corePlan && corePlan.slots ? corePlan.slots : []).map((s) => {
+      if (s.role === 'a1') return Object.assign({}, s, { asset: a1 });
+      if (s.role === 'a2') return Object.assign({}, s, { asset: a2 });
+      if (s.role === 'a3') return Object.assign({}, s, { asset: a3 });
+      if (s.role === 'b') return Object.assign({}, s, { asset: inputs[s.bIndex] || null });
+      return s;
+    });
+    // Fallback if core script failed to load.
+    if (!slots.length) {
+      let n = 1;
+      if (a1) {
+        slots.push({ role: 'a1', refKey: 'reference_image_url_' + n, inputImage: n, label: 'MASTER BACKGROUND', asset: a1 });
+        n += 1;
+      }
+      if (a2) {
+        slots.push({ role: 'a2', refKey: 'reference_image_url_' + n, inputImage: n, label: 'CAMERA REFERENCE ONLY', asset: a2 });
+        n += 1;
+      }
+      if (a3) {
+        slots.push({ role: 'a3', refKey: 'reference_image_url_' + n, inputImage: n, label: 'OPTIONAL REFERENCE', asset: a3 });
+        n += 1;
+      }
+      const bStart = n;
+      for (let i = 0; i < bCount; i++) {
+        slots.push({
+          role: 'b', bIndex: i, refKey: 'reference_image_url_' + n, inputImage: n,
+          label: 'PRODUCT REFERENCE', asset: inputs[i] || null
+        });
+        n += 1;
+      }
+      return {
+        shotIndex: idx, hasA1: !!a1, hasA2: !!a2, hasA3: !!a3,
+        bCount: bCount, bStartNum: bStart, slots: slots,
+        a1: a1, a2: a2, a3: a3, inputs: inputs,
+        isMain: isMainShot(shot),
+        isLifestyle: lifestyle,
+        mainFromHero: mainFromHero,
+        borrowedProductFromAngle: !!borrowed.borrowed
+      };
+    }
+    return {
+      shotIndex: idx,
+      hasA1: !!a1,
+      hasA2: !!a2,
+      hasA3: !!a3,
+      bCount: bCount,
+      bStartNum: corePlan.bStartNum,
+      slots: slots,
+      a1: a1,
+      a2: a2,
+      a3: a3,
+      inputs: inputs,
+      isMain: isMainShot(shot),
+      isLifestyle: lifestyle,
+      mainFromHero: mainFromHero,
+      borrowedProductFromAngle: !!borrowed.borrowed
+    };
+  }
+
+  /**
+   * Product replacement Final successful prompt from Prompt DB (Universal).
+   * Same pool as Replacement; prefer a full PRODUCT REPLACEMENT body (shot or master).
+   */
+  function resolveProductReplacementFinalPrompt(shot, productTypeName) {
+    function isFullReplaceBody(text) {
+      return /^#\s*PRODUCT REPLACEMENT/i.test(String(text || '').trim());
+    }
+    function masterFromPool(pool) {
+      for (let i = 0; i < pool.length; i++) {
+        const row = pool[i];
+        if (!isReplaceWorkflow(row)) continue;
+        if (!String(row.imageName || '').trim() && !String(row.imageShortCode || '').trim() &&
+            String(row.prompt || '').trim()) {
+          return { prompt: row.prompt, label: 'master', row: row };
+        }
+      }
+      return null;
+    }
+    const resolved = resolveUniversalPrompt(shot, productTypeName, { workflow: 'replace' });
+    if (resolved && isFullReplaceBody(resolved.prompt)) return resolved;
+    const live = (state.universalRows && state.universalRows.length)
+      ? state.universalRows.filter(isReplaceWorkflow)
+      : [];
+    const liveMaster = masterFromPool(live);
+    if (liveMaster && isFullReplaceBody(liveMaster.prompt)) return liveMaster;
+    const embed = window.UNIVERSAL_REPLACE_PROMPTS;
+    const embedRows = (embed && embed.rows) || [];
+    const embedMaster = masterFromPool(embedRows);
+    if (embedMaster) return embedMaster;
+    if (resolved && String(resolved.prompt || '').trim()) return resolved;
+    return { prompt: '', label: 'missing', row: null };
+  }
+
+  /**
+   * Lifestyle Primary: same iteration as Replacement (Final successful + product/target +
+   * INPUT IMAGE blocks). A2 = scene (url_1); optional A1; B = product refs.
+   */
+  function compilePrimaryLifestylePrompt(t, shot, opts) {
+    const options = opts || {};
+    const productTypeName = (state.workspace && state.workspace.productTypeName) || options.productTypeName || '';
+    const shots = options.shots || (t ? shotListFor(t) : []);
+    const shotIndex = options.shotIndex != null
+      ? Number(options.shotIndex)
+      : (shots.indexOf(shot) >= 0 ? shots.indexOf(shot) : (state.workspaceShot || 0));
+    const plan = primaryInputPlan(shotIndex, Object.assign({}, options.planOpts || {}, { shots: shots }));
+    const resolved = resolveProductReplacementFinalPrompt(shot, productTypeName);
+    const hasOptA1 = !!plan.hasA1;
+    const actualB = Math.min(4, ((plan.inputs && plan.inputs.length) || (shotAssets(shotIndex).inputs || []).length || 0));
+    const bCount = Math.max(1, actualB || plan.bCount || 1);
+    const bStart = Math.max(2, Number(plan.bStartNum) || (hasOptA1 ? 3 : 2));
+    // DB Final successful body, adapted only for present product images + lifestyle labels.
+    let base = clarifyReplaceInputImageWording(ensureFullRemoveRule(resolved.prompt), {
+      productCount: bCount,
+      productStartNum: bStart
+    });
+    base = String(base || '')
+      .replace(
+        /\*\*INPUT IMAGE 1\s*[—\-]\s*`reference_image_url_1`\s*[—\-]\s*PRIOR\s*\/\s*MASTER\*\*/gi,
+        '**INPUT IMAGE 1 — `reference_image_url_1` — LIFESTYLE SCENE / CAMERA REFERENCE**'
+      )
+      .replace(
+        /The original scene to be edited\. Preserve this image exactly, except for the main product\./gi,
+        'The lifestyle scene / camera reference to be edited. Preserve this image exactly, except for the main product.'
+      )
+      .replace(/PRIOR\s*\/\s*MASTER/gi, 'LIFESTYLE SCENE / CAMERA REFERENCE')
+      .replace(/\bmaster image\b/gi, 'lifestyle scene')
+      .replace(/\bprior product\b/gi, 'original product in the lifestyle scene');
+
+    if (hasOptA1) {
+      base = base.replace(
+        /(\*\*INPUT IMAGE 1[^*\n]*\*\*[\s\S]*?)(\n\*\*INPUT IMAGE)/i,
+        '$1\n\n**INPUT IMAGE 2 — `reference_image_url_2` — OPTIONAL REFERENCE (A1)**\n\n' +
+          'Optional supporting reference only. Do not let it override product identity from the product reference images.\n$2'
+      );
+    }
+
+    // Same light shot iteration as Replacement (product line + target) — no duplicate INPUT blocks.
+    const productLine = productInsertSentence(t, shot);
+    const cleaned = cleanWhatToShoot(shot, shots);
+    const camera = cameraHintForShot(shot, cleaned);
+    const family = String((shot && shot.family) || '').trim();
+    const shotName = String((shot && shot.name) || '').trim() || 'this shot';
+    let target = 'Target ' + shotName;
+    if (family) target += ' — ' + family;
+    target += '.';
+    if (cleaned) target += ' ' + cleaned;
+    if (camera && cleaned.toLowerCase().indexOf(camera.replace(/^Camera:\s*/i, '').slice(0, 24).toLowerCase()) < 0) {
+      target += (/\.$/.test(target.trim()) ? ' ' : '. ') + camera;
+    }
+
+    const lines = [];
+    if (base) lines.push(base);
+    if (productLine) lines.push('', productLine);
+    if (target) lines.push('', target);
+    return {
+      text: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
+      slots: plan.slots,
+      plan: plan,
+      fromDb: !!(resolved.prompt && String(resolved.prompt).trim()),
+      lifestyle: true,
+      universalLabel: (resolved.label && resolved.label !== 'missing'
+        ? ('replace · ' + resolved.label)
+        : 'replace · master'),
+      universalRow: resolved.row || null,
+      cleanedWhatToShoot: cleaned
+    };
+  }
+
+  function compilePrimaryPrompt(t, shot, opts) {
+    const options = opts || {};
+    const productTypeName = (state.workspace && state.workspace.productTypeName) || options.productTypeName || '';
+    const shots = options.shots || (t ? shotListFor(t) : []);
+    const shotIndex = options.shotIndex != null
+      ? Number(options.shotIndex)
+      : (shots.indexOf(shot) >= 0 ? shots.indexOf(shot) : (state.workspaceShot || 0));
+    if (isLifestyleShot(shot)) {
+      return compilePrimaryLifestylePrompt(t, shot, Object.assign({}, options, { shotIndex: shotIndex, shots: shots }));
+    }
+    const plan = primaryInputPlan(shotIndex, options.planOpts || {});
+    const mainShot = isMainShot(shot);
+    const productLine = productInsertSentence(t, shot);
+    const cleaned = cleanWhatToShoot(shot, shots);
+    const camera = cameraHintForShot(shot, cleaned);
+    const family = String((shot && shot.family) || '').trim();
+    const shotName = String((shot && shot.name) || '').trim() || 'this shot';
+    let target = 'Target ' + shotName;
+    if (family) target += ' — ' + family;
+    target += '.';
+    if (cleaned) target += ' ' + cleaned;
+    if (camera && cleaned.toLowerCase().indexOf(camera.replace(/^Camera:\s*/i, '').slice(0, 24).toLowerCase()) < 0) {
+      target += (/\.$/.test(target.trim()) ? ' ' : '. ') + camera;
+    }
+
+    // MAIN: same pattern as Replacement — Universal MAIN Final successful almost intact.
+    if (mainShot) {
+      const resolved = resolvePrimaryMainUniversal(productTypeName);
+      let base = String(resolved.prompt || '').trim();
+      // Light key modernization only when the MAIN body is Product-replacement shaped.
+      if (/^#\s*PRODUCT REPLACEMENT/i.test(base)) {
+        base = clarifyReplaceInputImageWording(ensureFullRemoveRule(base), {
+          productCount: Math.max(1, plan.bCount || 1),
+          productStartNum: Math.max(2, plan.bStartNum || 2)
+        });
+      }
+      const lines = [];
+      if (base) lines.push(base);
+      if (productLine) lines.push('', productLine);
+      if (target) lines.push('', target);
+      return {
+        text: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
+        slots: plan.slots,
+        plan: plan,
+        fromDb: !!base,
+        lifestyle: false,
+        universalLabel: (resolved.label && String(resolved.label).trim()) || 'MAIN',
+        universalRow: resolved.row || null,
+        cleanedWhatToShoot: cleaned
+      };
+    }
+
+    // Non-MAIN: Prompt DB Universal (Primary workflow) with live A1→A2→A3→B renumbering.
+    const resolved = resolveUniversalPrompt(shot, productTypeName, { workflow: 'primary' });
+    let dbText = String(resolved.prompt || '').trim();
+    const isCompositionTemplate = /^#\s*PHOTOREALISTIC PRODUCT COMPOSITION/i.test(dbText);
+    let extraUniversalNote = '';
+    if (dbText && !isCompositionTemplate && !/^#\s*PRODUCT REPLACEMENT/i.test(dbText)) {
+      extraUniversalNote = dbText;
+      dbText = '';
+      const master = resolvePrimaryUniversalMaster(productTypeName);
+      if (master && master.prompt) dbText = String(master.prompt || '').trim();
+    }
+    const appendixParts = [];
+    if (extraUniversalNote) appendixParts.push(extraUniversalNote);
+    if (productLine) appendixParts.push(productLine);
+    if (target) appendixParts.push(target);
+    const appendix = appendixParts.join('\n\n');
+
+    ensurePrimaryPromptCoreScript();
+    let text = '';
+    let fromDb = false;
+    if (window.PrimaryPromptCore && window.PrimaryPromptCore.compileFromUniversal) {
+      const compiled = window.PrimaryPromptCore.compileFromUniversal(dbText, {
+        hasA1: plan.hasA1,
+        hasA2: plan.hasA2,
+        hasA3: plan.hasA3,
+        bCount: plan.bCount,
+        appendix: appendix
+      });
+      text = compiled.text;
+      fromDb = !!compiled.fromDb;
+    } else if (window.PrimaryPromptCore && window.PrimaryPromptCore.compilePrompt) {
+      text = window.PrimaryPromptCore.compilePrompt({
+        hasA1: plan.hasA1,
+        hasA2: plan.hasA2,
+        hasA3: plan.hasA3,
+        bCount: plan.bCount,
+        appendix: appendix
+      }).text;
+    } else {
+      text = [
+        '# PHOTOREALISTIC PRODUCT COMPOSITION',
+        '',
+        'Loading Primary prompt core… (refresh if this stays).',
+        appendix ? ('\n## SHOT-SPECIFIC TARGET\n\n' + appendix) : ''
+      ].join('\n').trim();
+    }
+
+    return {
+      text: text,
+      slots: plan.slots,
+      plan: plan,
+      fromDb: fromDb,
+      lifestyle: false,
+      universalLabel: resolved.label || (fromDb ? 'master' : 'core'),
+      universalRow: resolved.row || null,
+      cleanedWhatToShoot: cleaned
+    };
+  }
+
+  /** Blank Image Name + short code Primary Universal master (composition body). */
+  function resolvePrimaryUniversalMaster(productTypeName) {
+    const rows = (state.universalRows && state.universalRows.length)
+      ? state.universalRows
+      : embeddedUniversalRows();
+    const pt = normPromptKey(productTypeName);
+    const primaryRows = rows.filter(isPrimaryWorkflow);
+    function typeOk(row) {
+      const rpt = normPromptKey(row.productType);
+      return !rpt || !pt || rpt === pt;
+    }
+    for (let i = 0; i < primaryRows.length; i++) {
+      const row = primaryRows[i];
+      if (!String(row.imageName || '').trim() && !String(row.imageShortCode || '').trim() && typeOk(row)) {
+        return row;
+      }
+    }
+    for (let j = 0; j < primaryRows.length; j++) {
+      const row = primaryRows[j];
+      if (!String(row.imageName || '').trim() && !String(row.imageShortCode || '').trim()) return row;
+    }
+    return primaryRows[0] || null;
+  }
+
+  /** If C was not human-edited, recompile after A1/A2/A3/B slot changes (no yellow). */
+  function maybeRefreshAutomatedPrimaryPrompt(shotIndex) {
+    if (!state.workspace || state.workspace.mode !== 'primary') return;
+    const task = taskByEan(state.workspace.ean);
+    if (!task) return;
+    const idx = shotIndex != null ? Number(shotIndex) : (state.workspaceShot || 0);
+    // Human typing wins — script must not overwrite or yellow.
+    if (isPromptManualEdit(idx)) return;
+    const shots = shotListFor(task);
+    const shot = shots[idx] || shots[0];
+    if (!state.workspace.prompts) state.workspace.prompts = {};
+    if (!state.workspace.promptBaselines) state.workspace.promptBaselines = {};
+    const compiled = compilePrimaryPrompt(task, shot, { shotIndex: idx });
+    state.workspace.prompts[idx] = compiled.text;
+    rememberPromptBaseline(idx, compiled.text);
+    setPromptManualEdit(idx, false);
+  }
+
+  /** Replacement: refresh C when B count changes unless the user typed in C. */
+  function maybeRefreshAutomatedReplacePrompt(shotIndex) {
+    if (!state.workspace || state.workspace.mode !== 'replace') return;
+    const task = taskByEan(state.workspace.ean);
+    if (!task) return;
+    const idx = shotIndex != null ? Number(shotIndex) : (state.workspaceShot || 0);
+    if (isPromptManualEdit(idx)) return;
+    const shots = shotListFor(task);
+    const shot = shots[idx] || shots[0];
+    const prior = resolveWorkspaceMatch(task).selected;
+    if (!state.workspace.prompts) state.workspace.prompts = {};
+    if (!state.workspace.promptBaselines) state.workspace.promptBaselines = {};
+    const compiled = compileReplacePrompt(task, shot, prior, { shotIndex: idx });
+    state.workspace.prompts[idx] = compiled.text;
+    rememberPromptBaseline(idx, compiled.text);
+    setPromptManualEdit(idx, false);
+  }
+
+  function maybeRefreshAutomatedPromptForShot(shotIndex) {
+    if (!state.workspace) return;
+    if (state.workspace.mode === 'primary') maybeRefreshAutomatedPrimaryPrompt(shotIndex);
+    else if (state.workspace.mode === 'replace') maybeRefreshAutomatedReplacePrompt(shotIndex);
+  }
+
   /* ---------- Replace workspace image assets (local File / Blob in memory) ---------- */
 
   function shotAssets(shotIndex) {
@@ -2248,6 +3486,8 @@
   }
 
   function revokeAssetUrl(asset) {
+    // Shared PDP cache entries keep their blob URL for other shots / the picker.
+    if (asset && asset.sharedCache) return;
     if (asset && asset.url && String(asset.url).indexOf('blob:') === 0) {
       const dead = asset.url;
       try { URL.revokeObjectURL(dead); } catch (e) { /* ignore */ }
@@ -2426,6 +3666,7 @@
       const loaded = await Promise.all(take.map(readLocalImageFile));
       assets.inputs = assets.inputs.concat(loaded);
       syncShotInputNames(shotIndex);
+      maybeRefreshAutomatedPromptForShot(shotIndex);
       renderWorkspace();
       persistCurrentReplaceDraft();
       showToast(
@@ -2467,6 +3708,7 @@
     revokeAssetUrl(gone);
     assets.inputs = assets.inputs.filter((_, j) => j !== inputIndex);
     syncShotInputNames(shotIndex);
+    maybeRefreshAutomatedPromptForShot(shotIndex);
     persistCurrentReplaceDraft();
   }
 
@@ -2487,6 +3729,7 @@
       revokeAssetUrl(assets.inputs[inputIndex]);
       assets.inputs[inputIndex] = loaded;
       syncShotInputNames(shotIndex);
+      maybeRefreshAutomatedPromptForShot(shotIndex);
       renderWorkspace();
       persistCurrentReplaceDraft();
       showToast('Replaced B image · click tile to crop', false);
@@ -2502,7 +3745,7 @@
     persistCurrentReplaceDraft();
   }
 
-  /* ---------- Square crop (B product inputs) ---------- */
+  /* ---------- Crop (B product inputs / prior / export) ---------- */
 
   let cropSession = null;
   let cropDrag = null;
@@ -2529,27 +3772,78 @@
     els.cropWindow.style.bottom = 'auto';
   }
 
+  function cropKeepProportionOn() {
+    return !(els.cropKeepProportion) || !!els.cropKeepProportion.checked;
+  }
+
   function cropMinSize(nw, nh) {
     return Math.max(32, Math.round(Math.min(nw, nh) * 0.08));
   }
 
-  function defaultCropSquare(nw, nh) {
-    const size = Math.min(nw, nh);
+  function normalizeCropBox(box) {
+    if (!box) return null;
+    if (box.w != null && box.h != null) {
+      return {
+        x: Number(box.x) || 0,
+        y: Number(box.y) || 0,
+        w: Number(box.w) || 0,
+        h: Number(box.h) || 0
+      };
+    }
+    const size = Number(box.size) || 0;
     return {
-      x: Math.round((nw - size) / 2),
-      y: Math.round((nh - size) / 2),
-      size: size
+      x: Number(box.x) || 0,
+      y: Number(box.y) || 0,
+      w: size,
+      h: size
     };
   }
 
-  function clampCropBox(box, nw, nh) {
+  function defaultCropBox(nw, nh, keepProportion) {
+    if (keepProportion) {
+      const size = Math.min(nw, nh);
+      return {
+        x: Math.round((nw - size) / 2),
+        y: Math.round((nh - size) / 2),
+        w: size,
+        h: size
+      };
+    }
+    return { x: 0, y: 0, w: nw, h: nh };
+  }
+
+  function clampCropBox(box, nw, nh, keepProportion) {
+    const keep = keepProportion != null ? !!keepProportion : cropKeepProportionOn();
     const min = cropMinSize(nw, nh);
-    let size = Math.min(Math.max(min, Math.round(box.size)), Math.min(nw, nh));
-    let x = Math.round(box.x);
-    let y = Math.round(box.y);
-    x = Math.max(0, Math.min(nw - size, x));
-    y = Math.max(0, Math.min(nh - size, y));
-    return { x: x, y: y, size: size };
+    let b = normalizeCropBox(box) || defaultCropBox(nw, nh, keep);
+    let x = Math.round(b.x);
+    let y = Math.round(b.y);
+    let w = Math.round(b.w);
+    let h = Math.round(b.h);
+    if (keep) {
+      let size = Math.min(Math.max(min, Math.min(w, h)), Math.min(nw, nh));
+      x = Math.max(0, Math.min(nw - size, x));
+      y = Math.max(0, Math.min(nh - size, y));
+      return { x: x, y: y, w: size, h: size };
+    }
+    w = Math.min(Math.max(min, w), nw);
+    h = Math.min(Math.max(min, h), nh);
+    x = Math.max(0, Math.min(nw - w, x));
+    y = Math.max(0, Math.min(nh - h, y));
+    return { x: x, y: y, w: w, h: h };
+  }
+
+  function cropBoxToSquare(box, nw, nh) {
+    const b = normalizeCropBox(box) || defaultCropBox(nw, nh, true);
+    const size = Math.max(cropMinSize(nw, nh), Math.min(b.w, b.h, nw, nh));
+    const cx = b.x + b.w / 2;
+    const cy = b.y + b.h / 2;
+    return clampCropBox({
+      x: Math.round(cx - size / 2),
+      y: Math.round(cy - size / 2),
+      w: size,
+      h: size
+    }, nw, nh, true);
   }
 
   function cropImageLayout() {
@@ -2578,12 +3872,13 @@
     if (!cropSession || !els.cropBox) return;
     const layout = cropImageLayout();
     if (!layout) return;
-    const box = cropSession.box;
+    const box = normalizeCropBox(cropSession.box);
+    if (!box) return;
     els.cropBox.hidden = false;
     els.cropBox.style.left = (layout.left + box.x * layout.scale) + 'px';
     els.cropBox.style.top = (layout.top + box.y * layout.scale) + 'px';
-    els.cropBox.style.width = (box.size * layout.scale) + 'px';
-    els.cropBox.style.height = (box.size * layout.scale) + 'px';
+    els.cropBox.style.width = (box.w * layout.scale) + 'px';
+    els.cropBox.style.height = (box.h * layout.scale) + 'px';
   }
 
   function stagePointToNatural(clientX, clientY) {
@@ -2600,6 +3895,8 @@
   }
 
   function cropModalCopy(kind) {
+    const keep = cropKeepProportionOn();
+    const shape = keep ? 'square' : 'frame';
     if (els.cropTitle) {
       els.cropTitle.textContent = kind === 'prior'
         ? 'Crop prior (A)'
@@ -2607,9 +3904,26 @@
     }
     if (els.cropHint) {
       els.cropHint.textContent = kind === 'export'
-        ? 'Adjust the square to frame the product. Confirm updates this image for export / upscale'
-        : 'Adjust the square to frame the product. Confirm sends this cropped image to Generate';
+        ? ('Adjust the ' + shape + ' to frame the product. Confirm updates this image for export / upscale')
+        : ('Adjust the ' + shape + ' to frame the product. Confirm sends this cropped image to Generate');
     }
+    if (els.cropReset) {
+      els.cropReset.title = keep ? 'Reset to full square' : 'Reset to full image';
+    }
+  }
+
+  function onCropKeepProportionChange() {
+    if (!cropSession) return;
+    const layout = cropImageLayout();
+    if (!layout) return;
+    const keep = cropKeepProportionOn();
+    if (keep) {
+      cropSession.box = cropBoxToSquare(cropSession.box, layout.nw, layout.nh);
+    } else {
+      cropSession.box = clampCropBox(cropSession.box, layout.nw, layout.nh, false);
+    }
+    cropModalCopy(cropSession.kind || 'input');
+    paintCropBox();
   }
 
   function exportImageAt(shotIndex) {
@@ -2672,6 +3986,7 @@
       : (els.cropWindow && els.cropWindow.dataset.winLeft
         ? { winLeft: Number(els.cropWindow.dataset.winLeft), winTop: Number(els.cropWindow.dataset.winTop) }
         : null);
+    if (els.cropKeepProportion) els.cropKeepProportion.checked = true;
     cropSession = {
       kind: kind,
       shotIndex: shotIndex,
@@ -2692,7 +4007,8 @@
       if (!cropSession) return;
       const nw = els.cropSource.naturalWidth;
       const nh = els.cropSource.naturalHeight;
-      cropSession.box = clampCropBox(defaultCropSquare(nw, nh), nw, nh);
+      const keep = cropKeepProportionOn();
+      cropSession.box = clampCropBox(defaultCropBox(nw, nh, keep), nw, nh, keep);
       paintCropBox();
     };
     els.cropSource.onload = onReady;
@@ -2763,7 +4079,8 @@
     if (!cropSession) return;
     const layout = cropImageLayout();
     if (!layout) return;
-    cropSession.box = clampCropBox(defaultCropSquare(layout.nw, layout.nh), layout.nw, layout.nh);
+    const keep = cropKeepProportionOn();
+    cropSession.box = clampCropBox(defaultCropBox(layout.nw, layout.nh, keep), layout.nw, layout.nh, keep);
     paintCropBox();
   }
 
@@ -2775,13 +4092,16 @@
     const pt = stagePointToNatural(e.clientX, e.clientY);
     if (!pt) return;
     e.preventDefault();
-    const box = cropSession.box || defaultCropSquare(pt.layout.nw, pt.layout.nh);
+    const keep = cropKeepProportionOn();
+    const box = normalizeCropBox(cropSession.box) ||
+      defaultCropBox(pt.layout.nw, pt.layout.nh, keep);
     if (handle) {
       cropDrag = {
         mode: 'resize',
         handle: handle.getAttribute('data-handle'),
         startX: pt.x,
         startY: pt.y,
+        keep: keep,
         orig: Object.assign({}, box)
       };
     } else if (onBox) {
@@ -2789,18 +4109,21 @@
         mode: 'move',
         startX: pt.x,
         startY: pt.y,
+        keep: keep,
         orig: Object.assign({}, box)
       };
     } else {
-      // Drag on image → create a new square from this corner.
+      // Drag on image → create a new crop from this corner.
       const x = Math.max(0, Math.min(pt.layout.nw, pt.x));
       const y = Math.max(0, Math.min(pt.layout.nh, pt.y));
+      const min = cropMinSize(pt.layout.nw, pt.layout.nh);
       cropDrag = {
         mode: 'create',
+        keep: keep,
         anchorX: x,
         anchorY: y
       };
-      cropSession.box = clampCropBox({ x: x, y: y, size: cropMinSize(pt.layout.nw, pt.layout.nh) }, pt.layout.nw, pt.layout.nh);
+      cropSession.box = clampCropBox({ x: x, y: y, w: min, h: min }, pt.layout.nw, pt.layout.nh, keep);
       paintCropBox();
     }
   }
@@ -2813,6 +4136,7 @@
     const nw = pt.layout.nw;
     const nh = pt.layout.nh;
     const min = cropMinSize(nw, nh);
+    const keep = cropDrag.keep != null ? !!cropDrag.keep : cropKeepProportionOn();
 
     if (cropDrag.mode === 'move') {
       const dx = pt.x - cropDrag.startX;
@@ -2820,8 +4144,9 @@
       cropSession.box = clampCropBox({
         x: cropDrag.orig.x + dx,
         y: cropDrag.orig.y + dy,
-        size: cropDrag.orig.size
-      }, nw, nh);
+        w: cropDrag.orig.w,
+        h: cropDrag.orig.h
+      }, nw, nh, keep);
       paintCropBox();
       return;
     }
@@ -2831,57 +4156,84 @@
       const ay = cropDrag.anchorY;
       const dx = pt.x - ax;
       const dy = pt.y - ay;
-      let size = Math.max(min, Math.max(Math.abs(dx), Math.abs(dy)));
-      let x = dx < 0 ? ax - size : ax;
-      let y = dy < 0 ? ay - size : ay;
-      // Keep square inside image by shrinking if needed.
-      if (x < 0) { size += x; x = 0; }
-      if (y < 0) { size += y; y = 0; }
-      if (x + size > nw) size = nw - x;
-      if (y + size > nh) size = nh - y;
-      size = Math.max(min, Math.min(size, Math.min(nw, nh)));
-      cropSession.box = clampCropBox({ x: x, y: y, size: size }, nw, nh);
+      if (keep) {
+        let size = Math.max(min, Math.max(Math.abs(dx), Math.abs(dy)));
+        let x = dx < 0 ? ax - size : ax;
+        let y = dy < 0 ? ay - size : ay;
+        if (x < 0) { size += x; x = 0; }
+        if (y < 0) { size += y; y = 0; }
+        if (x + size > nw) size = nw - x;
+        if (y + size > nh) size = nh - y;
+        size = Math.max(min, Math.min(size, Math.min(nw, nh)));
+        cropSession.box = clampCropBox({ x: x, y: y, w: size, h: size }, nw, nh, true);
+      } else {
+        let x = Math.min(ax, pt.x);
+        let y = Math.min(ay, pt.y);
+        let w = Math.abs(dx);
+        let h = Math.abs(dy);
+        if (x < 0) { w += x; x = 0; }
+        if (y < 0) { h += y; y = 0; }
+        if (x + w > nw) w = nw - x;
+        if (y + h > nh) h = nh - y;
+        cropSession.box = clampCropBox({ x: x, y: y, w: w, h: h }, nw, nh, false);
+      }
       paintCropBox();
       return;
     }
 
     if (cropDrag.mode === 'resize') {
       const o = cropDrag.orig;
-      const h = cropDrag.handle;
+      const handle = cropDrag.handle;
       const dx = pt.x - cropDrag.startX;
       const dy = pt.y - cropDrag.startY;
       let x = o.x;
       let y = o.y;
-      let size = o.size;
-      // Keep opposite corner/edge anchored; grow as a square.
-      if (h === 'se') {
-        size = Math.max(min, o.size + Math.max(dx, dy));
-      } else if (h === 'nw') {
-        size = Math.max(min, o.size - Math.min(dx, dy));
-        x = o.x + o.size - size;
-        y = o.y + o.size - size;
-      } else if (h === 'ne') {
-        size = Math.max(min, o.size + Math.max(dx, -dy));
-        y = o.y + o.size - size;
-      } else if (h === 'sw') {
-        size = Math.max(min, o.size + Math.max(-dx, dy));
-        x = o.x + o.size - size;
-      } else if (h === 'e') {
-        size = Math.max(min, o.size + dx);
-        y = o.y + (o.size - size) / 2;
-      } else if (h === 'w') {
-        size = Math.max(min, o.size - dx);
-        x = o.x + o.size - size;
-        y = o.y + (o.size - size) / 2;
-      } else if (h === 's') {
-        size = Math.max(min, o.size + dy);
-        x = o.x + (o.size - size) / 2;
-      } else if (h === 'n') {
-        size = Math.max(min, o.size - dy);
-        x = o.x + (o.size - size) / 2;
-        y = o.y + o.size - size;
+      let w = o.w;
+      let h = o.h;
+      if (keep) {
+        let size = o.w;
+        // Keep opposite corner/edge anchored; grow as a square.
+        if (handle === 'se') {
+          size = Math.max(min, o.w + Math.max(dx, dy));
+        } else if (handle === 'nw') {
+          size = Math.max(min, o.w - Math.min(dx, dy));
+          x = o.x + o.w - size;
+          y = o.y + o.h - size;
+        } else if (handle === 'ne') {
+          size = Math.max(min, o.w + Math.max(dx, -dy));
+          y = o.y + o.h - size;
+        } else if (handle === 'sw') {
+          size = Math.max(min, o.w + Math.max(-dx, dy));
+          x = o.x + o.w - size;
+        } else if (handle === 'e') {
+          size = Math.max(min, o.w + dx);
+          y = o.y + (o.h - size) / 2;
+        } else if (handle === 'w') {
+          size = Math.max(min, o.w - dx);
+          x = o.x + o.w - size;
+          y = o.y + (o.h - size) / 2;
+        } else if (handle === 's') {
+          size = Math.max(min, o.h + dy);
+          x = o.x + (o.w - size) / 2;
+        } else if (handle === 'n') {
+          size = Math.max(min, o.h - dy);
+          x = o.x + (o.w - size) / 2;
+          y = o.y + o.h - size;
+        }
+        cropSession.box = clampCropBox({ x: x, y: y, w: size, h: size }, nw, nh, true);
+      } else {
+        if (handle.indexOf('e') >= 0) w = o.w + dx;
+        if (handle.indexOf('s') >= 0) h = o.h + dy;
+        if (handle.indexOf('w') >= 0) {
+          w = o.w - dx;
+          x = o.x + dx;
+        }
+        if (handle.indexOf('n') >= 0) {
+          h = o.h - dy;
+          y = o.y + dy;
+        }
+        cropSession.box = clampCropBox({ x: x, y: y, w: w, h: h }, nw, nh, false);
       }
-      cropSession.box = clampCropBox({ x: x, y: y, size: size }, nw, nh);
       paintCropBox();
     }
   }
@@ -2911,9 +4263,11 @@
     });
   }
 
-  function buildCroppedAsset(sourceAsset, blob, size) {
+  function buildCroppedAsset(sourceAsset, blob, width, height) {
     const base = String((sourceAsset && sourceAsset.name) || 'image').replace(/\.[^.]+$/, '');
     const cropName = base.replace(/_crop$/i, '') + '_crop.png';
+    const w = Math.max(1, Math.round(width));
+    const h = Math.max(1, Math.round(height != null ? height : width));
     return {
       id: ((sourceAsset && sourceAsset.id) || 'local') + '_crop_' + Date.now().toString(36),
       name: cropName,
@@ -2921,8 +4275,8 @@
       blob: blob,
       file: blob,
       mime: 'image/png',
-      w: size,
-      h: size,
+      w: w,
+      h: h,
       cropped: true,
       url: '',
       _blobRef: null
@@ -2936,23 +4290,26 @@
     const inputIndex = cropSession.inputIndex;
     const layout = cropImageLayout();
     if (!layout) return;
-    const box = clampCropBox(cropSession.box, layout.nw, layout.nh);
+    const keep = cropKeepProportionOn();
+    const box = clampCropBox(cropSession.box, layout.nw, layout.nh, keep);
     const src = els.cropSource;
-    const size = Math.max(1, Math.round(box.size));
+    const outW = Math.max(1, Math.round(box.w));
+    const outH = Math.max(1, Math.round(box.h));
     const sx = Math.max(0, Math.round(box.x));
     const sy = Math.max(0, Math.round(box.y));
     const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
+    canvas.width = outW;
+    canvas.height = outH;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(src, sx, sy, size, size, 0, 0, size, size);
+    ctx.drawImage(src, sx, sy, outW, outH, 0, 0, outW, outH);
     try {
       const blob = await canvasToBlob(canvas, 'image/png');
       const sourceAsset = cropSession.sourceAsset;
-      const cropped = buildCroppedAsset(sourceAsset, blob, size);
+      const cropped = buildCroppedAsset(sourceAsset, blob, outW, outH);
       ensureAssetDisplayUrl(cropped);
+      const dimLabel = outW + '×' + outH;
 
       if (kind === 'input') {
         const assets = shotAssets(shotIndex);
@@ -2967,7 +4324,7 @@
         closeCropModal();
         renderWorkspace();
         persistCurrentReplaceDraft();
-        showToast('Cropped B · ' + size + '×' + size + ' · ready for Generate', false);
+        showToast('Cropped B · ' + dimLabel + ' · ready for Generate', false);
         return;
       }
 
@@ -2978,7 +4335,7 @@
         closeCropModal();
         renderWorkspace();
         persistCurrentReplaceDraft();
-        showToast('Cropped A · ' + size + '×' + size + ' · ready for Generate', false);
+        showToast('Cropped A · ' + dimLabel + ' · ready for Generate', false);
         return;
       }
 
@@ -2995,8 +4352,8 @@
           name: cropped.name,
           blob: cropped.blob,
           file: cropped.blob,
-          w: size,
-          h: size,
+          w: outW,
+          h: outH,
           cropped: true,
           status: (prev && prev.status) || 'ready',
           upscale: null
@@ -3004,7 +4361,7 @@
         closeCropModal();
         renderWorkspace();
         persistCurrentReplaceDraft();
-        showToast('Cropped export image · ' + size + '×' + size + ' · ready for upscale', false);
+        showToast('Cropped export image · ' + dimLabel + ' · ready for upscale', false);
         return;
       }
 
@@ -3198,7 +4555,8 @@
       if (health.workspaceKind && !tok.workspaceKind) tok.workspaceKind = health.workspaceKind;
       state.answerlyToken = tok;
       // Drop stale “bridge offline” D errors once the bridge answers again.
-      if (clearStaleBridgeShotErrors() && state.workspace && state.workspace.mode === 'replace') {
+      if (clearStaleBridgeShotErrors() && state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
         renderWorkspace();
       }
       return state.answerlyToken;
@@ -3434,12 +4792,58 @@
   }
 
   function shotExecutionId(shotIndex) {
+    // Prefer the shared EAN Answerly thread (first gen id) so all shots open the same job.
+    const root = state.workspace && String(state.workspace.answerlyRootExecutionId || '').trim();
+    if (root) return root;
     const assets = shotAssets(shotIndex);
     const out = assets && assets.output;
     if (out && out.executionId) return String(out.executionId).trim();
     const approved = state.workspace && state.workspace.approved && state.workspace.approved[shotIndex];
     if (approved && approved.executionId) return String(approved.executionId).trim();
     return '';
+  }
+
+  /** First Answerly execution id for this EAN workspace — reused as parent/thread for later gens. */
+  function rememberAnswerlyRootExecution(executionId) {
+    if (!state.workspace) return;
+    const id = String(executionId || '').trim();
+    if (!id) return;
+    if (!state.workspace.answerlyRootExecutionId) {
+      state.workspace.answerlyRootExecutionId = id;
+    }
+  }
+
+  function answerlyJobTitleForShot(task, shot, shotIndex) {
+    const ean = String((task && task.ean) || (state.workspace && state.workspace.ean) || '').trim();
+    // First gen for this EAN: name the Answerly job with the EAN so the thread is easy to find.
+    // Later gens: shoot name + short code (Answerly defaults to "Image to Image" without a title).
+    const first = !(state.workspace &&
+      (state.workspace.answerlyNamedOnce || state.workspace.answerlyRootExecutionId));
+    if (first) return ean || 'Untitled';
+    const code = String((shot && shot.code) || '').trim();
+    const name = String((shot && shot.name) || '').trim();
+    if (name && code && name !== code) return name + ' · ' + code;
+    return name || code || ('Shot ' + (shotIndex + 1));
+  }
+
+  function answerlyQueueExtras(task, shot, shotIndex) {
+    const root = state.workspace && String(state.workspace.answerlyRootExecutionId || '').trim();
+    const ean = String((task && task.ean) || (state.workspace && state.workspace.ean) || '').trim();
+    const title = answerlyJobTitleForShot(task, shot, shotIndex);
+    if (state.workspace && !state.workspace.answerlyNamedOnce) {
+      state.workspace.answerlyNamedOnce = true;
+    }
+    return {
+      title: title,
+      parent_execution_id: root || undefined,
+      metadata: {
+        ean: ean,
+        shot_code: String((shot && shot.code) || ''),
+        shot_index: shotIndex,
+        workflow_mode: (state.workspace && state.workspace.mode) || '',
+        thread_id: root || ean || undefined
+      }
+    };
   }
 
   function buildEanDraftRecord() {
@@ -3479,10 +4883,92 @@
       mdimDraft: state.workspace.mdimDraft || null,
       mdimBaseKey: state.workspace.mdimBaseKey || '',
       mdimOverride: serializeAssetForIdb(state.workspace.mdimOverride),
+      panelOpen: state.workspace.panelOpen !== false,
+      panelMax: !!state.workspace.panelMax,
       rating: Number(state.workspace.rating) || 0,
       ratings: Object.assign({}, state.workspace.ratings || {}),
       promptBaselines: Object.assign({}, state.workspace.promptBaselines || {}),
+      promptManualEdit: Object.assign({}, state.workspace.promptManualEdit || {}),
       genCounts: Object.assign({}, state.workspace.genCounts || {}),
+      shots: shots,
+      savedAt: Date.now()
+    };
+  }
+
+  function primaryDraftIdbKey(ean) {
+    return String(ean || '') + '::primary';
+  }
+
+  function serializePrimarySlotMap(map) {
+    const out = {};
+    Object.keys(map || {}).forEach((k) => {
+      const row = serializeAssetForIdb(map[k]);
+      if (row) out[k] = row;
+    });
+    return out;
+  }
+
+  function revivePrimarySlotMap(map) {
+    const out = {};
+    Object.keys(map || {}).forEach((k) => {
+      const asset = reviveAssetFromIdb(map[k]);
+      if (asset) out[k] = asset;
+    });
+    return out;
+  }
+
+  function buildPrimaryDraftRecord() {
+    if (!state.workspace || state.workspace.mode !== 'primary') return null;
+    persistReplacePromptFromDom();
+    const ean = String(state.workspace.ean || '');
+    if (!ean) return null;
+    const shots = {};
+    const outputs = Object.assign({}, state.workspace.outputs || {});
+    const assetsMap = state.workspace.assets || {};
+    Object.keys(assetsMap).forEach((k) => {
+      const a = assetsMap[k] || {};
+      const out = a.output || a._previousOutput;
+      shots[k] = {
+        inputs: (a.inputs || []).map(serializeAssetForIdb).filter(Boolean),
+        output: serializeAssetForIdb(out),
+        error: a.error || null
+      };
+      if (out) outputs[k] = true;
+    });
+    const p = state.workspace.primary || {};
+    return {
+      ean: primaryDraftIdbKey(ean),
+      sourceEan: ean,
+      workflow: 'primary',
+      workspaceShot: state.workspaceShot || 0,
+      productTypeName: state.workspace.productTypeName || '',
+      productTypeVariant: state.workspace.productTypeVariant || '',
+      productTypeQuery: state.workspace.productTypeQuery || '',
+      prompts: Object.assign({}, state.workspace.prompts || {}),
+      outputs: outputs,
+      panelOpen: !!state.workspace.panelOpen,
+      panelMax: !!state.workspace.panelMax,
+      dimSeparate: !!state.workspace.dimSeparate,
+      mdimShowAbcd: !!state.workspace.mdimShowAbcd,
+      mdimDraft: state.workspace.mdimDraft || null,
+      mdimBaseKey: state.workspace.mdimBaseKey || '',
+      mdimOverride: serializeAssetForIdb(state.workspace.mdimOverride),
+      ratings: Object.assign({}, state.workspace.ratings || {}),
+      promptBaselines: Object.assign({}, state.workspace.promptBaselines || {}),
+      promptManualEdit: Object.assign({}, state.workspace.promptManualEdit || {}),
+      genCounts: Object.assign({}, state.workspace.genCounts || {}),
+      answerlyRootExecutionId: String(state.workspace.answerlyRootExecutionId || ''),
+      answerlyNamedOnce: !!(state.workspace.answerlyNamedOnce || state.workspace.answerlyRootExecutionId),
+      primary: {
+        a1: serializeAssetForIdb(p.a1),
+        a1Cleared: !!p.a1Cleared,
+        lifestyleA1: serializePrimarySlotMap(p.lifestyleA1),
+        a2: serializePrimarySlotMap(p.a2),
+        a3: serializePrimarySlotMap(p.a3),
+        showA3: Object.assign({}, p.showA3 || {}),
+        a2Manual: Object.assign({}, p.a2Manual || {}),
+        a2Override: Object.assign({}, p.a2Override || {})
+      },
       shots: shots,
       savedAt: Date.now()
     };
@@ -3511,15 +4997,52 @@
       mdimDraft: state.workspace.mdimDraft || null,
       mdimBaseKey: state.workspace.mdimBaseKey || '',
       mdimOverride: state.workspace.mdimOverride || null,
+      panelOpen: state.workspace.panelOpen !== false,
+      panelMax: !!state.workspace.panelMax,
       assets: state.workspace.assets || {},
       rating: Number(state.workspace.rating) || 0,
       ratings: Object.assign({}, state.workspace.ratings || {}),
       promptBaselines: Object.assign({}, state.workspace.promptBaselines || {}),
+      promptManualEdit: Object.assign({}, state.workspace.promptManualEdit || {}),
       genCounts: Object.assign({}, state.workspace.genCounts || {}),
       savedAt: Date.now()
     };
     // Detach so closeWorkspace revoke does not wipe the cache.
     state.workspace.assets = {};
+  }
+
+  function stashPrimaryDraftInMemory() {
+    if (!state.workspace || state.workspace.mode !== 'primary') return;
+    persistReplacePromptFromDom();
+    const ean = String(state.workspace.ean || '');
+    if (!ean) return;
+    if (!state.primaryDraftCache) state.primaryDraftCache = {};
+    state.primaryDraftCache[ean] = {
+      workspaceShot: state.workspaceShot || 0,
+      productTypeName: state.workspace.productTypeName || '',
+      productTypeVariant: state.workspace.productTypeVariant || '',
+      productTypeQuery: state.workspace.productTypeQuery || '',
+      prompts: Object.assign({}, state.workspace.prompts || {}),
+      outputs: Object.assign({}, state.workspace.outputs || {}),
+      panelOpen: !!state.workspace.panelOpen,
+      panelMax: !!state.workspace.panelMax,
+      dimSeparate: !!state.workspace.dimSeparate,
+      mdimShowAbcd: !!state.workspace.mdimShowAbcd,
+      mdimDraft: state.workspace.mdimDraft || null,
+      mdimBaseKey: state.workspace.mdimBaseKey || '',
+      mdimOverride: state.workspace.mdimOverride || null,
+      assets: state.workspace.assets || {},
+      primary: state.workspace.primary || null,
+      ratings: Object.assign({}, state.workspace.ratings || {}),
+      promptBaselines: Object.assign({}, state.workspace.promptBaselines || {}),
+      promptManualEdit: Object.assign({}, state.workspace.promptManualEdit || {}),
+      genCounts: Object.assign({}, state.workspace.genCounts || {}),
+      answerlyRootExecutionId: String(state.workspace.answerlyRootExecutionId || ''),
+      answerlyNamedOnce: !!(state.workspace.answerlyNamedOnce || state.workspace.answerlyRootExecutionId),
+      savedAt: Date.now()
+    };
+    state.workspace.assets = {};
+    state.workspace.primary = null;
   }
 
   function applyMemoryDraftToWorkspace(ean, opts) {
@@ -3548,7 +5071,10 @@
     state.workspace.mdimOverride = draft.mdimOverride || null;
     state.workspace.ratings = Object.assign({}, draft.ratings || {});
     state.workspace.promptBaselines = Object.assign({}, draft.promptBaselines || {});
+    state.workspace.promptManualEdit = Object.assign({}, draft.promptManualEdit || {});
     state.workspace.genCounts = Object.assign({}, draft.genCounts || {});
+    if (draft.panelOpen != null) state.workspace.panelOpen = !!draft.panelOpen;
+    if (draft.panelMax != null) state.workspace.panelMax = !!draft.panelMax;
     state.workspace.rating = 0;
     state.workspace.exportImages = {};
     // Prefer the match chosen on Continue / Choose workflow over a stale draft prior.
@@ -3559,6 +5085,41 @@
     state.workspace.ptPrefsApplied = true;
     const task = taskByEan(state.workspace.ean);
     if (task) scrubBorrowedMainInputs(shotListFor(task));
+    healWorkspaceBlobUrls();
+    return true;
+  }
+
+  function applyMemoryPrimaryDraftToWorkspace(ean) {
+    const draft = state.primaryDraftCache && state.primaryDraftCache[ean];
+    if (!draft || !state.workspace) return false;
+    state.workspace.assets = draft.assets || {};
+    state.workspace.primary = draft.primary || state.workspace.primary || null;
+    state.workspace.prompts = Object.assign({}, draft.prompts || {});
+    state.workspace.outputs = Object.assign({}, draft.outputs || {});
+    state.workspace.productTypeName = draft.productTypeName || state.workspace.productTypeName || '';
+    state.workspace.productTypeVariant = draft.productTypeVariant || state.workspace.productTypeVariant || '';
+    state.workspace.productTypeQuery = draft.productTypeQuery || state.workspace.productTypeName || '';
+    state.workspace.ratings = Object.assign({}, draft.ratings || {});
+    state.workspace.promptBaselines = Object.assign({}, draft.promptBaselines || {});
+    state.workspace.promptManualEdit = Object.assign({}, draft.promptManualEdit || {});
+    state.workspace.genCounts = Object.assign({}, draft.genCounts || {});
+    if (draft.answerlyRootExecutionId) {
+      state.workspace.answerlyRootExecutionId = String(draft.answerlyRootExecutionId);
+    }
+    if (draft.answerlyNamedOnce || draft.answerlyRootExecutionId) {
+      state.workspace.answerlyNamedOnce = true;
+    }
+    if (draft.panelOpen != null) state.workspace.panelOpen = !!draft.panelOpen;
+    if (draft.panelMax != null) state.workspace.panelMax = !!draft.panelMax;
+    state.workspace.dimSeparate = !!draft.dimSeparate;
+    state.workspace.mdimShowAbcd = !!draft.mdimShowAbcd;
+    state.workspace.mdimDraft = draft.mdimDraft || null;
+    state.workspace.mdimBaseKey = draft.mdimBaseKey || '';
+    state.workspace.mdimOverride = draft.mdimOverride || null;
+    state.workspaceShot = draft.workspaceShot || 0;
+    state.workspace.draftsLoaded = true;
+    state.workspace.ptPrefsApplied = true;
+    seedAnswerlyRootFromOutputs();
     healWorkspaceBlobUrls();
     return true;
   }
@@ -3581,7 +5142,12 @@
   }
 
   async function persistCurrentReplaceDraft() {
-    if (!state.workspace || state.workspace.mode !== 'replace') return;
+    if (!state.workspace) return;
+    if (state.workspace.mode === 'primary') {
+      await persistCurrentPrimaryDraft();
+      return;
+    }
+    if (state.workspace.mode !== 'replace') return;
     const record = buildEanDraftRecord();
     if (!record) return;
     // Refresh memory cache snapshot with current blobs still attached.
@@ -3598,14 +5164,157 @@
       approved: record.approved,
       rejected: record.rejected,
       dimSeparate: record.dimSeparate,
+      panelOpen: record.panelOpen,
+      panelMax: record.panelMax,
       rating: record.rating,
       ratings: record.ratings,
       promptBaselines: record.promptBaselines,
+      promptManualEdit: record.promptManualEdit,
       genCounts: record.genCounts || {},
       assets: state.workspace.assets || {},
       savedAt: record.savedAt
     };
     await saveEanDraftToIdb(record);
+  }
+
+  async function persistCurrentPrimaryDraft() {
+    if (!state.workspace || state.workspace.mode !== 'primary') return;
+    const record = buildPrimaryDraftRecord();
+    if (!record) return;
+    const ean = record.sourceEan;
+    if (!state.primaryDraftCache) state.primaryDraftCache = {};
+    state.primaryDraftCache[ean] = {
+      workspaceShot: record.workspaceShot,
+      productTypeName: record.productTypeName,
+      productTypeVariant: record.productTypeVariant,
+      productTypeQuery: record.productTypeQuery,
+      prompts: record.prompts,
+      outputs: record.outputs,
+      panelOpen: record.panelOpen,
+      panelMax: record.panelMax,
+      dimSeparate: record.dimSeparate,
+      mdimShowAbcd: record.mdimShowAbcd,
+      mdimDraft: record.mdimDraft || null,
+      mdimBaseKey: record.mdimBaseKey || '',
+      mdimOverride: state.workspace.mdimOverride || null,
+      ratings: record.ratings,
+      promptBaselines: record.promptBaselines,
+      promptManualEdit: record.promptManualEdit,
+      genCounts: record.genCounts || {},
+      assets: state.workspace.assets || {},
+      primary: state.workspace.primary || null,
+      savedAt: record.savedAt
+    };
+    await saveEanDraftToIdb(record);
+  }
+
+  function applyIdbPrimaryDraftToWorkspace(row) {
+    if (!row || !state.workspace) return false;
+    if (!state.workspace.assets) state.workspace.assets = {};
+    if (!state.workspace.prompts) state.workspace.prompts = {};
+    if (!state.workspace.outputs) state.workspace.outputs = {};
+    if (row.prompts) state.workspace.prompts = Object.assign({}, row.prompts);
+    if (row.outputs) state.workspace.outputs = Object.assign({}, row.outputs);
+    if (row.productTypeName) {
+      state.workspace.productTypeName = row.productTypeName;
+      state.workspace.productTypeQuery = row.productTypeQuery || row.productTypeName;
+      state.workspace.productTypeVariant = row.productTypeVariant || '';
+      state.workspace.ptPrefsApplied = true;
+    }
+    if (row.workspaceShot != null) state.workspaceShot = row.workspaceShot || 0;
+    if (row.panelOpen != null) state.workspace.panelOpen = !!row.panelOpen;
+    if (row.panelMax != null) state.workspace.panelMax = !!row.panelMax;
+    state.workspace.dimSeparate = !!row.dimSeparate;
+    state.workspace.mdimShowAbcd = !!row.mdimShowAbcd;
+    state.workspace.mdimDraft = row.mdimDraft || null;
+    state.workspace.mdimBaseKey = row.mdimBaseKey || '';
+    state.workspace.mdimOverride = reviveAssetFromIdb(row.mdimOverride);
+    state.workspace.ratings = Object.assign({}, row.ratings || {});
+    state.workspace.promptBaselines = Object.assign({}, row.promptBaselines || {});
+    state.workspace.promptManualEdit = Object.assign({}, row.promptManualEdit || {});
+    state.workspace.genCounts = Object.assign({}, row.genCounts || {});
+    if (row.answerlyRootExecutionId) {
+      state.workspace.answerlyRootExecutionId = String(row.answerlyRootExecutionId);
+    }
+    if (row.answerlyNamedOnce || row.answerlyRootExecutionId) {
+      state.workspace.answerlyNamedOnce = true;
+    }
+    ensurePrimaryState();
+    const p = state.workspace.primary;
+    const saved = row.primary || {};
+    if (saved.a1) p.a1 = reviveAssetFromIdb(saved.a1);
+    p.a1Cleared = !!saved.a1Cleared;
+    p.lifestyleA1 = revivePrimarySlotMap(saved.lifestyleA1);
+    p.a2 = revivePrimarySlotMap(saved.a2);
+    p.a3 = revivePrimarySlotMap(saved.a3);
+    p.showA3 = Object.assign({}, saved.showA3 || {});
+    p.a2Manual = Object.assign({}, saved.a2Manual || {});
+    p.a2Override = Object.assign({}, saved.a2Override || {});
+    Object.keys(row.shots || {}).forEach((k) => {
+      const s = row.shots[k] || {};
+      const assets = shotAssets(k);
+      assets.inputs = (s.inputs || []).map(reviveAssetFromIdb).filter(Boolean);
+      assets.output = reviveAssetFromIdb(s.output);
+      assets.error = (s.error && !isStaleBridgeError(s.error)) ? s.error : null;
+      if (assets.output) state.workspace.outputs[k] = true;
+      syncShotInputNames(k);
+    });
+    seedAnswerlyRootFromOutputs();
+    state.workspace.draftsLoaded = true;
+    healWorkspaceBlobUrls();
+    return true;
+  }
+
+  /** Recover shared Answerly thread id from any shot that already has an executionId. */
+  function seedAnswerlyRootFromOutputs() {
+    if (!state.workspace) return;
+    if (state.workspace.answerlyRootExecutionId) return;
+    const assetsMap = state.workspace.assets || {};
+    const keys = Object.keys(assetsMap);
+    for (let i = 0; i < keys.length; i++) {
+      const out = assetsMap[keys[i]] && assetsMap[keys[i]].output;
+      const id = out && String(out.executionId || '').trim();
+      if (id) {
+        state.workspace.answerlyRootExecutionId = id;
+        return;
+      }
+    }
+  }
+
+  async function restorePrimaryDraftsIntoWorkspace() {
+    if (!state.workspace || state.workspace.mode !== 'primary' || state.workspace.draftsLoaded) return;
+    const ean = String(state.workspace.ean || '');
+    if (!ean) return;
+    if (applyMemoryPrimaryDraftToWorkspace(ean)) {
+      state.workspace.draftsLoaded = true;
+      renderWorkspace();
+      return;
+    }
+    const row = await loadEanDraftFromIdb(primaryDraftIdbKey(ean));
+    if (!state.workspace || state.workspace.mode !== 'primary') return;
+    if (row && (row.workflow === 'primary' || String(row.ean || '').indexOf('::primary') >= 0)) {
+      applyIdbPrimaryDraftToWorkspace(row);
+      if (!state.primaryDraftCache) state.primaryDraftCache = {};
+      state.primaryDraftCache[ean] = {
+        workspaceShot: state.workspaceShot || 0,
+        productTypeName: state.workspace.productTypeName || '',
+        productTypeVariant: state.workspace.productTypeVariant || '',
+        productTypeQuery: state.workspace.productTypeQuery || '',
+        prompts: Object.assign({}, state.workspace.prompts || {}),
+        outputs: Object.assign({}, state.workspace.outputs || {}),
+        panelOpen: !!state.workspace.panelOpen,
+        panelMax: !!state.workspace.panelMax,
+        ratings: Object.assign({}, state.workspace.ratings || {}),
+        promptBaselines: Object.assign({}, state.workspace.promptBaselines || {}),
+        promptManualEdit: Object.assign({}, state.workspace.promptManualEdit || {}),
+        genCounts: Object.assign({}, state.workspace.genCounts || {}),
+        assets: state.workspace.assets || {},
+        primary: state.workspace.primary || null,
+        savedAt: Date.now()
+      };
+    }
+    state.workspace.draftsLoaded = true;
+    renderWorkspace();
   }
 
   async function saveReplaceOutputDraft(ean, shotIndex, output) {
@@ -3718,7 +5427,10 @@
     state.workspace.mdimOverride = reviveAssetFromIdb(row.mdimOverride);
     state.workspace.ratings = Object.assign({}, row.ratings || {});
     state.workspace.promptBaselines = Object.assign({}, row.promptBaselines || {});
+    state.workspace.promptManualEdit = Object.assign({}, row.promptManualEdit || {});
     state.workspace.genCounts = Object.assign({}, row.genCounts || {});
+    if (row.panelOpen != null) state.workspace.panelOpen = !!row.panelOpen;
+    if (row.panelMax != null) state.workspace.panelMax = !!row.panelMax;
     state.workspace.rating = 0; // unused shared field — ratings are per-shot only
     Object.keys(row.shots || {}).forEach((k) => {
       const s = row.shots[k] || {};
@@ -3857,23 +5569,51 @@
     if (!state.workspace) return;
     if (!state.workspace.busyShots) state.workspace.busyShots = {};
     state.workspace.busyShots[shotIndex] = stage || 'In progress';
+    syncGenFocus(shotIndex);
   }
 
   function clearShotBusy(shotIndex) {
     if (!state.workspace || !state.workspace.busyShots) return;
     delete state.workspace.busyShots[shotIndex];
+    syncGenFocus();
   }
 
+  /** Busy = per-shot only. Multiple shots may generate in parallel. */
   function isShotBusy(shotIndex) {
     if (!state.workspace) return false;
-    if (state.workspace.generating === shotIndex) return true;
     return !!(state.workspace.busyShots && state.workspace.busyShots[shotIndex]);
   }
 
+  function busyShotIndexes() {
+    if (!state.workspace || !state.workspace.busyShots) return [];
+    return Object.keys(state.workspace.busyShots).map(Number).filter((n) => !isNaN(n));
+  }
+
   function anyShotBusy() {
-    if (!state.workspace) return false;
-    if (state.workspace.generating != null) return true;
-    return !!(state.workspace.busyShots && Object.keys(state.workspace.busyShots).length);
+    return busyShotIndexes().length > 0;
+  }
+
+  /** Keep legacy generating/genStage in sync without blocking other shots. */
+  function syncGenFocus(preferShot) {
+    if (!state.workspace) return;
+    const busy = busyShotIndexes();
+    if (!busy.length) {
+      state.workspace.generating = null;
+      if (!state.workspace.genAllBatch) state.workspace.genStage = '';
+      return;
+    }
+    const prefer = preferShot != null ? Number(preferShot) : NaN;
+    const focus = (!isNaN(prefer) && busy.indexOf(prefer) >= 0)
+      ? prefer
+      : (busy.indexOf(state.workspaceShot || 0) >= 0
+        ? (state.workspaceShot || 0)
+        : busy[0]);
+    state.workspace.generating = focus;
+    if (state.workspace.genAllBatch) return;
+    const stage = (state.workspace.busyShots && state.workspace.busyShots[focus]) || 'In progress';
+    state.workspace.genStage = busy.length > 1
+      ? (busy.length + ' in parallel · shot ' + (focus + 1) + ' · ' + stage)
+      : stage;
   }
 
   function driveFileCache() {
@@ -4036,6 +5776,129 @@
       reason: (resolved.borrowed
         ? 'MAIN A from Hero Front D + product B borrowed from Hero Front / 01 (not shown on MAIN)'
         : 'Prior + ' + inputs.length + ' product input' + (inputs.length > 1 ? 's' : '')) +
+        ' → Image to Image'
+    };
+  }
+
+  /** Primary: ordered refs from primaryInputPlan (A1→A2→A3→B), blobs required. */
+  function pickAnswerlyPrimaryPayload(shotIndex) {
+    const task = state.workspace ? taskByEan(state.workspace.ean) : null;
+    const shots = shotListFor(task || {});
+    const shot = shots[shotIndex];
+    const plan = primaryInputPlan(shotIndex, { shots: shots });
+    // MAIN requires Hero Front / seq 01 generated D (same gate as Replacement).
+    if (isMainShot(shot)) {
+      const angleIdx = angleSourceShotIndex(shots);
+      if (angleIdx < 0) {
+        return {
+          ok: false,
+          code: 'main_needs_hero',
+          error: 'MAIN needs a Hero Front / seq 01 shot in this Product Type.'
+        };
+      }
+      if (!shotHasGeneratedOutput(angleIdx)) {
+        const angle = shots[angleIdx] || {};
+        return {
+          ok: false,
+          code: 'main_needs_hero_output',
+          error: 'Generate ' + (angle.name || angle.code || 'Hero Front / 01') +
+            ' first — MAIN uses that D as the camera / composition reference.'
+        };
+      }
+      if (!(plan.a2 && (plan.a2.blob || plan.a2.file))) {
+        return {
+          ok: false,
+          code: 'main_needs_hero_output',
+          error: 'MAIN needs Hero Front / 01 generated D as A2 — wait for that shot first.'
+        };
+      }
+    }
+    if (plan.isLifestyle && !plan.hasA2) {
+      return {
+        ok: false,
+        code: 'no_lifestyle_ref',
+        error: 'A2 PDP Lifestyle reference is required (A1 is optional for lifestyle).'
+      };
+    }
+    if (!plan.hasA1 && !plan.hasA2) {
+      return {
+        ok: false,
+        code: 'no_ref',
+        error: isMainShot(shot)
+          ? 'Generate Hero Front / 01 first (MAIN uses that D as A2), or add A1 template.'
+          : 'A1 template image or A2 PDP camera reference is required.'
+      };
+    }
+    function hasBytes(a) {
+      return !!(a && (a.blob || a.file));
+    }
+    if (plan.hasA1 && plan.a1 && !hasBytes(plan.a1)) {
+      return {
+        ok: false,
+        code: 'a1_loading',
+        error: 'A1 template is still loading — wait a moment and try again.'
+      };
+    }
+    if (plan.hasA2 && plan.a2 && !hasBytes(plan.a2)) {
+      return {
+        ok: false,
+        code: 'a2_loading',
+        error: plan.mainFromHero
+          ? 'Hero Front / 01 D is not ready as a file yet — wait a moment and try again.'
+          : (plan.isLifestyle
+            ? 'A2 PDP Lifestyle reference is still loading — wait a moment and try again.'
+            : 'A2 PDP camera image is still loading — wait a moment and try again.')
+      };
+    }
+    if (plan.hasA3 && plan.a3 && !hasBytes(plan.a3)) {
+      return {
+        ok: false,
+        code: 'a3_loading',
+        error: 'A3 custom ref is still loading — wait a moment and try again.'
+      };
+    }
+    const ordered = [];
+    (plan.slots || []).forEach((s) => {
+      if (!s || !hasBytes(s.asset)) return;
+      ordered.push({
+        role: s.role,
+        asset: s.asset,
+        refKey: s.refKey,
+        inputImage: s.inputImage
+      });
+    });
+    const products = ordered.filter((x) => x.role === 'b');
+    const refs = ordered.filter((x) => x.role !== 'b');
+    if (!products.length) {
+      return {
+        ok: false,
+        code: 'no_product',
+        error: isMainShot(shot)
+          ? 'Add a product image on B for Hero Front / 01 (or MAIN) first.'
+          : 'Drop at least one product image onto B.'
+      };
+    }
+    if (!refs.length) {
+      return {
+        ok: false,
+        code: 'no_ref_bytes',
+        error: plan.isLifestyle
+          ? 'A2 PDP Lifestyle reference must be a loaded image file before generating.'
+          : 'A1 or A2 must be a loaded image file before generating.'
+      };
+    }
+    return {
+      ok: true,
+      workflow: 'image-to-image-workflow',
+      plan: plan,
+      refs: refs,
+      products: products,
+      ordered: ordered,
+      reason: 'Primary · ' +
+        (plan.isLifestyle
+          ? 'Lifestyle replace (A2 scene + B)'
+          : (plan.mainFromHero ? 'MAIN from Hero Front D' : (refs.map((r) => r.role.toUpperCase()).join('+')))) +
+        (plan.borrowedProductFromAngle ? ' + B borrowed from Hero Front' : (' + B×' + products.length)) +
         ' → Image to Image'
     };
   }
@@ -4295,13 +6158,16 @@
         (maxRefs <= 1 ? ' · 1-ref model (prior only)' : '');
     }
 
-    const body = {
+    const taskForJob = taskByEan(state.workspace.ean) || { ean: state.workspace.ean };
+    const shotsForJob = shotListFor(taskForJob);
+    const shotForJob = shotsForJob[shotIndex] || { seq: shotIndex + 1, code: 'OUT' };
+    const body = Object.assign({
       workflow: source.workflow,
       model: model,
       image_size: imageSize,
       prompt: prompt,
       images: images
-    };
+    }, answerlyQueueExtras(taskForJob, shotForJob, shotIndex));
 
     if (isShotCancelRequested(shotIndex)) throw makeCancelledError();
     markShotBusy(shotIndex, 'Queued…');
@@ -4322,11 +6188,7 @@
         const stage = (j.stage || j.status || 'running') +
           (typeof j.progress === 'number' ? ' · ' + j.progress + '%' : '');
         markShotBusy(shotIndex, stage);
-        // Keep legacy single-shot field for the focused rail item.
-        if (!state.workspace.genAllBatch) {
-          state.workspace.generating = shotIndex;
-          state.workspace.genStage = stage;
-        } else {
+        if (state.workspace.genAllBatch) {
           const nBusy = Object.keys(state.workspace.busyShots || {}).length;
           state.workspace.genStage = nBusy + ' in parallel · ' + stage;
         }
@@ -4346,8 +6208,8 @@
       const outBlob = await resultRes.blob();
       const outUrl = URL.createObjectURL(outBlob);
       const assets = shotAssets(shotIndex);
-      const task = taskByEan(state.workspace.ean) || { ean: state.workspace.ean };
-      const shots = shotListFor(task);
+      const task = taskForJob;
+      const shots = shotsForJob;
       const priorMatch = resolveWorkspaceMatch(task).selected;
       const driveImgs = priorDriveImages(priorMatch);
       const preferredDriveIdx = opts.driveImgIndex != null
@@ -4356,7 +6218,7 @@
       const driveIdx = driveImgs.length
         ? Math.min(Math.max(0, Number(preferredDriveIdx) || 0), driveImgs.length - 1)
         : -1;
-      const activeShot = shots[shotIndex] || { seq: shotIndex + 1, code: 'OUT' };
+      const activeShot = shotForJob;
       let driveName = driveIdx >= 0 ? (driveImgs[driveIdx] && driveImgs[driveIdx].name) : '';
       // MAIN is generated from Hero Front / seq 01 — keep output filename as MAIN, not the angle source.
       if (isMainShot(activeShot)) {
@@ -4365,6 +6227,8 @@
       }
       revokeAssetUrl(assets.output);
       const dims = await measureBlobDims(outBlob);
+      const execId = job.rootExecutionId || job.executionId || '';
+      rememberAnswerlyRootExecution(execId || job.executionId);
       assets.output = {
         blob: outBlob,
         url: outUrl,
@@ -4375,7 +6239,7 @@
         workflow: source.workflow,
         approved: false,
         jobId: job.id || '',
-        executionId: job.executionId || '',
+        executionId: execId || job.executionId || '',
         resultUrl: job.resultUrl || '',
         inputUrl: job.inputUrl || (Array.isArray(job.inputUrls) && job.inputUrls[0]) || '',
         inputUrls: Array.isArray(job.inputUrls)
@@ -4424,14 +6288,198 @@
     }
   }
 
+  async function runAnswerlyPrimaryForShot(shotIndex, promptText) {
+    await answerlyEnsureToken();
+    const source = pickAnswerlyPrimaryPayload(shotIndex);
+    if (!source.ok) {
+      const err = new Error(source.error);
+      err.code = source.code;
+      throw err;
+    }
+    source.ordered.forEach((item) => {
+      const label = item.role === 'b'
+        ? ('Product B' + ((item.inputImage != null ? item.inputImage : '') || ''))
+        : (item.role.toUpperCase() + ' ref');
+      warnIfOverAnswerlyLimit(item.asset, label);
+    });
+    const sizeEl = els.workspace && els.workspace.querySelector('.wr-size-select');
+    const modelEl = els.workspace && els.workspace.querySelector('.wr-model-select');
+    const imageSize = (sizeEl && sizeEl.value) || localStorage.getItem(ANSWERLY_SIZE_KEY) || '2K';
+    const model = (modelEl && modelEl.value) || localStorage.getItem(ANSWERLY_MODEL_KEY) || 'gemini-3.1-flash-image';
+    localStorage.setItem(ANSWERLY_SIZE_KEY, imageSize);
+    localStorage.setItem(ANSWERLY_MODEL_KEY, model);
+
+    const maxRefs = modelMaxReferenceImages(model, { primary: true });
+    const ordered = source.ordered.slice();
+    let assetList;
+    if (maxRefs <= 1) {
+      // Prefer A1 (background), else A2 (camera), else first available.
+      const prefer = ordered.find((x) => x.role === 'a1') ||
+        ordered.find((x) => x.role === 'a2') ||
+        ordered[0];
+      assetList = prefer ? [prefer] : [];
+      source.reason += ' · 1-ref model (' + (prefer && prefer.role ? prefer.role.toUpperCase() : 'ref') + ' only)';
+    } else {
+      assetList = ordered.slice(0, maxRefs);
+      if (ordered.length > assetList.length) {
+        source.reason += ' · capped ' + assetList.length + '/' + ordered.length + ' refs';
+      }
+    }
+    if (!assetList.length) throw new Error('No Primary reference images ready.');
+    const images = await Promise.all(assetList.map((item) => assetToImagePayload(item.asset)));
+    let prompt = String(promptText || '').trim();
+    if (!prompt) throw new Error('Prompt is empty');
+    prompt += '\n\n---\n' + assetList.map((item) =>
+      'INPUT IMAGE ' + item.inputImage + ' — `' + item.refKey + '` — ' +
+        (item.role === 'a1' ? 'MASTER BACKGROUND'
+          : (item.role === 'a2' ? 'CAMERA REFERENCE'
+            : (item.role === 'a3' ? 'OPTIONAL REFERENCE' : 'PRODUCT REFERENCE'))) +
+        ': ' + ((item.asset && item.asset.name) || item.refKey)
+    ).join('\n');
+
+    const taskForJob = taskByEan(state.workspace.ean) || { ean: state.workspace.ean };
+    const shotsForJob = shotListFor(taskForJob);
+    const shotForJob = shotsForJob[shotIndex] || { seq: shotIndex + 1, code: 'OUT' };
+    const body = Object.assign({
+      workflow: source.workflow,
+      model: model,
+      image_size: imageSize,
+      prompt: prompt,
+      images: images
+    }, answerlyQueueExtras(taskForJob, shotForJob, shotIndex));
+
+    if (isShotCancelRequested(shotIndex)) throw makeCancelledError();
+    markShotBusy(shotIndex, 'Queued…');
+    try {
+      const queued = await answerlyFetch('/answerly/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      trackActiveJob(shotIndex, queued.id);
+      if (isShotCancelRequested(shotIndex)) {
+        await cancelBridgeJobs([queued.id]);
+        throw makeCancelledError();
+      }
+      let lastStage = '';
+      const job = await pollAnswerlyJob(queued.id, (j) => {
+        if (!state.workspace || state.workspace.mode !== 'primary') return;
+        const stage = (j.stage || j.status || 'running') +
+          (typeof j.progress === 'number' ? ' · ' + j.progress + '%' : '');
+        markShotBusy(shotIndex, stage);
+        if (stage !== lastStage) {
+          lastStage = stage;
+          renderWorkspace();
+        }
+      }, {
+        shouldCancel: () => isShotCancelRequested(shotIndex)
+      });
+
+      if (isShotCancelRequested(shotIndex)) throw makeCancelledError();
+
+      const resultRes = await bridgeFetch('/answerly/jobs/' + encodeURIComponent(job.id) + '/result');
+      if (!resultRes.ok) throw new Error('Could not download Answerly result');
+      if (isShotCancelRequested(shotIndex)) throw makeCancelledError();
+      const outBlob = await resultRes.blob();
+      const outUrl = URL.createObjectURL(outBlob);
+      const assets = shotAssets(shotIndex);
+      const task = taskForJob;
+      const activeShot = shotForJob;
+      revokeAssetUrl(assets.output);
+      const dims = await measureBlobDims(outBlob);
+      const execId = job.rootExecutionId || job.executionId || '';
+      rememberAnswerlyRootExecution(execId || job.executionId);
+      assets.output = {
+        blob: outBlob,
+        url: outUrl,
+        _blobRef: outBlob,
+        name: synthesizeFileName(task, '', activeShot),
+        model: model,
+        size: imageSize,
+        workflow: source.workflow,
+        approved: false,
+        jobId: job.id || '',
+        executionId: execId || job.executionId || '',
+        resultUrl: job.resultUrl || '',
+        inputUrl: job.inputUrl || (Array.isArray(job.inputUrls) && job.inputUrls[0]) || '',
+        inputUrls: Array.isArray(job.inputUrls)
+          ? job.inputUrls.filter(Boolean).map(String)
+          : (job.inputUrl ? [String(job.inputUrl)] : []),
+        priorSource: 'primary',
+        w: dims.w || 0,
+        h: dims.h || 0
+      };
+      assets.error = null;
+      if (!state.workspace.outputs) state.workspace.outputs = {};
+      state.workspace.outputs[shotIndex] = true;
+      // Keep export card in sync when D is (re)generated — leave manual drops alone.
+      if (state.workspace.exportImages) {
+        const exKey = String(shotIndex);
+        const existingExport = state.workspace.exportImages[exKey] || state.workspace.exportImages[shotIndex];
+        if (!exportImageSkipsRating(existingExport)) {
+          state.workspace.exportImages[exKey] = {
+            url: outUrl,
+            _blobRef: outBlob,
+            name: assets.output.name,
+            blob: outBlob,
+            file: outBlob,
+            w: dims.w || 0,
+            h: dims.h || 0,
+            status: 'ready',
+            fromApproved: false,
+            manualDrop: false,
+            skipRating: false,
+            upscale: null
+          };
+        }
+      }
+      clearShotRating(shotIndex);
+      bumpShotGenerationCount(shotIndex);
+      mdimOnShotOutputChanged(shotIndex);
+      markRenderInProgress(state.workspace.ean);
+      return { job: job, source: source, output: assets.output };
+    } finally {
+      untrackActiveJob(shotIndex);
+      clearShotBusy(shotIndex);
+    }
+  }
+
   function persistReplacePromptFromDom() {
-    if (!state.workspace || state.workspace.mode !== 'replace' || !els.workspace) return;
+    if (!state.workspace || !els.workspace) return;
+    if (state.workspace.mode !== 'replace' && state.workspace.mode !== 'primary') return;
     const promptEl = els.workspace.querySelector('[data-ws-prompt]');
     if (!promptEl) return;
     if (!state.workspace.prompts) state.workspace.prompts = {};
     const key = promptEl.getAttribute('data-ws-prompt');
     const idx = key != null && key !== '' ? Number(key) : (state.workspaceShot || 0);
     state.workspace.prompts[idx] = promptEl.value;
+  }
+
+  function syncPromptExpandHighlight() {
+    const overlay = document.getElementById('wr-prompt-expand');
+    if (!overlay || overlay.hidden || !state.workspace) return;
+    const ta = overlay.querySelector('.wr-prompt-modal-text');
+    const hl = overlay.querySelector('[data-ws-prompt-modal-highlight]');
+    if (!ta || !hl) return;
+    const idx = Number(overlay.dataset.shotIndex);
+    const shotIdx = isNaN(idx) ? (state.workspaceShot || 0) : idx;
+    const task = taskByEan(state.workspace.ean);
+    if (!task) {
+      hl.innerHTML = esc(ta.value || '').replace(/\n/g, '<br>');
+      return;
+    }
+    const shots = shotListFor(task);
+    const shot = shots[shotIdx] || shots[0];
+    const prior = state.workspace.mode === 'primary' ? null : resolveWorkspaceMatch(task).selected;
+    const text = ta.value || '';
+    const manual = isPromptManualEdit(shotIdx);
+    const baseline = manual ? promptDefaultForDiff(task, shot, prior, shotIdx) : text;
+    hl.innerHTML = (manual
+      ? promptDiffHighlightHtml(text, baseline)
+      : formatPromptOverlayHtml(esc(text).replace(/\n/g, '<br>'))) +
+      (text && !/\n$/.test(text) ? '<br>' : '');
+    hl.scrollTop = ta.scrollTop;
+    hl.scrollLeft = ta.scrollLeft;
   }
 
   function openPromptExpandModal(text, shotIndex) {
@@ -4448,7 +6496,10 @@
             '<div class="wr-prompt-modal-title">Prompt</div>' +
             '<button type="button" class="wr-icon-btn" data-wr-prompt-close title="Close" aria-label="Close">✕</button>' +
           '</div>' +
-          '<textarea class="wr-prompt-modal-text" spellcheck="false"></textarea>' +
+          '<div class="wr-prompt-modal-wrap">' +
+            '<div class="wr-prompt-modal-highlight" data-ws-prompt-modal-highlight aria-hidden="true"></div>' +
+            '<textarea class="wr-prompt-modal-text" spellcheck="false"></textarea>' +
+          '</div>' +
           '<div class="wr-prompt-modal-foot">' +
             '<button type="button" class="wr-text-btn" data-wr-prompt-copy>Copy</button>' +
             '<button type="button" class="tp-btn tp-btn-primary" data-wr-prompt-apply>Apply &amp; close</button>' +
@@ -4470,26 +6521,67 @@
         }
         if (e.target.closest('[data-wr-prompt-apply]')) {
           const ta = overlay.querySelector('.wr-prompt-modal-text');
-          const idx = Number(overlay.dataset.shotIndex) || 0;
-          if (state.workspace) {
+          const rawIdx = overlay.dataset.shotIndex;
+          const idx = rawIdx != null && rawIdx !== '' ? Number(rawIdx) : (state.workspaceShot || 0);
+          if (state.workspace && !isNaN(idx)) {
             if (!state.workspace.prompts) state.workspace.prompts = {};
-            state.workspace.prompts[idx] = ta ? ta.value : '';
+            const next = ta ? ta.value : '';
+            state.workspace.prompts[idx] = next;
+            const task = taskByEan(state.workspace.ean);
+            const shots = task ? shotListFor(task) : [];
+            const shot = shots[idx] || shots[0];
+            const prior = state.workspace.mode === 'primary' ? null
+              : (task ? resolveWorkspaceMatch(task).selected : null);
+            const liveDefault = task
+              ? liveCompiledPromptText(task, shot, prior)
+              : '';
+            setPromptManualEdit(idx,
+              normalizePromptCompare(next) !== normalizePromptCompare(liveDefault));
             const live = els.workspace && els.workspace.querySelector('[data-ws-prompt]');
             if (live && String(live.getAttribute('data-ws-prompt')) === String(idx)) {
               live.value = state.workspace.prompts[idx];
             }
-            persistCurrentReplaceDraft();
+            if (state.workspace.mode === 'replace') persistCurrentReplaceDraft();
             renderWorkspace();
+            refreshPromptOriginUi();
           }
           overlay.hidden = true;
           showToast('Prompt updated.', false);
         }
       });
+      overlay.addEventListener('input', (e) => {
+        if (!e.target.matches('.wr-prompt-modal-text')) return;
+        const rawIdx = overlay.dataset.shotIndex;
+        const idx = rawIdx != null && rawIdx !== '' ? Number(rawIdx) : (state.workspaceShot || 0);
+        if (!isNaN(idx)) setPromptManualEdit(idx, true);
+        syncPromptExpandHighlight();
+      });
+      overlay.addEventListener('scroll', (e) => {
+        if (!e.target.matches || !e.target.matches('.wr-prompt-modal-text')) return;
+        const hl = overlay.querySelector('[data-ws-prompt-modal-highlight]');
+        if (!hl) return;
+        hl.scrollTop = e.target.scrollTop;
+        hl.scrollLeft = e.target.scrollLeft;
+      }, true);
+    }
+    // Recreate wrap markup if an older modal without highlight is still in the DOM.
+    if (!overlay.querySelector('[data-ws-prompt-modal-highlight]')) {
+      const oldTa = overlay.querySelector('.wr-prompt-modal-text');
+      const panel = overlay.querySelector('.wr-prompt-modal-panel');
+      if (panel && oldTa) {
+        const wrap = document.createElement('div');
+        wrap.className = 'wr-prompt-modal-wrap';
+        wrap.innerHTML =
+          '<div class="wr-prompt-modal-highlight" data-ws-prompt-modal-highlight aria-hidden="true"></div>';
+        oldTa.replaceWith(wrap);
+        wrap.appendChild(oldTa);
+      }
     }
     overlay.dataset.shotIndex = String(shotIndex != null ? shotIndex : 0);
     const ta = overlay.querySelector('.wr-prompt-modal-text');
     if (ta) ta.value = String(text || '');
     overlay.hidden = false;
+    syncPromptExpandHighlight();
     if (ta) {
       ta.focus();
       ta.setSelectionRange(0, 0);
@@ -4522,6 +6614,9 @@
         if (!picked.length || !dest || !state.workspace) return;
         if (dest.kind === 'prior') {
           setPriorOverrideFromFile(dest.shotIndex, picked[0]);
+        } else if (dest.kind === 'primary-a1' || dest.kind === 'primary-a2' || dest.kind === 'primary-a3') {
+          const slot = dest.kind === 'primary-a1' ? 'a1' : (dest.kind === 'primary-a3' ? 'a3' : 'a2');
+          setPrimarySlotFromFile(slot, dest.shotIndex, picked[0]);
         } else if (dest.kind === 'export') {
           addExportImageToShot(dest.shotIndex, picked[0]);
         } else if (dest.kind === 'export-fill') {
@@ -4531,7 +6626,8 @@
         }
       });
     }
-    input.multiple = !(state.workspace.fileTarget && state.workspace.fileTarget.kind === 'prior');
+    const singleKinds = { prior: 1, 'primary-a1': 1, 'primary-a2': 1, 'primary-a3': 1 };
+    input.multiple = !(state.workspace.fileTarget && singleKinds[state.workspace.fileTarget.kind]);
     // Defer click one tick so the user-gesture chain stays intact after React-less re-renders.
     try {
       input.click();
@@ -4545,8 +6641,12 @@
   }
 
   function embeddedUniversalRows() {
-    const pack = window.UNIVERSAL_REPLACE_PROMPTS;
-    return (pack && Array.isArray(pack.rows)) ? pack.rows.slice() : [];
+    const replace = window.UNIVERSAL_REPLACE_PROMPTS;
+    const primary = window.UNIVERSAL_PRIMARY_PROMPTS;
+    const rows = [];
+    if (replace && Array.isArray(replace.rows)) rows.push.apply(rows, replace.rows);
+    if (primary && Array.isArray(primary.rows)) rows.push.apply(rows, primary.rows);
+    return rows;
   }
 
   function parseUniversalGrid(values) {
@@ -4638,8 +6738,12 @@
       const data = await jsonp('action=universal', 45000, PROMPT_DB_URL);
       const live = parseUniversalGrid(data && data.values);
       if (live.length) {
-        state.universalRows = live;
-        state.universalSource = 'live';
+        // Prefer live Prompt DB. If Primary master is not in the sheet yet, keep
+        // the embedded Primary composition so Primary C still has a body.
+        const liveHasPrimary = live.some(isPrimaryWorkflow);
+        const embedPrimary = embeddedUniversalRows().filter(isPrimaryWorkflow);
+        state.universalRows = liveHasPrimary ? live : live.concat(embedPrimary);
+        state.universalSource = liveHasPrimary ? 'live' : 'live+embed-primary';
       }
     } catch (err) {
       // Keep embed fallback; do not block Replacement UI.
@@ -4654,6 +6758,12 @@
         syncAutomatedPromptsToLatestCompile(task, prior);
         forceRefreshMainPrompts(task, prior);
       }
+    } else if (state.workspace && state.workspace.mode === 'primary') {
+      const taskP = taskByEan(state.workspace.ean);
+      if (taskP) {
+        syncAutomatedPrimaryPromptsToLatestCompile(taskP);
+        forceRefreshMainPrompts(taskP, null);
+      }
     }
     return state.universalRows || [];
   }
@@ -4662,22 +6772,33 @@
     if (!state.workspace || !t) return;
     const shots = shotListFor(t);
     if (!state.workspace.prompts) state.workspace.prompts = {};
+    const isPrimary = state.workspace.mode === 'primary';
     let changed = false;
     shots.forEach((shot, idx) => {
       if (!isMainShot(shot)) return;
-      const compiled = compileReplacePrompt(t, shot, prior);
+      const compiled = isPrimary
+        ? compilePrimaryPrompt(t, shot, { shotIndex: idx })
+        : compileReplacePrompt(t, shot, prior);
       const cur = state.workspace.prompts[idx];
       const curN = normalizePromptCompare(cur);
       const nextN = normalizePromptCompare(compiled.text);
       if (curN === nextN) return;
-      // Keep any author edit (differs from live Universal MAIN compile), including cleared text.
-      if (cur != null && curN !== nextN) return;
+      if (isPrimary) {
+        // Always refresh automated Primary MAIN from Universal MAIN Final successful.
+        // (Default / Universal reload must not keep a wrong soft-matched body.)
+        if (isPromptManualEdit(idx)) return;
+      } else if (cur != null && curN !== nextN) {
+        // Keep any author edit (differs from live Universal MAIN compile), including cleared text.
+        return;
+      }
       state.workspace.prompts[idx] = compiled.text;
       rememberPromptBaseline(idx, compiled.text);
+      if (isPrimary) setPromptManualEdit(idx, false);
       changed = true;
     });
-    if (changed && state.workspace.mode === 'replace') {
-      persistCurrentReplaceDraft();
+    if (changed) {
+      if (isPrimary) persistCurrentPrimaryDraft();
+      else if (state.workspace.mode === 'replace') persistCurrentReplaceDraft();
       renderWorkspace();
     }
   }
@@ -4704,26 +6825,86 @@
   }
 
   function isReplaceWorkflow(row) {
-    return /product\s*replacement/i.test(String((row && row.workflow) || 'Product replacement'));
+    const w = String((row && row.workflow) || '');
+    if (!w.trim()) return true; // legacy blank = Product replacement
+    return /product\s*replacement/i.test(w) && !/^primary$/i.test(w.trim());
+  }
+
+  function isPrimaryWorkflow(row) {
+    return /^primary$/i.test(String((row && row.workflow) || '').trim()) ||
+      /primary\s*workflow/i.test(String((row && row.workflow) || ''));
   }
 
   function isUniversalMainRow(row) {
     if (!row) return false;
-    const code = normPromptKey(row.imageShortCode);
-    const name = normPromptKey(row.imageName);
-    if (code === 'main') return true;
-    if (/^main$/.test(name)) return true;
-    if (/marketplace\s*main/.test(name)) return true;
-    if (/white\s*background/.test(name) && /main|marketplace/.test(name)) return true;
-    return false;
+    // Same rules as isMainShot so Universal MAIN / white-background rows resolve.
+    return isMainShot({
+      code: row.imageShortCode,
+      name: row.imageName,
+      note: ''
+    });
   }
 
-  function resolveUniversalPrompt(shot, productTypeName) {
+  /**
+   * Primary MAIN Final successful from Prompt DB — same idea as Replacement:
+   * prefer Primary-workflow MAIN row, else Product-replacement MAIN, else Primary master.
+   */
+  function resolvePrimaryMainUniversal(productTypeName) {
     const rows = (state.universalRows && state.universalRows.length)
       ? state.universalRows
       : embeddedUniversalRows();
+    const pt = normPromptKey(productTypeName);
+    const primaryRows = rows.filter(isPrimaryWorkflow);
     const replaceRows = rows.filter(isReplaceWorkflow);
-    const pool = replaceRows.length ? replaceRows : rows;
+
+    function typeOk(row) {
+      const rpt = normPromptKey(row.productType);
+      return !rpt || !pt || rpt === pt;
+    }
+    function labelFor(row) {
+      const name = String(row.imageName || '').trim();
+      const code = String(row.imageShortCode || '').trim();
+      if (name && code) return name + ' (' + code + ')';
+      return name || code || 'MAIN';
+    }
+    function findMain(pool, typed) {
+      for (let i = 0; i < pool.length; i++) {
+        const row = pool[i];
+        if (!isUniversalMainRow(row)) continue;
+        if (typed && !typeOk(row)) continue;
+        if (!String(row.prompt || '').trim()) continue;
+        return { prompt: row.prompt, label: labelFor(row), row: row };
+      }
+      return null;
+    }
+
+    return findMain(primaryRows, true) ||
+      findMain(primaryRows, false) ||
+      findMain(replaceRows, true) ||
+      findMain(replaceRows, false) ||
+      (function () {
+        const master = resolvePrimaryUniversalMaster(productTypeName);
+        if (master && master.prompt) {
+          return { prompt: master.prompt, label: 'MAIN · master', row: master };
+        }
+        return { prompt: '', label: 'missing', row: null };
+      }());
+  }
+
+  function resolveUniversalPrompt(shot, productTypeName, opts) {
+    const options = opts || {};
+    const wantPrimary = options.workflow === 'primary' ||
+      (state.workspace && state.workspace.mode === 'primary' && options.workflow !== 'replace');
+    const rows = (state.universalRows && state.universalRows.length)
+      ? state.universalRows
+      : embeddedUniversalRows();
+    const primaryRows = rows.filter(isPrimaryWorkflow);
+    const replaceRows = rows.filter(isReplaceWorkflow);
+    // Primary mode: prefer Primary Universal rows; do not fall back to Replacement text
+    // (that would inject "remove prior product" into the Primary appendix).
+    const pool = wantPrimary
+      ? (primaryRows.length ? primaryRows : [])
+      : (replaceRows.length ? replaceRows : rows);
     const shotCode = normPromptKey(shot && shot.code);
     const shotName = normPromptKey(shot && shot.name);
     const pt = normPromptKey(productTypeName);
@@ -4878,7 +7059,7 @@
     const isDim = isDimensionShot(shots[shotIndex]);
     const cur = String(state.workspace.mdimBaseKey || '');
     const dimSi = Math.min(state.workspaceShot, Math.max(0, shots.length - 1));
-    const onDimEditor = state.workspace.mode === 'replace' &&
+    const onDimEditor = (state.workspace.mode === 'replace' || state.workspace.mode === 'primary') &&
       isDimensionShot(shots[dimSi]) &&
       !state.workspace.mdimShowAbcd;
     // Only the currently selected base should update the full-view editor — never jump to
@@ -5371,6 +7552,23 @@
     const file = new File([outBlob], ean + '_' + String(seq).padStart(2, '0') + '_' + code + '.png', { type: 'image/png' });
     await addExportImageToShot(shotIndex, file);
 
+    // Keep Required shots rail in sync — export row alone does not update D / rail thumbs.
+    const exportEntry = state.workspace.exportImages && state.workspace.exportImages[String(shotIndex)];
+    const assets = shotAssets(shotIndex);
+    revokeAssetUrl(assets.output);
+    assets.output = {
+      blob: (exportEntry && exportEntry.blob) || outBlob,
+      file: (exportEntry && exportEntry.file) || file,
+      name: (exportEntry && exportEntry.name) || file.name,
+      w: (exportEntry && (exportEntry.w || 0)) || 0,
+      h: (exportEntry && (exportEntry.h || 0)) || 0,
+      fromMdim: true,
+      approved: false
+    };
+    ensureAssetDisplayUrl(assets.output);
+    if (!state.workspace.outputs) state.workspace.outputs = {};
+    state.workspace.outputs[shotIndex] = true;
+
     // Apply = approval for M-DIM (no star rating). Persist JSON to Prompt DB by EAN (upsert).
     try {
       await saveMdimJsonToPromptDb(ean, draft);
@@ -5515,7 +7713,8 @@
 
   /** Prefer Prompt DB M-DIM JSON when present; else keep local / Shoot Tracker defaults. */
   async function hydrateMdimDraftForEan(forceDb) {
-    if (!state.workspace || state.workspace.mode !== 'replace') return;
+    if (!state.workspace ||
+        (state.workspace.mode !== 'replace' && state.workspace.mode !== 'primary')) return;
     const ean = state.workspace.ean;
     const t = taskByEan(ean);
     if (state.workspace.mdimDbChecked && !forceDb) return;
@@ -5629,8 +7828,21 @@
     return 'Camera: ' + hints[0] + '.';
   }
 
-  function productInsertSentence(t) {
+  function isCloseUpShot(shot) {
+    if (!shot) return false;
+    const blob = [
+      String(shot.name || ''),
+      String(shot.code || ''),
+      String(shot.family || ''),
+      String(shot.whatToShoot || '')
+    ].join(' ');
+    return /close[\s\-]*up/i.test(blob);
+  }
+
+  function productInsertSentence(t, shot) {
     if (!t) return '';
+    // Close-up shots: product-insert metadata often fights the crop / framing.
+    if (isCloseUpShot(shot)) return '';
     const parts = [];
     const name = String(t.productName || t.title || '').trim();
     if (name) parts.push(name);
@@ -5679,13 +7891,125 @@
     return text + '\n\nFully remove the prior product silhouette from INPUT IMAGE 1 and insert the new product. Do not leave remnants or blend products.';
   }
 
+  /** Build product-reference bullets for only the B images that are actually present. */
+  function productReferenceBlockForCount(productCount, productStartNum) {
+    const count = Math.max(0, Math.min(4, Number(productCount) || 0));
+    const start = Math.max(2, Number(productStartNum) || 2);
+    const ordinals = ['first', 'second', 'third', 'fourth'];
+    if (count <= 0) {
+      return (
+        '**INPUT IMAGE ' + start + ' — `reference_image_url_' + start + '` — PRODUCT REFERENCE**\n\n' +
+        'Add at least one product reference image.'
+      );
+    }
+    if (count === 1) {
+      return (
+        '**INPUT IMAGE ' + start + ' — `reference_image_url_' + start + '` — PRODUCT REFERENCE**\n\n' +
+        'This product photo is INPUT IMAGE ' + start + ' — `reference_image_url_' + start + '`.'
+      );
+    }
+    const nums = [];
+    const bullets = [];
+    for (let i = 0; i < count; i++) {
+      const n = start + i;
+      nums.push(String(n));
+      bullets.push(
+        '- INPUT IMAGE ' + n + ' — `reference_image_url_' + n + '` — ' +
+          ordinals[i] + ' product reference'
+      );
+    }
+    const numList = nums.length === 2
+      ? (nums[0] + ' and ' + nums[1])
+      : (nums.slice(0, -1).join(', ') + ', and ' + nums[nums.length - 1]);
+    return (
+      '**INPUT IMAGES ' + numList + ' — `reference_image_url_' + start +
+        '` onward — PRODUCT REFERENCES**\n\n' +
+      'Each product photo is its own input image, numbered in order:\n' +
+      bullets.join('\n')
+    );
+  }
+
+  /**
+   * Adapt Universal Product-replacement Final successful wording:
+   * - modernize old second_reference_url keys
+   * - list only product refs that are actually present (no “if provided”)
+   * - drop the generic “Together, these product reference images…” paragraph
+   */
+  function clarifyReplaceInputImageWording(universalText, opts) {
+    const options = opts || {};
+    const productCount = options.productCount != null ? Number(options.productCount) : 1;
+    const productStartNum = options.productStartNum != null ? Number(options.productStartNum) : 2;
+    let text = String(universalText || '');
+    if (!text) return text;
+
+    text = text.replace(
+      /\*\*INPUT IMAGE 1\s*[—\-]\s*`reference_image_url`\*\*/gi,
+      '**INPUT IMAGE 1 — `reference_image_url_1` — PRIOR / MASTER**'
+    );
+    text = text.replace(/`second_reference_url`/gi, '`reference_image_url_2`');
+    text = text.replace(/`third_reference_url`/gi, '`reference_image_url_3`');
+    text = text.replace(/`fourth_reference_url`/gi, '`reference_image_url_4`');
+
+    const productBlock = productReferenceBlockForCount(productCount, productStartNum);
+
+    // Replace the whole product-references section through ### INSTRUCTIONS (or next heading).
+    const productSectionRe =
+      /\*\*INPUT IMAGE(?:S)?\s+2[^*\n]*\*\*[\s\S]*?(?=\n###\s|\n##\s|\n#\s[A-Z]|$)/i;
+    if (productSectionRe.test(text)) {
+      text = text.replace(productSectionRe, productBlock + '\n\n');
+    } else {
+      // Fallback: old 2+ heading only.
+      text = text.replace(
+        /\*\*INPUT IMAGE 2\+\s*[—\-]\s*`[^`]+`\*\*[^\n]*/i,
+        productBlock
+      );
+    }
+
+    // Safety: strip leftover Together / if-provided wording if DB variant differed.
+    text = text.replace(
+      /\n*Together, these product reference images define the complete and exclusive identity and appearance of the replacement product\.\s*Use all of them that are supplied\.\n*/gi,
+      '\n'
+    );
+    text = text.replace(
+      /^[ \t]*-[ \t]*INPUT IMAGE\s+\d+[^\n]*\(if provided\)[^\n]*\n?/gim,
+      ''
+    );
+
+    // Instruction line: name only the product images that exist.
+    const count = Math.max(0, Math.min(4, Number(productCount) || 0));
+    const start = Math.max(2, Number(productStartNum) || 2);
+    let fromLabel = 'INPUT IMAGE ' + start;
+    if (count > 1) {
+      const nums = [];
+      for (let i = 0; i < count; i++) nums.push(String(start + i));
+      fromLabel = 'INPUT IMAGES ' + (nums.length === 2
+        ? (nums[0] + ' and ' + nums[1])
+        : (nums.slice(0, -1).join(', ') + ', and ' + nums[nums.length - 1]));
+    }
+    text = text.replace(
+      /from INPUT IMAGES?\s+2(?:\s*,\s*3(?:\s*,\s*4)?)?(?:\s*…|\s*\.\.\.)?(?:\s*\(whichever product references are provided\))?/gi,
+      'from ' + fromLabel
+    );
+    text = text.replace(/INPUT IMAGE 2\+/g, fromLabel);
+
+    return text.replace(/\n{3,}/g, '\n\n').trim();
+  }
+
   function compileReplacePrompt(t, shot, priorMatch, opts) {
     const options = opts || {};
     const productTypeName = (state.workspace && state.workspace.productTypeName) || options.productTypeName || '';
     const shots = options.shots || (t ? shotListFor(t) : []);
+    const shotIndex = options.shotIndex != null
+      ? Number(options.shotIndex)
+      : (shots.indexOf(shot) >= 0 ? shots.indexOf(shot) : (state.workspaceShot || 0));
     const resolved = resolveUniversalPrompt(shot, productTypeName);
-    const base = ensureFullRemoveRule(resolved.prompt);
-    const productLine = productInsertSentence(t);
+    const bCount = Math.min(4, ((shotAssets(shotIndex).inputs || []).length) || 0);
+    // Keep DB Final successful body almost intact — adapt product-ref list to images present.
+    const base = clarifyReplaceInputImageWording(ensureFullRemoveRule(resolved.prompt), {
+      productCount: Math.max(1, bCount),
+      productStartNum: 2
+    });
+    const productLine = productInsertSentence(t, shot);
     const cleaned = cleanWhatToShoot(shot, shots);
     const camera = cameraHintForShot(shot, cleaned);
     const family = String((shot && shot.family) || '').trim();
@@ -5701,18 +8025,15 @@
 
     const priorTask = priorMatch ? (taskByEan(priorMatch.ean) || priorMatch) : null;
     const priorLook = priorLookSentence(priorTask);
-    const insertName = String((t && (t.productName || t.title)) || 'the new product').trim();
-    const color = t && String(t.color || '').trim();
 
     const lines = [];
     if (base) lines.push(base);
     if (productLine) lines.push('', productLine);
     if (target) lines.push('', target);
-    lines.push('');
-    lines.push('INPUT IMAGE 1 is the prior / master scene: remove that product completely; use it only for position, angle, and scale.' +
-      (priorLook ? ' ' + priorLook : ''));
-    lines.push('INPUT IMAGE 2+ are references for ' + insertName +
-      (color ? ' in ' + color : '') + ' described above.');
+    if (priorLook) {
+      lines.push('');
+      lines.push('INPUT IMAGE 1 prior look: ' + priorLook.replace(/^Prior product look:\s*/i, ''));
+    }
 
     const text = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
     return {
@@ -5727,7 +8048,7 @@
   }
 
   function defaultReplacePrompt(t, shot, prior) {
-    return compileReplacePrompt(t, shot, prior).text;
+    return compileReplacePrompt(t, shot, prior, { shotIndex: state.workspaceShot || 0 }).text;
   }
 
   function normalizePromptCompare(s) {
@@ -5744,6 +8065,20 @@
     if (!state.workspace) return;
     if (!state.workspace.promptBaselines) state.workspace.promptBaselines = {};
     state.workspace.promptBaselines[shotIndex] = String(text || '');
+  }
+
+  function isPromptManualEdit(shotIndex) {
+    if (!state.workspace || !state.workspace.promptManualEdit) return false;
+    const idx = shotIndex != null ? shotIndex : (state.workspaceShot || 0);
+    return !!state.workspace.promptManualEdit[idx];
+  }
+
+  function setPromptManualEdit(shotIndex, on) {
+    if (!state.workspace) return;
+    if (!state.workspace.promptManualEdit) state.workspace.promptManualEdit = {};
+    const idx = shotIndex != null ? shotIndex : (state.workspaceShot || 0);
+    if (on) state.workspace.promptManualEdit[idx] = true;
+    else delete state.workspace.promptManualEdit[idx];
   }
 
   function shotRating(shotIndex) {
@@ -5768,40 +8103,165 @@
     if (state.workspace.rejected) delete state.workspace.rejected[shotIndex];
   }
 
+  function liveCompiledPromptText(t, shot, prior) {
+    const idx = state.workspaceShot || 0;
+    if (state.workspace && state.workspace.mode === 'primary') {
+      return compilePrimaryPrompt(t, shot, { shotIndex: idx }).text;
+    }
+    return compileReplacePrompt(t, shot, prior, { shotIndex: idx }).text;
+  }
+
   function promptOriginForShot(t, shot, prior, promptText, shotIndex) {
     // Strict rule: differs from the live compiled default → Custom (saved to DB).
     // Exact match (or empty-vs-empty) → Automated (DB prompt cell blank).
+    // Clear (empty vs non-empty default) stays Custom — same as Replacement.
     const norm = normalizePromptCompare(promptText);
-    if (!norm) return 'Custom';
-    const liveN = normalizePromptCompare(compileReplacePrompt(t, shot, prior).text);
+    const liveN = normalizePromptCompare(liveCompiledPromptText(t, shot, prior));
     return norm === liveN ? 'Automated' : 'Custom';
   }
 
-  function promptOriginNoteHtml(t, shot, compiled, origin, reuseMeta) {
-    const source = isMainShot(shot)
-      ? 'Prompt source: Universal <strong>MAIN</strong> (PDP). '
-      : 'Prompt source: Universal · ' + esc(compiled.universalLabel) + '. ';
-    if (reuseMeta && reuseMeta.ean && origin === 'Custom') {
-      return source + '<strong>Custom</strong> — reused from EAN <span class="tp-mono">' +
-        esc(String(reuseMeta.ean)) + '</span> (same Sub-category + Template)' +
-        (reuseMeta.author ? ' by ' + esc(reuseMeta.author) : '') +
-        '. Edit freely; Approve saves a new All user row.';
-    }
-    if (origin === 'Custom') {
-      return source + '<strong>Custom</strong> — edited from the compiled default. Will be saved to Prompt DB on Approve.';
-    }
-    return source + '<strong>Automated</strong> — compiled default (prompt cell stays blank in DB). Default restores it. Rate 4–5★, then Approve.';
+  function storedPromptBaseline(shotIndex) {
+    if (!state.workspace || !state.workspace.promptBaselines) return '';
+    const idx = shotIndex != null ? shotIndex : (state.workspaceShot || 0);
+    return state.workspace.promptBaselines[idx] != null
+      ? String(state.workspace.promptBaselines[idx])
+      : '';
   }
 
-  function refreshPromptOriginUi() {
-    if (!els.workspace || !state.workspace || state.workspace.mode !== 'replace') return;
+  /** Default text used for yellow-diff: stored baseline if set, else live compile. */
+  function promptDefaultForDiff(t, shot, prior, shotIndex) {
+    const stored = storedPromptBaseline(shotIndex);
+    if (stored) return stored;
+    return liveCompiledPromptText(t, shot, prior);
+  }
+
+  /**
+   * Display-only markdown for Primary + Replace overlays.
+   * Textarea / Answerly keep raw # / **; the overlay strips markers and shows bold headers.
+   * (Caret can drift slightly on marked lines — formatting preference.)
+   */
+  function formatPromptOverlayHtml(html) {
+    let out = String(html || '');
+    out = out.replace(/\*\*([^*]+?)\*\*/g, '<strong class="wr-md-strong">$1</strong>');
+    out = out.replace(/(^|<br>)(#{1,6})\s+([^<]*)/g, function (_, br, hashes, rest) {
+      return br + '<span class="wr-md-h wr-md-h' + Math.min(3, hashes.length) + '">' + rest + '</span>';
+    });
+    return out;
+  }
+
+  function promptDiffHighlightHtml(current, baseline) {
+    const cur = String(current || '');
+    const base = String(baseline || '');
+    if (!cur) return '';
+    if (normalizePromptCompare(cur) === normalizePromptCompare(base)) {
+      return formatPromptOverlayHtml(esc(cur).replace(/\n/g, '<br>'));
+    }
+    // Yellow = whole new tokens vs Default. Partial deletes / in-place edits of the
+    // expected next baseline word stay unhighlighted (prefix/suffix of that word).
+    const curParts = cur.split(/(\s+)/);
+    const baseTokens = normalizePromptCompare(base).split(/\s+/).filter(Boolean).map((t) => t.toLowerCase());
+    let bi = 0;
+    let html = '';
+    curParts.forEach((part) => {
+      if (!part) return;
+      if (/^\s+$/.test(part)) {
+        html += esc(part).replace(/\n/g, '<br>');
+        return;
+      }
+      const token = part.toLowerCase();
+      let found = -1;
+      for (let j = bi; j < baseTokens.length; j++) {
+        if (baseTokens[j] === token) {
+          found = j;
+          break;
+        }
+      }
+      if (found >= 0) {
+        bi = found + 1;
+        html += esc(part);
+        return;
+      }
+      // Partial of the next expected baseline token (deleting/typing inside that word).
+      const next = baseTokens[bi];
+      if (next && token && next.indexOf(token) === 0) {
+        // Shorter remnant / prefix of baseline word — not a new insertion.
+        html += esc(part);
+        bi += 1;
+        return;
+      }
+      html += '<mark class="wr-prompt-mark">' + esc(part) + '</mark>';
+    });
+    return formatPromptOverlayHtml(html);
+  }
+
+  function syncPromptHighlightOverlay() {
+    if (!els.workspace || !state.workspace) return;
+    if (state.workspace.mode !== 'replace' && state.workspace.mode !== 'primary') return;
+    const wrap = els.workspace.querySelector('.wr-prompt-wrap');
+    const promptEl = els.workspace.querySelector('[data-ws-prompt]');
+    const overlay = els.workspace.querySelector('[data-ws-prompt-highlight]');
+    if (!wrap || !promptEl || !overlay) return;
     const task = taskByEan(state.workspace.ean);
     if (!task) return;
     const idx = state.workspaceShot || 0;
     const shots = shotListFor(task);
     const shot = shots[idx] || shots[0];
-    const prior = resolveWorkspaceMatch(task).selected;
-    const compiled = compileReplacePrompt(task, shot, prior);
+    const prior = state.workspace.mode === 'primary' ? null : resolveWorkspaceMatch(task).selected;
+    const text = promptEl.value || '';
+    // Yellow only after human typing — script/slot recompiles never highlight.
+    const manual = isPromptManualEdit(idx);
+    const baseline = manual ? promptDefaultForDiff(task, shot, prior, idx) : text;
+    wrap.classList.toggle('has-diff', manual && !!normalizePromptCompare(text) &&
+      normalizePromptCompare(text) !== normalizePromptCompare(baseline));
+    overlay.innerHTML = (manual
+      ? promptDiffHighlightHtml(text, baseline)
+      : formatPromptOverlayHtml(esc(text).replace(/\n/g, '<br>'))) +
+      (text && !/\n$/.test(text) ? '<br>' : '');
+    overlay.scrollTop = promptEl.scrollTop;
+    overlay.scrollLeft = promptEl.scrollLeft;
+  }
+
+  function promptOriginNoteHtml(t, shot, compiled, origin, reuseMeta) {
+    const isPrimary = state.workspace && state.workspace.mode === 'primary';
+    const source = isPrimary
+      ? (isMainShot(shot)
+        ? 'Prompt source: Primary · Universal <strong>MAIN</strong> from Prompt DB. '
+        : 'Prompt source: Primary · Prompt DB Universal ' + esc(compiled.universalLabel || 'master') +
+          (compiled.fromDb ? '' : ' · core fallback') + '. Refs renumber with A1/A2/A3/B. ')
+      : (isMainShot(shot)
+        ? 'Prompt source: Universal <strong>MAIN</strong> (PDP). '
+        : 'Prompt source: Universal · ' + esc(compiled.universalLabel) + '. ');
+    const yellowLegend = ' <span class="wr-prompt-legend"><mark class="wr-prompt-mark">Yellow</mark> = added vs Default</span>';
+    if (reuseMeta && reuseMeta.ean && origin === 'Custom') {
+      return source + '<strong>Custom</strong> — reused from EAN <span class="tp-mono">' +
+        esc(String(reuseMeta.ean)) + '</span> (same Sub-category + Template)' +
+        (reuseMeta.author ? ' by ' + esc(reuseMeta.author) : '') +
+        '. Edit freely; Approve saves a new All user row.' + yellowLegend;
+    }
+    if (origin === 'Custom') {
+      return source + '<strong>Custom</strong> — edited from the compiled default. Will be saved to Prompt DB on Approve.' +
+        yellowLegend;
+    }
+    return source + '<strong>Automated</strong> — compiled default (stored as Default snapshot)' +
+      (isPrimary
+        ? '. Default restores it. Rate 4–5★, then Approve.'
+        : ' (prompt cell stays blank in DB). Default restores it. Rate 4–5★, then Approve.') +
+      yellowLegend;
+  }
+
+  function refreshPromptOriginUi() {
+    if (!els.workspace || !state.workspace) return;
+    if (state.workspace.mode !== 'replace' && state.workspace.mode !== 'primary') return;
+    const task = taskByEan(state.workspace.ean);
+    if (!task) return;
+    const idx = state.workspaceShot || 0;
+    const shots = shotListFor(task);
+    const shot = shots[idx] || shots[0];
+    const isPrimary = state.workspace.mode === 'primary';
+    const prior = isPrimary ? null : resolveWorkspaceMatch(task).selected;
+    const compiled = isPrimary
+      ? compilePrimaryPrompt(task, shot, { shotIndex: idx })
+      : compileReplacePrompt(task, shot, prior, { shotIndex: idx });
     const promptEl = els.workspace.querySelector('[data-ws-prompt]');
     const promptText = promptEl
       ? promptEl.value
@@ -5816,6 +8276,7 @@
       badge.className = 'wr-badge-ghost' + (origin === 'Custom' ? ' is-custom' : ' is-automated');
       badge.setAttribute('data-ws-prompt-origin', origin);
     }
+    syncPromptHighlightOverlay();
   }
 
   function syncAutomatedPromptsToLatestCompile(t, prior) {
@@ -5824,17 +8285,25 @@
     if (!state.workspace.prompts) state.workspace.prompts = {};
     if (!state.workspace.promptBaselines) state.workspace.promptBaselines = {};
     shots.forEach((shot, idx) => {
-      const compiled = compileReplacePrompt(t, shot, prior).text;
-      const current = state.workspace.prompts[idx];
-      // Never touch author text (including Clear → ''). Only fill missing slots or refresh exact Automated matches.
-      if (current == null) {
-        state.workspace.prompts[idx] = compiled;
-        rememberPromptBaseline(idx, compiled);
-        return;
-      }
-      if (normalizePromptCompare(current) !== normalizePromptCompare(compiled)) return;
+      if (isPromptManualEdit(idx)) return;
+      const compiled = compileReplacePrompt(t, shot, prior, { shotIndex: idx }).text;
       state.workspace.prompts[idx] = compiled;
       rememberPromptBaseline(idx, compiled);
+      setPromptManualEdit(idx, false);
+    });
+  }
+
+  function syncAutomatedPrimaryPromptsToLatestCompile(t) {
+    if (!state.workspace || !t || state.workspace.mode !== 'primary') return;
+    const shots = shotListFor(t);
+    if (!state.workspace.prompts) state.workspace.prompts = {};
+    if (!state.workspace.promptBaselines) state.workspace.promptBaselines = {};
+    shots.forEach((shot, idx) => {
+      if (isPromptManualEdit(idx)) return;
+      const compiled = compilePrimaryPrompt(t, shot, { shotIndex: idx }).text;
+      state.workspace.prompts[idx] = compiled;
+      rememberPromptBaseline(idx, compiled);
+      setPromptManualEdit(idx, false);
     });
   }
 
@@ -5903,7 +8372,9 @@
           out.h = dims.h;
         }
       }
-      if (state.workspace.mode === 'replace') renderWorkspace();
+      if (state.workspace.mode === 'replace' || state.workspace.mode === 'primary') {
+        renderWorkspace();
+      }
     });
   }
 
@@ -6101,6 +8572,44 @@
     await persistCurrentReplaceDraft();
     renderWorkspace();
     showToast('Reset all Gen Img & Prompt — B, D, M-DIM base, ratings cleared; prompts restored to Universal defaults.', false);
+  }
+
+  async function resetEanPrimaryDraft() {
+    if (!state.workspace || state.workspace.mode !== 'primary') return;
+    const task = taskByEan(state.workspace.ean) || { ean: state.workspace.ean };
+    const shots = shotListFor(task);
+    const msg = 'Reset all Gen Img & Prompt?\n\nThis clears product inputs (B), outputs (D), and per-image ratings for every shot, and restores prompts from Universal Prompt DB.\n\nApprovals for this EAN are cleared too. A1 template / A2 PDP / A3 stay.';
+    if (!window.confirm(msg)) return;
+    Object.keys(state.workspace.assets || {}).forEach((k) => {
+      const a = shotAssets(k);
+      (a.inputs || []).forEach(revokeAssetUrl);
+      a.inputs = [];
+      revokeAssetUrl(a.output);
+      a.output = null;
+      a._previousOutput = null;
+      a.error = null;
+    });
+    state.workspace.outputs = {};
+    state.workspace.approved = {};
+    state.workspace.rejected = {};
+    state.workspace.ratings = {};
+    state.workspace.rating = 0;
+    state.workspace.genCounts = {};
+    state.workspace.exportImages = {};
+    state.workspace.prompts = {};
+    state.workspace.promptBaselines = {};
+    state.workspace.promptManualEdit = {};
+    if (state.workspace.promptReuse) state.workspace.promptReuse = {};
+    clearMdimWorkspaceState();
+    shots.forEach((shot, idx) => {
+      const compiled = compilePrimaryPrompt(task, shot, { shotIndex: idx }).text;
+      state.workspace.prompts[idx] = compiled;
+      rememberPromptBaseline(idx, compiled);
+      setPromptManualEdit(idx, false);
+    });
+    await persistCurrentPrimaryDraft();
+    renderWorkspace();
+    showToast('Reset all Gen Img & Prompt — B, D, ratings cleared; prompts restored from Universal Prompt DB.', false);
   }
 
   /** Drag/drop onto export row (wr-slot-drop) — e.g. manual M-DIM — skip rating gate. */
@@ -6319,7 +8828,10 @@
       };
       if (typeof opts.onProgress === 'function') opts.onProgress(entry.upscale, info);
       else if (opts.shotIndex != null) updateExportUpscaleCell(opts.shotIndex);
-      else if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
+      else if (state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
+        renderWorkspace();
+      }
       if (info.status === 'done') {
         const out = await bridgeFetch('/jobs/' + encodeURIComponent(id) + '/result');
         entry.upscale = { state: 'done', ms: info.elapsedMs };
@@ -6525,7 +9037,8 @@
   }
 
   async function generateApprovedExportZip() {
-    if (!state.workspace || state.workspace.mode !== 'replace') return;
+    if (!state.workspace ||
+        (state.workspace.mode !== 'replace' && state.workspace.mode !== 'primary')) return;
     if (state.workspace.exportBusy) return;
     const task = taskByEan(state.workspace.ean);
     if (!task) {
@@ -6821,10 +9334,11 @@
     '</section>';
   }
 
-  function modelMaxReferenceImages(modelId) {
+  function modelMaxReferenceImages(modelId, opts) {
     const low = String(modelId || '').toLowerCase();
     if (/krea|grok|xai\//.test(low)) return 1;
-    // prior + up to 4 product B as separate Answerly reference slots.
+    // Primary: A1+A2+A3 + up to 4 B. Replace: prior + up to 4 B.
+    if (opts && opts.primary) return 8;
     return 5;
   }
 
@@ -6953,7 +9467,11 @@
       'answerlyInputUrlB1=' + encodeURIComponent(payload.answerlyInputUrlB1 || ''),
       'answerlyInputUrlB2=' + encodeURIComponent(payload.answerlyInputUrlB2 || ''),
       'answerlyInputUrlB3=' + encodeURIComponent(payload.answerlyInputUrlB3 || ''),
-      'answerlyInputUrlB4=' + encodeURIComponent(payload.answerlyInputUrlB4 || '')
+      'answerlyInputUrlB4=' + encodeURIComponent(payload.answerlyInputUrlB4 || ''),
+      'answerlyInputUrlB5=' + encodeURIComponent(payload.answerlyInputUrlB5 || ''),
+      'answerlyInputUrlB6=' + encodeURIComponent(payload.answerlyInputUrlB6 || ''),
+      'answerlyInputUrlB7=' + encodeURIComponent(payload.answerlyInputUrlB7 || ''),
+      'answerlyInputUrlB8=' + encodeURIComponent(payload.answerlyInputUrlB8 || '')
     ].join('&');
     const data = await jsonp(q, 60000, PROMPT_DB_URL);
     if (data && !data.promptOrigin) data.promptOrigin = origin;
@@ -7180,6 +9698,13 @@
     return (shots || []).findIndex((s) => isMainShot(s));
   }
 
+  // Prefer first angle / content shot (not MAIN) — same idea as Replace starting on H-FR Drive rail.
+  function defaultWorkspaceShotIndex(shots) {
+    const list = shots || [];
+    const first = list.findIndex((s) => !isMainShot(s));
+    return first >= 0 ? first : 0;
+  }
+
   function isAngleSourceShot(shot, shots) {
     if (!shot || isMainShot(shot)) return false;
     const src = mainAngleSourceShot(shots || []);
@@ -7189,7 +9714,9 @@
   }
 
   async function maybeAutoGenerateMain(fromShotIndex) {
-    if (!state.workspace || state.workspace.mode !== 'replace') return;
+    if (!state.workspace) return;
+    const mode = state.workspace.mode;
+    if (mode !== 'replace' && mode !== 'primary') return;
     const task = taskByEan(state.workspace.ean);
     if (!task) return;
     const shots = shotListFor(task);
@@ -7209,28 +9736,36 @@
     }
     if (!state.workspace.prompts) state.workspace.prompts = {};
     if (state.workspace.prompts[mainIdx] == null || !String(state.workspace.prompts[mainIdx]).trim()) {
-      const prior = resolveWorkspaceMatch(task).selected;
-      state.workspace.prompts[mainIdx] = compileReplacePrompt(task, shots[mainIdx], prior).text;
+      if (mode === 'primary') {
+        state.workspace.prompts[mainIdx] =
+          compilePrimaryPrompt(task, shots[mainIdx], { shotIndex: mainIdx }).text;
+      } else {
+        const prior = resolveWorkspaceMatch(task).selected;
+        state.workspace.prompts[mainIdx] = compileReplacePrompt(task, shots[mainIdx], prior).text;
+      }
     }
     const promptText = state.workspace.prompts[mainIdx];
     state.workspaceShot = mainIdx;
-    state.workspace.generating = mainIdx;
-    state.workspace.genStage = 'Auto MAIN…';
+    markShotBusy(mainIdx, 'Auto MAIN…');
     state.workspace.panelOpen = true;
     renderWorkspace();
     clearCancelFlags();
     try {
-      await runAnswerlyForShot(mainIdx, promptText, { requireMainFromHeroOutput: true });
+      if (mode === 'primary') {
+        await runAnswerlyPrimaryForShot(mainIdx, promptText);
+      } else {
+        await runAnswerlyForShot(mainIdx, promptText, { requireMainFromHeroOutput: true });
+      }
       showToast('MAIN auto-generated from ' + (fromShot.name || fromShot.code || 'Hero Front') + ' D.', false);
     } catch (err) {
       if (isCancelError(err)) showToast('MAIN auto-generate cancelled.', false);
       else showToast('MAIN auto-generate failed: ' + esc((err && err.message) || err), false, { error: true });
     } finally {
       if (state.workspace) {
-        state.workspace.generating = null;
-        state.workspace.genStage = '';
+        clearShotBusy(mainIdx);
         clearCancelFlags();
-        persistCurrentReplaceDraft();
+        if (mode === 'primary') persistCurrentPrimaryDraft();
+        else persistCurrentReplaceDraft();
         renderWorkspace();
       }
     }
@@ -7270,6 +9805,160 @@
       return shotHasProductInputs(shotIdx) || shotHasProductInputs(angleIdx);
     }
     return shotHasProductInputs(shotIdx);
+  }
+
+  /** Primary gen-all eligibility (MAIN waits on Hero Front / 01 like Replacement). */
+  function shotEligibleForPrimaryGenAll(shotIdx, shots) {
+    const shot = shots && shots[shotIdx];
+    if (!shot || isDimensionShot(shot)) return false;
+    if (isMainShot(shot)) {
+      const angleIdx = angleSourceShotIndex(shots);
+      if (angleIdx < 0) return false;
+      const angleHasD = shotHasGeneratedOutput(angleIdx);
+      const angleWillRun = shotHasProductInputs(angleIdx) &&
+        !!(primaryInputPlan(angleIdx, { shots: shots }).hasA1 ||
+          primaryInputPlan(angleIdx, { shots: shots }).hasA2);
+      if (!angleHasD && !angleWillRun) return false;
+      return productInputsForShot(shotIdx, shots).inputs.length > 0;
+    }
+    const ready = pickAnswerlyPrimaryPayload(shotIdx);
+    return !!(ready && ready.ok);
+  }
+
+  /** Primary gen-all: ready A1|A2 + B; MAIN last after Hero Front / 01. Skips M-DIM. */
+  function primaryGenAllPendingCandidates(task, shots, opts) {
+    opts = opts || {};
+    const includeDone = !!opts.includeDone;
+    const list = [];
+    (shots || []).forEach((shot, shotIdx) => {
+      if (!shot || isDimensionShot(shot)) return;
+      if (!includeDone && shotHasGeneratedOutput(shotIdx)) return;
+      if (!shotEligibleForPrimaryGenAll(shotIdx, shots)) return;
+      // Non-MAIN must be Answerly-ready now; MAIN may be waiting on Hero Front D.
+      if (!isMainShot(shot)) {
+        const ready = pickAnswerlyPrimaryPayload(shotIdx);
+        if (!(ready && ready.ok)) return;
+      } else {
+        // MAIN: include when Hero Front has/will have D and product B exists.
+        const angleIdx = angleSourceShotIndex(shots);
+        if (angleIdx < 0) return;
+        if (!productInputsForShot(shotIdx, shots).inputs.length) return;
+      }
+      list.push({ shotIdx: shotIdx, code: shot.code || ('S' + (shotIdx + 1)) });
+    });
+    return list.slice().sort((a, b) => {
+      const am = isMainShot(shots[a.shotIdx]) ? 1 : 0;
+      const bm = isMainShot(shots[b.shotIdx]) ? 1 : 0;
+      if (am !== bm) return am - bm;
+      return a.shotIdx - b.shotIdx;
+    });
+  }
+
+  function countGeneratedPrimaryShots(shots) {
+    let n = 0;
+    (shots || []).forEach((shot, idx) => {
+      if (shot && !isDimensionShot(shot) && shotHasGeneratedOutput(idx)) n += 1;
+    });
+    return n;
+  }
+
+  async function genAllPrimaryOneShot(task, shots, item) {
+    if (isShotCancelRequested(item.shotIdx)) throw makeCancelledError();
+    const shot = shots[item.shotIdx];
+    const assets = shotAssets(item.shotIdx);
+    if (isMainShot(shot)) {
+      const angleIdx = angleSourceShotIndex(shots);
+      if (angleIdx < 0) throw new Error('No Hero Front / seq 01 shot to build MAIN from');
+      if (!productInputsForShot(item.shotIdx, shots).inputs.length) {
+        throw new Error('No product B on Hero Front / 01 (or MAIN) — skipped');
+      }
+      markShotBusy(item.shotIdx, 'Waiting for Hero Front…');
+      await waitForAngleSourceOutput(shots, angleIdx, { mainIdx: item.shotIdx });
+    }
+    const ready = pickAnswerlyPrimaryPayload(item.shotIdx);
+    if (!(ready && ready.ok)) throw new Error(ready.error || 'Primary inputs not ready');
+    if (!state.workspace.prompts) state.workspace.prompts = {};
+    if (state.workspace.prompts[item.shotIdx] == null ||
+        !String(state.workspace.prompts[item.shotIdx]).trim()) {
+      state.workspace.prompts[item.shotIdx] =
+        compilePrimaryPrompt(task, shot, { shotIndex: item.shotIdx }).text;
+    }
+    const promptText = state.workspace.prompts[item.shotIdx];
+    assets.error = null;
+    markShotBusy(item.shotIdx, isMainShot(shot) ? 'MAIN from Hero Front…' : 'Queued…');
+    await runAnswerlyPrimaryForShot(item.shotIdx, promptText);
+  }
+
+  function startGenerateAllPrimaryBatch(task, shots, pending, includeDone) {
+    const batchEan = String(task.ean);
+    const mainItems = pending.filter((p) => isMainShot(shots[p.shotIdx]));
+    const otherItems = pending.filter((p) => !isMainShot(shots[p.shotIdx]));
+    const skipNote = [];
+    let withoutB = 0;
+    (shots || []).forEach((shot, idx) => {
+      if (!shot || isDimensionShot(shot)) return;
+      if (shotEligibleForPrimaryGenAll(idx, shots)) return;
+      if (!includeDone && shotHasGeneratedOutput(idx)) return;
+      withoutB += 1;
+    });
+    if (withoutB) skipNote.push(withoutB + ' without A1/A2 + B');
+    skipNote.push('M-DIM skipped');
+    clearCancelFlags();
+    state.workspace.busyShots = {};
+    state.workspace.activeJobIds = {};
+    otherItems.forEach((item) => { markShotBusy(item.shotIdx, 'Queued…'); });
+    mainItems.forEach((item) => { markShotBusy(item.shotIdx, 'Waiting for Hero Front…'); });
+    state.workspace.genAllBatch = {
+      ean: batchEan,
+      total: pending.length,
+      mode: includeDone ? 'regen' : 'skip',
+      parallel: true,
+      primary: true,
+      cancelRequested: false
+    };
+    state.workspace.genStage = otherItems.length
+      ? (otherItems.length + ' in parallel' + (mainItems.length ? ' · MAIN after H-FR' : ''))
+      : (mainItems.length ? 'MAIN after Hero Front' : '');
+    state.workspace.panelOpen = true;
+    renderWorkspace();
+    showToast(
+      (includeDone ? 'Regenerating ' : 'Generating ') + otherItems.length + ' Primary shot' +
+        (otherItems.length === 1 ? '' : 's') +
+        (mainItems.length ? ' + MAIN after Hero Front / 01' : '') +
+        (skipNote.length ? ' — skipped ' + skipNote.join(', ') : '') +
+        '. Jobs need product image(s) on B.',
+      false
+    );
+
+    // Non-MAIN in parallel; MAIN after Hero Front D (wait inside genAllPrimaryOneShot).
+    Promise.all(otherItems.map((item) =>
+      genAllPrimaryOneShot(task, shots, item).catch((err) => {
+        if (!isCancelError(err)) {
+          shotAssets(item.shotIdx).error = (err && err.message) || 'Generation failed';
+        }
+        clearShotBusy(item.shotIdx);
+      })
+    )).then(() => Promise.all(mainItems.map((item) =>
+      genAllPrimaryOneShot(task, shots, item).catch((err) => {
+        if (!isCancelError(err)) {
+          shotAssets(item.shotIdx).error = (err && err.message) || 'Generation failed';
+        }
+        clearShotBusy(item.shotIdx);
+      })
+    ))).then(() => {
+      if (!state.workspace || String(state.workspace.ean) !== batchEan) return;
+      delete state.workspace.genAllBatch;
+      syncGenFocus();
+      persistCurrentPrimaryDraft();
+      showToast('Primary Generate all finished.', false);
+      renderWorkspace();
+    }).catch(() => {
+      if (!state.workspace || String(state.workspace.ean) !== batchEan) return;
+      delete state.workspace.genAllBatch;
+      syncGenFocus();
+      persistCurrentPrimaryDraft();
+      renderWorkspace();
+    });
   }
 
   // opts.includeDone = true → regenerate (include shots that already have D).
@@ -7399,7 +10088,8 @@
         throw new Error(label + ' failed — MAIN needs its D as A (' + err + ')');
       }
       markShotBusy(opts.mainIdx != null ? opts.mainIdx : angleIdx, 'Waiting for ' + label + '…');
-      if (state.workspace && state.workspace.mode === 'replace') {
+      if (state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
         state.workspace.genStage = 'MAIN waiting for ' + label;
         renderWorkspace();
       }
@@ -7489,7 +10179,8 @@
       (includeDone ? 'Regenerating ' : 'Generating ') + otherItems.length + ' shot' +
         (otherItems.length === 1 ? '' : 's') +
         (mainItems.length ? ' + MAIN after Hero Front / 01' : '') +
-        (skipNote.length ? ' — skipped ' + skipNote.join(', ') : '') + '.',
+        (skipNote.length ? ' — skipped ' + skipNote.join(', ') : '') +
+        '. Jobs need product image(s) on B.',
       false
     );
     pending = otherItems.concat(mainItems);
@@ -8137,7 +10828,7 @@
     const title = view === 'renamer' ? 'Renamer'
       : view === 'my' ? 'My Tasks'
       : ('Available Tasks · ' + (isMts() ? 'MTS' : 'HH'));
-    const ver = isPreviewApp() ? 'PREVIEW V2.0' : 'BETA V2.0';
+    const ver = isPreviewApp() ? 'PREVIEW V2.1' : 'BETA V2.0';
     document.title = title + ' · 3D Playground (' + ver + ')';
     const titleEl = $('view-title');
     if (titleEl) titleEl.textContent = title;
@@ -8804,6 +11495,13 @@
     } else if (state.workspace && state.workspace.mode === 'replace' &&
         String(state.workspace.ean) === String(ean)) {
       persistCurrentReplaceDraft();
+    } else if (state.workspace && state.workspace.mode === 'primary' &&
+        String(state.workspace.ean) !== String(ean)) {
+      persistCurrentPrimaryDraft();
+      stashPrimaryDraftInMemory();
+    } else if (state.workspace && state.workspace.mode === 'primary' &&
+        String(state.workspace.ean) === String(ean)) {
+      persistCurrentPrimaryDraft();
     }
     state.workspace = {
       mode: mode || 'choose',
@@ -8814,7 +11512,18 @@
     };
     resolveWorkspaceMatch(t);
     if (opts.matchEan) state.workspace.matchEan = String(opts.matchEan);
-    state.workspaceShot = opts.shot != null ? (Number(opts.shot) || 0) : 0;
+    {
+      const shotsOpen = shotListFor(t || {});
+      if (opts.shot != null && opts.shot !== '') {
+        const n = Number(opts.shot);
+        state.workspaceShot = isNaN(n) ? defaultWorkspaceShotIndex(shotsOpen) : n;
+      } else if (mode === 'replace' || mode === 'primary') {
+        // Same as Replacement: prefer first non-MAIN angle (MAIN is last on the rail).
+        state.workspaceShot = defaultWorkspaceShotIndex(shotsOpen);
+      } else {
+        state.workspaceShot = 0;
+      }
+    }
     // Drive images rail always starts on the first image when opening a page / EAN.
     state.workspace.driveImgIndex = 0;
     state.selectedEan = ean;
@@ -8843,9 +11552,25 @@
       loadAnswerlyModels().then(() => {
         if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
       });
+    } else if (state.workspace.mode === 'primary') {
+      ensurePrimaryState(t);
+      restorePrimaryDraftsIntoWorkspace().then(function () {
+        return hydrateMdimDraftForEan(false);
+      }).then(function () {
+        if (state.workspace && state.workspace.mode === 'primary') renderWorkspace();
+      }).catch(function () { /* soft */ });
+      ensureUniversalPrompts(true).then(() => {
+        if (state.workspace && state.workspace.mode === 'primary') renderWorkspace();
+      });
+      loadAnswerlyModels().then(() => {
+        if (state.workspace && state.workspace.mode === 'primary') renderWorkspace();
+      });
     }
     refreshAnswerlyTokenState().then(() => {
-      if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
+      if (state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
+        renderWorkspace();
+      }
     });
     window.scrollTo(0, 0);
   }
@@ -8854,12 +11579,15 @@
     if (state.workspace && state.workspace.mode === 'replace') {
       persistCurrentReplaceDraft();
       stashReplaceDraftInMemory();
+    } else if (state.workspace && state.workspace.mode === 'primary') {
+      persistCurrentPrimaryDraft();
+      stashPrimaryDraftInMemory();
     }
     // After stash, workspace.assets is empty — safe to revoke leftovers only.
     revokeAllWorkspaceAssets();
     state.workspace = null;
     state.workspaceShot = 0;
-    document.body.classList.remove('view-workspace', 'ws-choose', 'ws-replace', 'mdim-main-max');
+    document.body.classList.remove('view-workspace', 'ws-choose', 'ws-replace', 'ws-primary', 'mdim-main-max');
     document.documentElement.classList.remove('mdim-main-max');
     if (els.workspace) {
       els.workspace.hidden = true;
@@ -8927,16 +11655,24 @@
     const mode = state.workspace.mode;
     document.body.classList.toggle('ws-choose', mode === 'choose');
     document.body.classList.toggle('ws-replace', mode === 'replace');
-    const mdimMax = mode === 'replace' && !!state.workspace.mdimMainMax && !state.workspace.mdimShowAbcd;
+    document.body.classList.toggle('ws-primary', mode === 'primary');
+    const mdimMax = (mode === 'replace' || mode === 'primary') &&
+      !!state.workspace.mdimMainMax && !state.workspace.mdimShowAbcd;
     document.body.classList.toggle('mdim-main-max', mdimMax);
     document.documentElement.classList.toggle('mdim-main-max', mdimMax);
     els.workspace.innerHTML = mode === 'primary' ? workspacePrimaryHtml(t)
       : mode === 'replace' ? workspaceReplaceHtml(t)
       : workspaceChooseHtml(t);
-    if (mode === 'replace') {
+    if (mode === 'replace' || mode === 'primary') {
       applyRailLayoutPrefs();
       restoreRailScroll();
-      prefetchSelectedDrivePrior();
+      syncPromptHighlightOverlay();
+      if (mode === 'replace') prefetchSelectedDrivePrior();
+      if (mode === 'primary') {
+        schedulePrimaryA1Load(t);
+        schedulePrimaryPdpLoad(t);
+        schedulePrimaryA2ForShot(state.workspaceShot || 0);
+      }
       const compare = els.workspace.querySelector('[data-ws-compare]');
       if (compare) {
         const pos = Number(state.workspace.comparePos) || 50;
@@ -8946,18 +11682,37 @@
       requestAnimationFrame(() => {
         syncRailToMainHeight();
         restoreRailScroll();
+        syncPromptHighlightOverlay();
+        // Keep the active Required-shot row visible (do not jump to MAIN at rail end).
+        const activeShot = els.workspace.querySelector('.wr-shot.is-active, .tw-shot-btn.is-active');
+        if (activeShot && activeShot.scrollIntoView) {
+          const railList = els.workspace.querySelector('.wr-rail-list');
+          if (railList) {
+            const r = railList.getBoundingClientRect();
+            const b = activeShot.getBoundingClientRect();
+            if (b.top < r.top || b.bottom > r.bottom) {
+              activeShot.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+              state.railScrollTop = railList.scrollTop;
+            }
+          }
+        }
         requestAnimationFrame(() => {
           syncRailToMainHeight();
           restoreRailScroll();
-          if (window.MdimPlayground && window.MdimPlayground.syncOverlay) {
+          if ((mode === 'replace' || mode === 'primary') &&
+              window.MdimPlayground && window.MdimPlayground.syncOverlay) {
             const root = els.workspace.querySelector('[data-mdim-root]');
             if (root) window.MdimPlayground.syncOverlay(root);
           }
         });
-        const shotsNow = shotListFor(t);
-        const si = Math.min(state.workspaceShot, Math.max(0, shotsNow.length - 1));
-        if (isDimensionShot(shotsNow[si]) && !state.workspace.mdimShowAbcd) {
-          ensureMdimDefaultBaseThenMount(t, shotsNow, si);
+        if (mode === 'replace' || mode === 'primary') {
+          const shotsNow = shotListFor(t);
+          const si = Math.min(state.workspaceShot, Math.max(0, shotsNow.length - 1));
+          if (isDimensionShot(shotsNow[si]) && !state.workspace.mdimShowAbcd) {
+            ensureMdimDefaultBaseThenMount(t, shotsNow, si);
+          } else if (window.MdimPlayground) {
+            window.MdimPlayground.unmount();
+          }
         } else if (window.MdimPlayground) {
           window.MdimPlayground.unmount();
         }
@@ -9005,7 +11760,8 @@
   }
 
   function syncRailToMainHeight() {
-    if (!els.workspace || !state.workspace || state.workspace.mode !== 'replace') return;
+    if (!els.workspace || !state.workspace ||
+        (state.workspace.mode !== 'replace' && state.workspace.mode !== 'primary')) return;
     const rail = els.workspace.querySelector('.wr-rail');
     const main = els.workspace.querySelector('.wr-main');
     if (!rail || !main) return;
@@ -9116,7 +11872,7 @@
         ? 'Select a prior match to continue with Product Replacement.'
         : 'No recommended prior match — enter a Completed EAN above, or continue and drop images onto A.');
     const summary = focus === 'primary'
-      ? 'Primary workflow selected — start fresh with a clean plate and new prompts.'
+      ? 'Primary workflow selected — A1 template + A2 PDP camera refs per shot, then B · C · D.'
       : replaceSummary;
     const continueAction = focus === 'primary' ? 'start-primary' : 'start-replace';
     const continueLabel = focus === 'primary' ? 'Continue with Primary workflow' : 'Continue with Product Replacement';
@@ -9187,45 +11943,47 @@
               '" data-ws-focus="primary">' +
               (!preferReplace ? '<span class="tw-rec-badge">Recommended</span>' : '') +
               '<div class="tw-flow-name">Primary workflow</div>' +
-              '<p class="tw-flow-desc">Use for a new Sub-category + Template type. Needs a Template clean plate first, then prompts and input images for every required shot.</p>' +
+              '<p class="tw-flow-desc">Use for a new Sub-category + Template type. A1 auto-loads the template plate; A2 is the PDP camera ref per shot (A1 or A2 required). Optional A3 for rare custom refs. Then B product, C prompt, D output.</p>' +
               '<div class="tw-flow-steps-box is-muted"><ol class="tw-flow-steps">' +
-                '<li>Find or create the clean plate</li>' +
-                '<li>Work each shot with a new prompt</li>' +
-                '<li>Attach input image names used</li>' +
+                '<li>A1 template + A2 PDP camera (optional A3)</li>' +
+                '<li>Drop product inputs on B and refine C</li>' +
+                '<li>Generate D per required shot</li>' +
               '</ol></div>' +
-              '<div class="tw-flow-foot">Start fresh from zero base assets</div>' +
+              '<div class="tw-flow-foot">Start fresh — no prior match needed</div>' +
             '</button>' +
           '</div>' +
         '</div>' +
       '</section>' +
 
-      '<section class="tw-card">' +
-        '<div class="tw-card-head">' +
-          '<div>' +
-            '<div class="tw-card-title tw-card-title-caps">Possible previous matches</div>' +
-            '<div class="tw-card-note">Best match first. Select a prior match to reuse outputs, or open Drive links to view folder assets.</div>' +
-          '</div>' +
-          '<div class="tw-match-head-right">' +
-            '<form class="tw-manual-ean" data-ws-manual-ean-form>' +
-              '<label class="tw-manual-ean-label" for="tw-manual-ean-input">Or enter EAN</label>' +
-              '<input id="tw-manual-ean-input" class="tw-manual-ean-input" type="text" inputmode="numeric" ' +
-                'pattern="[0-9]*" maxlength="18" placeholder="e.g. 8909…" ' +
-                'value="' + esc((selected && selected.level === 'manual') ? String(selected.ean) : '') + '" ' +
-                'aria-label="Enter a Completed EAN for Product Replacement">' +
-              '<button type="submit" class="tp-btn tp-btn-ghost tw-manual-ean-btn">Use EAN</button>' +
-            '</form>' +
-            '<span class="tw-match-count">' + matches.length + ' match' + (matches.length === 1 ? '' : 'es') + ' found</span>' +
-          '</div>' +
-        '</div>' +
-        '<div class="tw-card-body">' +
-          (selected && selected.level === 'manual'
-            ? '<div class="tw-manual-ean-selected">Using manual prior EAN <strong class="tp-mono">' +
-                esc(String(selected.ean)) + '</strong> — ' + esc(selected.title || '') +
-                '. Continue with Product Replacement below, or pick a recommended match.</div>'
-            : '') +
-          matchHtml +
-        '</div>' +
-      '</section>' +
+      (focus === 'primary'
+        ? ''
+        : '<section class="tw-card">' +
+            '<div class="tw-card-head">' +
+              '<div>' +
+                '<div class="tw-card-title tw-card-title-caps">Possible previous matches</div>' +
+                '<div class="tw-card-note">Best match first. Select a prior match to reuse outputs, or open Drive links to view folder assets.</div>' +
+              '</div>' +
+              '<div class="tw-match-head-right">' +
+                '<form class="tw-manual-ean" data-ws-manual-ean-form>' +
+                  '<label class="tw-manual-ean-label" for="tw-manual-ean-input">Or enter EAN</label>' +
+                  '<input id="tw-manual-ean-input" class="tw-manual-ean-input" type="text" inputmode="numeric" ' +
+                    'pattern="[0-9]*" maxlength="18" placeholder="e.g. 8909…" ' +
+                    'value="' + esc((selected && selected.level === 'manual') ? String(selected.ean) : '') + '" ' +
+                    'aria-label="Enter a Completed EAN for Product Replacement">' +
+                  '<button type="submit" class="tp-btn tp-btn-ghost tw-manual-ean-btn">Use EAN</button>' +
+                '</form>' +
+                '<span class="tw-match-count">' + matches.length + ' match' + (matches.length === 1 ? '' : 'es') + ' found</span>' +
+              '</div>' +
+            '</div>' +
+            '<div class="tw-card-body">' +
+              (selected && selected.level === 'manual'
+                ? '<div class="tw-manual-ean-selected">Using manual prior EAN <strong class="tp-mono">' +
+                    esc(String(selected.ean)) + '</strong> — ' + esc(selected.title || '') +
+                    '. Continue with Product Replacement below, or pick a recommended match.</div>'
+                : '') +
+              matchHtml +
+            '</div>' +
+          '</section>') +
 
       '<footer class="tw-confirm-bar">' +
         '<div class="tw-confirm-summary">' +
@@ -9269,75 +12027,773 @@
       }).join('') + '</div></aside>';
   }
 
+  function primaryAssetDisplayLabel(asset, fallback) {
+    const raw = String(
+      (asset && (asset.label || asset.name)) || fallback || ''
+    ).trim();
+    if (!raw) return '';
+    // Strip only a trailing image extension — keep codes like T9 / SF1 intact.
+    return raw.replace(/\.(jpe?g|png|webp)$/i, '').trim() || raw;
+  }
+
+  function primaryRefFrameHtml(slot, shotIndex, opts) {
+    const o = opts || {};
+    const asset = o.asset || null;
+    const url = asset ? ensureAssetDisplayUrl(asset) : '';
+    const loading = !!o.loading;
+    const err = o.error || '';
+    const emptyTitle = o.emptyTitle || 'Drop image';
+    const emptyHint = o.emptyHint || 'JPG / PNG · one image';
+    // Prefer explicit displayName (e.g. sheet template code T9) over Drive file names.
+    const displayName = String(o.displayName || '').trim() ||
+      primaryAssetDisplayLabel(asset, '');
+    const showChange = slot === 'a2' && !!o.canChange;
+    return '<div class="wr-frame wr-frame-primary' +
+      (url ? ' has-img' : '') +
+      (loading ? ' is-loading' : '') +
+      '" data-ws-drop="primary-' + slot + '"' +
+      (url ? ' title="Drop to replace"' : '') + '>' +
+      (url
+        ? '<img class="tp-img" src="' + esc(url) + '" alt="' + esc(displayName || slot) +
+            '" referrerpolicy="no-referrer">'
+        : (loading
+          ? '<span class="wr-frame-empty">Loading…</span>'
+          : '<span class="wr-frame-empty">' +
+              '<span class="wr-in-empty-title">' + esc(emptyTitle) + '</span>' +
+              '<span class="wr-in-empty-hint">' + esc(err || emptyHint) + '</span>' +
+            '</span>')) +
+    '</div>' +
+    '<div class="wr-card-meta">' +
+      '<span class="wr-card-meta-name">' +
+        '<span class="tp-mono" title="' + esc(displayName) + '">' +
+          esc(displayName || (loading ? 'Loading…' : (err ? '—' : '—'))) +
+        '</span>' +
+        (showChange
+          ? '<button type="button" class="wr-text-btn wr-a2-change" data-ws="change-primary-a2" title="Change PDP sequence for this shot">Change</button>'
+          : '') +
+      '</span>' +
+      '<span>' + (asset && asset.w && asset.h
+        ? asset.w + '×' + asset.h
+        : (slot === 'a1' ? 'Template' : (asset && asset.pdpSeq != null ? 'PDP #' + asset.pdpSeq : '1 image'))) +
+      '</span>' +
+    '</div>';
+  }
+
   function workspacePrimaryHtml(t) {
+    ensurePrimaryState(t);
     const shots = shotListFor(t);
     const i = Math.min(state.workspaceShot, Math.max(0, shots.length - 1));
     const shot = shots[i] || shots[0];
-    const multi = isLifestyleShot(shot && shot.name);
-    const hasPlate = !!(t.template && Number(String(t.ean || '0').slice(-1)) % 2 === 0);
+    const st = statusOf(t);
+    const assets = shotAssets(i);
+    const inputAssets = assets.inputs || [];
+    const primary = state.workspace.primary || {};
+    const isMainView = isMainShot(shot);
+    const isLifestyleView = isLifestyleShot(shot);
+    const inputPlan = primaryInputPlan(i, { shots: shots });
+    // Lifestyle A1 = optional per-shot only (blank by default). Other shots use template A1.
+    const a1 = inputPlan.a1 || primarySlotAsset('a1', i);
+    // MAIN A2 = Hero Front / 01 D; lifestyle / other = PDP.
+    const a2 = inputPlan.a2 || primarySlotAsset('a2', i);
+    const a3 = isLifestyleView ? null : primarySlotAsset('a3', i);
+    const showA3 = !isLifestyleView && (primaryShowA3(i) || !!a3);
+    const a1Loading = !isLifestyleView && !!primary.a1Loading;
+    const a1Error = isLifestyleView ? '' : (primary.a1Error || '');
+    const a2Loading = !isMainView && !!(primary.a2Loading && primary.a2Loading[String(i)]);
+    const pdpMeta = isMainView ? null : pdpMetaForShot(shot, i);
+    const pdpLoading = !!primary.pdpLoading;
+    const pdpError = primary.pdpError || '';
+    const pdpCount = (primary.pdp && primary.pdp.images && primary.pdp.images.length) || 0;
+    const angleIdxForMain = isMainView ? angleSourceShotIndex(shots) : -1;
+    const angleShotForMain = angleIdxForMain >= 0 ? shots[angleIdxForMain] : null;
+    const mainHeroReady = isMainView && !!inputPlan.mainFromHero;
+    const compiled = compilePrimaryPrompt(t, shot, { shotIndex: i });
+    if (!state.workspace.prompts) state.workspace.prompts = {};
+    if (!state.workspace.promptBaselines) state.workspace.promptBaselines = {};
+    if (state.workspace.prompts[i] == null) {
+      state.workspace.prompts[i] = compiled.text;
+      rememberPromptBaseline(i, compiled.text);
+      setPromptManualEdit(i, false);
+    } else if (!isPromptManualEdit(i) &&
+        normalizePromptCompare(state.workspace.prompts[i]) !== normalizePromptCompare(compiled.text)) {
+      // Slot/script recompile — keep Automated, never yellow.
+      state.workspace.prompts[i] = compiled.text;
+      rememberPromptBaseline(i, compiled.text);
+      setPromptManualEdit(i, false);
+    } else if (state.workspace.promptBaselines[i] == null &&
+        normalizePromptCompare(state.workspace.prompts[i]) === normalizePromptCompare(compiled.text)) {
+      rememberPromptBaseline(i, compiled.text);
+      setPromptManualEdit(i, false);
+    }
+    const promptText = state.workspace.prompts[i];
+    const promptOriginPreview = promptOriginForShot(t, shot, null, promptText, i);
+    const outAsset = assets.output || null;
+    const outUrl = ensureAssetDisplayUrl(outAsset);
+    const hasOutput = !!outUrl || !!(state.workspace.outputs && state.workspace.outputs[i]);
+    const shotError = assets.error || null;
+    const panelOpen = !!state.workspace.panelOpen;
+    const panelMax = !!state.workspace.panelMax;
+    const priorForDim = resolveWorkspaceMatch(t).selected;
+    const dimsDiffer = productDimsDiffer(t, priorForDim);
+    const pdp = t.pdpLink
+      ? '<a class="tw-chip tw-chip-link" href="' + esc(t.pdpLink) + '" target="_blank" rel="noopener">PDP guideline' + ICON.external + '</a>'
+      : '';
+    const shootHref = t.driveLink || '';
+    const driveChip = shootHref
+      ? '<a class="tw-chip tw-chip-link" href="' + esc(shootHref) + '" target="_blank" rel="noopener">Shoot folder' + ICON.external + '</a>'
+      : '';
+    const genStage = state.workspace.genStage || '';
+    const rating = shotRating(i);
+    const comparePos = Math.min(100, Math.max(0, Number(state.workspace.comparePos) || 50));
+    const canGenerate = hasWorkspaceProductType();
+    const savedSize = localStorage.getItem(ANSWERLY_SIZE_KEY) || '2K';
+    const savedModel = localStorage.getItem(ANSWERLY_MODEL_KEY) || 'gemini-3.1-flash-image';
+    const modelOptions = (state.answerlyModels && state.answerlyModels.length)
+      ? state.answerlyModels.map((m) => [m.id, m.label || m.id])
+      : [
+          ['gemini-3.1-flash-image', 'Gemini 3.1 Flash Image'],
+          ['gemini-3-pro-image', 'Gemini 3 Pro Image'],
+          ['gemini-nano-banana-2.1', 'Nano Banana 2.1'],
+          ['openai/gpt-image-2.5-sunburst', 'GPT Image 2.5 Sunburst'],
+          ['krea/krea-realtime', 'Krea Realtime'],
+          ['xai/grok-imagine', 'Grok Imagine']
+        ];
+    const productReady = isMainView
+      ? productInputsForShot(i, shots).inputs.length > 0
+      : inputAssets.length > 0;
+    const refReady = isLifestyleView ? !!a2 : !!(a1 || a2);
+    const a1Bytes = !!(a1 && (a1.blob || a1.file));
+    const a2Bytes = !!(a2 && (a2.blob || a2.file));
+    const a3Bytes = !!(a3 && (a3.blob || a3.file));
+    const refsBytesReady = isLifestyleView
+      ? (a2Bytes && (!a1 || a1Bytes))
+      : ((!!a1 ? a1Bytes : true) && (!!a2 ? a2Bytes : true) &&
+        (!!a3 ? a3Bytes : true) && !!(a1Bytes || a2Bytes));
+    const primaryPayload = pickAnswerlyPrimaryPayload(i);
+    const canRunShot = canGenerate && primaryPayload.ok && !isShotBusy(i);
+    const canApprove = hasOutput && rating >= 4;
+    const headCode = (shot && shot.code) || '';
+    const headName = (shot && shot.name) || '';
+    const synthName = (outAsset && outAsset.name) ||
+      ((t.ean || 'EAN') + '_' + (headCode || ('S' + String(i + 1).padStart(2, '0'))) + '.png');
+    const bStartNum = inputPlan.bStartNum;
+    const primaryPending = canGenerate
+      ? primaryGenAllPendingCandidates(t, shots, { includeDone: false })
+      : [];
+    const primaryPendingAll = canGenerate
+      ? primaryGenAllPendingCandidates(t, shots, { includeDone: true })
+      : [];
+    const primaryDoneCount = canGenerate ? countGeneratedPrimaryShots(shots) : 0;
+    const canGenAllPrimary = canGenerate && primaryPendingAll.length > 0 && !anyShotBusy();
 
-    return '<div class="tw-shell">' +
-      workspaceTopHtml(t, 'Primary workflow', 'choose') +
-      '<div class="tw-note-banner">UI mock — prompts and drops are not saved.</div>' +
-      '<div class="tw-card" style="margin-bottom:16px">' +
-        '<div class="tw-card-head"><div class="tw-card-title">1. Template clean plate</div>' +
-          '<div class="tw-card-note">Required before shot work when this template type is new.</div></div>' +
-        '<div class="tw-card-body">' +
-          '<div class="tw-plate">' +
-            '<div class="tw-plate-preview' + (hasPlate ? ' has-img' : '') + '">' +
-              (hasPlate ? 'Clean plate<br>available' : 'No clean plate yet') +
+    // Same as Replace: MAIN last. PDP A2 still maps by shot seq / override (not rail order).
+    const rail = orderedRailShots(shots).map(({ s, idx }) => {
+      const done = !!(state.workspace.outputs && state.workspace.outputs[idx]);
+      const busy = isShotBusy(idx);
+      const approved = !!(state.workspace.approved && state.workspace.approved[idx]);
+      const inputCount = (shotAssets(idx).inputs || []).length;
+      const isMain = isMainShot(s);
+      const outThumb = done ? ensureAssetDisplayUrl(shotAssets(idx).output) : '';
+      const pdpForShot = pdpMetaForShot(s, idx);
+      return '<button type="button" class="wr-shot' +
+        (idx === i ? ' is-active' : '') +
+        (busy ? ' is-busy' : '') +
+        (done ? ' is-done' : '') +
+        (approved ? ' is-approved' : '') +
+        (isMain ? ' is-main' : '') +
+        '" data-ws-shot="' + idx + '" data-ws-drop-shot="' + idx + '" draggable="false">' +
+        '<div class="wr-shot-thumb" draggable="false">' +
+          (outThumb
+            ? '<img class="tp-img" draggable="false" src="' + esc(outThumb) + '" alt="">'
+            : '<span class="wr-ph is-pending">Yet to generate</span>') +
+          (busy ? '<span class="wr-shot-busy">In progress</span>' : '') +
+          (approved && !busy ? '<span class="wr-shot-done">Approved</span>' :
+            (done && !busy ? '<span class="wr-shot-done">Done</span>' : '')) +
+          (isMain && !busy ? '<span class="wr-shot-main-tag">MAIN</span>' : '') +
+          (inputCount ? '<span class="wr-shot-inputs">' + inputCount + '/4</span>' : '') +
+          (pdpForShot && pdpForShot.seq != null
+            ? '<span class="wr-shot-a2-tag" title="PDP seq ' + esc(String(pdpForShot.seq)) + '">S' +
+                esc(String(pdpForShot.seq)) + '</span>'
+            : '') +
+        '</div>' +
+        '<div class="wr-shot-meta">' +
+          '<span class="wr-shot-code-lbl">' + esc(s.code) + '</span>' +
+          '<span class="wr-shot-full">' + esc(s.name) + '</span>' +
+        '</div>' +
+      '</button>';
+    }).join('');
+
+    const cappedInputs = inputAssets.slice(0, 4);
+    const inputTiles = cappedInputs.length
+      ? cappedInputs.map((asset, n) => {
+          const thumbUrl = ensureAssetDisplayUrl(asset);
+          const answerlyNum = bStartNum + n;
+          return '<div class="wr-in-tile' + (asset.cropped ? ' is-cropped' : '') +
+            '" data-ws-crop-input="' + n + '" title="Click to crop">' +
+            '<span class="wr-in-num" title="reference_image_url_' + answerlyNum +
+              ' · Answerly INPUT IMAGE ' + answerlyNum + ' (product B' + (n + 1) + ')">' +
+              answerlyNum +
+            '</span>' +
+            '<button type="button" class="wr-in-remove" data-ws-remove-input="' + n + '" title="Remove">×</button>' +
+            (thumbUrl
+              ? '<img class="wr-in-thumb" src="' + esc(thumbUrl) + '" alt="' + esc(asset.name) + '">'
+              : '<div class="wr-in-glyph" aria-hidden="true"></div>') +
+            '<div class="wr-in-name" title="' + esc(asset.name) + '">' + esc(asset.name) + '</div>' +
+            '<div class="wr-in-dim">' + (asset.w && asset.h ? asset.w + '×' + asset.h : '') + '</div>' +
+          '</div>';
+        }).join('') +
+        (cappedInputs.length < 4
+          ? '<div class="wr-in-empty wr-in-empty-slot" data-ws="add-input" role="button" tabindex="0">' +
+              '<span class="wr-in-empty-title">Add more</span>' +
+              '<span class="wr-in-empty-hint">Drop or browse</span>' +
+            '</div>'
+          : '')
+      : '<div class="wr-in-empty" data-ws="add-input" role="button" tabindex="0">' +
+          '<span class="wr-in-empty-title">Drop new product image(s)</span>' +
+          '<span class="wr-in-empty-hint">JPG / PNG · up to 4 · local files</span>' +
+        '</div>';
+
+    const slotRefBadge = function (role, fallbackHtml) {
+      const slot = (inputPlan.slots || []).find((s) => s.role === role);
+      if (!slot) return fallbackHtml;
+      return '<span class="wr-badge-teal" title="' + esc(slot.refKey) + '">#' + slot.inputImage + '</span> ' + fallbackHtml;
+    };
+    const a1Badge = slotRefBadge('a1', isLifestyleView
+      ? (a1
+        ? '<span class="wr-badge-ok">Added</span>'
+        : '<span class="wr-badge-ghost">Optional</span>')
+      : (a1
+        ? '<span class="wr-badge-ok">Template</span>'
+        : (a1Loading
+          ? '<span class="wr-badge-ghost">Loading…</span>'
+          : (a1Error
+            ? '<span class="wr-badge-muted">Missing</span>'
+            : '<span class="wr-badge-ghost">Auto</span>'))));
+    const a2Badge = slotRefBadge('a2', isMainView
+      ? (mainHeroReady
+        ? '<span class="wr-badge-ok">Hero Front D</span>'
+        : (angleShotForMain
+          ? '<span class="wr-badge-muted">Needs ' + esc(angleShotForMain.code || 'H-FR') + ' D</span>'
+          : '<span class="wr-badge-muted">Needs Hero Front / 01</span>'))
+      : (a2
+        ? '<span class="wr-badge-teal">Seq ' + esc(String((a2.pdpSeq != null ? a2.pdpSeq : (pdpMeta && pdpMeta.seq)) || '—')) + '</span>'
+        : (a2Loading || pdpLoading
+          ? '<span class="wr-badge-ghost">Loading…</span>'
+          : (pdpError
+            ? '<span class="wr-badge-muted">PDP</span>'
+            : (pdpMeta
+              ? '<span class="wr-badge-ghost">Seq ' + esc(String(pdpMeta.seq)) + '</span>'
+              : '<span class="wr-badge-ghost">PDP seq</span>')))));
+    const a3Badge = slotRefBadge('a3', a3
+      ? '<span class="wr-badge-teal">Custom</span>'
+      : '<span class="wr-badge-ghost">Optional</span>');
+    const pdpMatchNote = isMainView
+      ? (mainHeroReady
+        ? 'MAIN A2 ← ' + ((angleShotForMain && (angleShotForMain.name || angleShotForMain.code)) || 'Hero Front / 01') + ' D'
+        : 'MAIN requires Hero Front / 01 generated D first')
+      : (pdpCount
+        ? (pdpCount === shots.length
+          ? pdpCount + ' PDP · ' + shots.length + ' shots matched'
+          : pdpCount + ' PDP · ' + shots.length + ' shots (check seq)')
+        : (pdpLoading ? 'Loading PDP slide…' : (pdpError || 'PDP not loaded')));
+
+    return '<div class="tw-shell tw-shell-replace tw-shell-primary">' +
+      '<nav class="tw-crumb" aria-label="Breadcrumb">' +
+        '<button type="button" class="tw-back-pill" data-ws="choose">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>' +
+          'Choose workflow</button>' +
+        '<span class="tw-crumb-sep" aria-hidden="true">/</span>' +
+        '<ol class="tw-crumb-list">' +
+          '<li>My Tasks</li><li aria-hidden="true">›</li>' +
+          '<li><button type="button" class="tw-crumb-link" data-ws="choose">Choose workflow</button></li>' +
+          '<li aria-hidden="true">›</li>' +
+          '<li aria-current="page">Primary workflow</li>' +
+        '</ol>' +
+      '</nav>' +
+
+      '<section class="wr-product">' +
+        '<div class="wr-product-main">' +
+          '<div class="tw-top-thumb" aria-hidden="true">' +
+            thumbHtml(t).replace('class="tp-thumb"', 'class="tp-thumb tw-top-thumb-inner"') +
+          '</div>' +
+          '<div class="tw-top-copy">' +
+            '<div class="tw-kicker">Primary workflow</div>' +
+            '<h1 class="tw-heading">' + esc(t.title || 'Untitled product') + '</h1>' +
+            '<p class="tw-sub">EAN ' + eanCopyHtml(t.ean) +
+              (t.subCategory ? ' · ' + esc(t.subCategory) : '') +
+              (t.template ? ' · Template ' + esc(t.template) : '') + '</p>' +
+            '<div class="tw-meta-row">' +
+              '<span class="tp-status is-' + st.id + '">' + esc(st.label) + '</span>' +
+              (t.template ? '<span class="tw-chip">Template <span class="tp-mono">' + esc(t.template) + '</span></span>' : '') +
+              (t.setLabel ? '<span class="tw-chip">' + esc(t.setLabel) + '</span>' : '') +
+              '<span class="tw-chip">' + (canGenerate ? shots.length + ' shots' : 'Select product type') + '</span>' +
+              pdp + driveChip +
+              '<button type="button" class="tw-reset-ean" data-ws="reset-ean" title="Clear all generated images (B/D), ratings, and restore Universal Prompt DB defaults for this EAN">' +
+                'Reset all Gen Img &amp; Prompt</button>' +
             '</div>' +
-            '<div>' +
-              '<div class="tw-plate-title">' +
-                (hasPlate
-                  ? 'Reuse existing clean plate for ' + esc(t.template || 'this template')
-                  : 'Create clean plate from the template image') +
-              '</div>' +
-              '<p class="tw-plate-desc">' +
-                (hasPlate
-                  ? 'Another EAN already produced a clean plate for this template. Open it from Drive, or continue with the shots below.'
-                  : 'Nobody has created a clean plate for this template yet. Build it from the template reference as the first step.') +
-              '</p>' +
-              '<div class="tw-plate-actions">' +
-                '<button type="button" class="tp-btn tp-btn-ghost" data-ws="noop">Open clean plate folder</button>' +
-                '<button type="button" class="tp-btn ' + (hasPlate ? 'tp-btn-ghost' : 'tp-btn-primary') + '" data-ws="noop">' +
-                  (hasPlate ? 'Replace clean plate' : 'Create clean plate') + '</button>' +
-              '</div>' +
-            '</div>' +
+          '</div>' +
+          productTypePickerHtml() +
+        '</div>' +
+        '<div class="wr-prior-bar">' +
+          '<div class="wr-prior-meta">' +
+            '<span>' +
+              (isLifestyleView
+                ? 'Lifestyle · A1 mostly not required'
+                : ('A1 template image' + (t.template ? ' · ' + esc(t.template) : ''))) +
+            '</span>' +
+            '<span class="tw-dot">·</span>' +
+            '<span>' + esc(pdpMatchNote) + '</span>' +
+            '<span class="tw-dot">·</span>' +
+            '<span>' +
+              (isLifestyleView
+                ? 'A2 lifestyle scene + B · Product replacement Final successful prompt'
+                : (isMainView
+                  ? 'MAIN requires Hero Front / 01 D · A1 optional · Prompt from Universal DB'
+                  : 'A1 or A2 required · A3 optional · Prompt from Universal DB')) +
+            '</span>' +
+          '</div>' +
+          (function () {
+            const execId = shotExecutionId(i);
+            const jobHref = answerlyJobUrl(execId);
+            if (!execId || !jobHref) return '';
+            const shortId = String(execId).split('-')[0] || execId.slice(0, 8);
+            return '<span class="wr-answerly-job-wrap">' +
+              '<span class="wr-answerly-id tp-mono" title="' + esc(execId) + '">' + esc(shortId) + '</span>' +
+              '<button type="button" class="tp-copy wr-answerly-copy" data-ws-copy-exec="' + esc(execId) +
+                '" title="Copy Answerly id" aria-label="Copy Answerly id">' + ICON.copy + '</button>' +
+              '<a class="wr-answerly-job" href="' + esc(jobHref) +
+                '" target="_blank" rel="noopener" title="Open in Answerly · ' + esc(execId) + '">' +
+                'Open in answerly' +
+              '</a>' +
+            '</span>';
+          }()) +
+          '<div class="wr-prior-actions">' +
+            '<button type="button" class="wr-token-chip ' + tokenChipClass(state.answerlyToken) +
+              '" data-ws="answerly-token" title="' +
+              esc((state.answerlyToken && state.answerlyToken.error) || formatTokenExpiryDetail(state.answerlyToken)) + '">' +
+              esc(formatTokenExpiry(state.answerlyToken)) +
+            '</button>' +
           '</div>' +
         '</div>' +
-      '</div>' +
-      '<div class="tw-layout">' +
-        workspaceShotNavHtml(t, shots, i) +
-        '<div class="tw-card">' +
-          '<div class="tw-card-head">' +
-            '<div><div class="tw-card-title">2. Shot · ' + esc(shot.name) + '</div>' +
-            '<div class="tw-card-note">Save the prompt when the result looks perfect. Attach the input image names used for this shot.</div></div>' +
-          '</div>' +
-          '<div class="tw-card-body">' +
-            '<div class="tw-field">' +
-              '<label class="tw-field-label" for="tw-prompt">Prompt used for this shot</label>' +
-              '<textarea id="tw-prompt" class="tw-prompt" placeholder="Paste the prompt that produced the final image…"></textarea>' +
+      '</section>' +
+
+      '<div class="wr-grid' + (panelOpen && !panelMax ? '' : ' is-panel-closed') + '">' +
+        '<aside class="wr-rail" data-ws-drop="rail" data-rail-zoom="' +
+          (railZoomLevel() <= 0.55 ? 'dense' : (railZoomLevel() <= 0.8 ? 'compact' : 'full')) + '">' +
+          '<div class="wr-rail-head">' +
+            '<div class="wr-rail-title-row">' +
+              '<div class="wr-rail-title">Required shots (' + shots.length + ')</div>' +
+              '<div class="wr-rail-zoom" role="group" aria-label="Thumbnail size">' +
+                '<button type="button" class="wr-rail-zoom-btn" data-ws="rail-zoom-out" title="Smaller thumbnails" aria-label="Zoom out">−</button>' +
+                '<span class="wr-rail-zoom-label" data-wr-rail-zoom-label>' + Math.round(railZoomLevel() * 100) + '%</span>' +
+                '<button type="button" class="wr-rail-zoom-btn" data-ws="rail-zoom-in" title="Larger thumbnails (max = default)" aria-label="Zoom in">+</button>' +
+              '</div>' +
             '</div>' +
-            '<div class="tw-field">' +
-              '<span class="tw-field-label">Input images for this shot</span>' +
-              dropzoneHtml({
-                id: 'primary-' + i,
-                multi: multi,
-                title: multi ? 'Drop reference + product images' : 'Drop input image',
-                hint: multi
-                  ? 'Lifestyle often needs more than one (e.g. reference + product)'
-                  : 'Usually one image, e.g. Hero Shot - Front',
-                samples: multi ? ['ref_lifestyle_01.jpg', 'product_front.png'] : ['product_front.png']
+            '<div class="wr-rail-sub">MAIN last · blank until D · A2 follows shot seq</div>' +
+          '</div>' +
+          '<nav class="wr-rail-list">' + rail + '</nav>' +
+          '<div class="wr-rail-foot">' +
+            (anyShotBusy()
+              ? '<button type="button" class="wr-btn-outline wr-cancel-all-btn" data-ws="cancel-gen" data-cancel-all="1" title="Stop all in-flight Answerly jobs">' +
+                  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg>' +
+                  (busyShotIndexes().length > 1 || state.workspace.genAllBatch
+                    ? 'Cancel all (' + busyShotIndexes().length + ')'
+                    : 'Cancel generation') +
+                '</button>'
+              : '<button type="button" class="wr-btn-outline" data-ws="gen-all-primary"' +
+                  (!canGenAllPrimary ? ' disabled' : '') +
+                  (canGenerate
+                    ? (primaryPendingAll.length
+                        ? ' title="' +
+                          (primaryDoneCount
+                            ? primaryDoneCount + ' already in D · choose skip or regenerate'
+                            : 'Generate ' + primaryPending.length + ' shot' + (primaryPending.length > 1 ? 's' : '') + ' ready with A1|A2 + B') +
+                          ' (skips M-DIM · parallel)"'
+                        : ' title="No shots ready — need A1 or A2 plus B on each shot"')
+                    : ' title="Select a Product Type first"') + '>' +
+                  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>' +
+                  'Generate all pending</button>') +
+          '</div>' +
+        '</aside>' +
+        '<div class="wr-rail-splitter" data-ws-rail-split title="Drag to resize shots panel" role="separator" aria-orientation="vertical" aria-label="Resize shots panel"></div>' +
+
+        '<div class="wr-main-wrap">' +
+        (isDimensionShot(shot) && !state.workspace.mdimShowAbcd && state.workspace.mdimMainMax
+          ? '<div class="wr-mdim-max-backdrop" data-mdim="toggle-main-max" title="Exit large editor"></div>'
+          : '') +
+        '<section class="wr-main' +
+          (isDimensionShot(shot) && !state.workspace.mdimShowAbcd && state.workspace.mdimMainMax ? ' is-max' : '') +
+          '">' +
+          '<header class="wr-main-head">' +
+            '<h2 class="wr-main-title">' + esc(headName) + '</h2>' +
+            '<span class="wr-code">' + esc(headCode) + '</span>' +
+            (isDimensionShot(shot) && dimsDiffer ? mdimDimDiffHeadHtml(t, priorForDim) : '') +
+            (isShotBusy(i)
+              ? '<span class="wr-pill-progress">' +
+                  esc((state.workspace.busyShots && state.workspace.busyShots[i]) || genStage || 'In progress') +
+                '</span>'
+              : '') +
+            (shotError && !isShotBusy(i)
+              ? '<span class="wr-pill-error" title="' + esc(shotError) + '">Failed</span>'
+              : '') +
+          '</header>' +
+
+          (isDimensionShot(shot) && !state.workspace.mdimShowAbcd
+            ? mdimWorkbenchSectionHtml(t, shot, i)
+            : '' +
+          (isDimensionShot(shot) && state.workspace.mdimShowAbcd
+            ? '<div class="mdim-abcd-bar">' +
+                '<span class="mdim-abcd-note">A1·A2·B·C·D for a custom plate. Generate a new D, then return — or drop an image on the dimension editor to override.</span>' +
+                '<button type="button" class="tp-btn tp-btn-primary" data-mdim="back-editor">Back to dimension editor</button>' +
+              '</div>'
+            : '') +
+
+          '<div class="wr-pair wr-pair-primary-a' +
+            (isLifestyleView ? ' is-lifestyle-optional-a1' : '') +
+            (showA3 ? ' has-a3' : '') + '">' +
+            '<div class="wr-card' + (isLifestyleView && !a1 ? ' is-optional-empty' : '') + '">' +
+              '<div class="wr-card-head">' +
+                '<div class="wr-card-label">' +
+                  (isLifestyleView
+                    ? 'A1 · Optional ' + a1Badge +
+                      '<span class="wr-a1-optional-note" title="Mostly not required for lifestyle">mostly not required</span>'
+                    : ('A1 · Template image ' + a1Badge)) +
+                '</div>' +
+                '<div class="wr-card-head-actions">' +
+                  (a1
+                    ? '<button type="button" class="wr-text-btn" data-ws="clear-primary-a1" title="' +
+                        (isLifestyleView
+                          ? 'Clear optional A1'
+                          : 'Clear template image (Drive copy stays restorable)') +
+                      '">Clear</button>'
+                    : (
+                        (!isLifestyleView && (primary.a1Cleared || t.template)
+                          ? '<button type="button" class="wr-text-btn" data-ws="restore-primary-a1" title="Reload template image from Drive">Restore template</button>'
+                          : '') +
+                        '<button type="button" class="wr-text-btn" data-ws="browse-primary-a1">+ Browse</button>'
+                      )) +
+                '</div>' +
+              '</div>' +
+              primaryRefFrameHtml('a1', i, {
+                asset: a1,
+                loading: a1Loading && !a1,
+                error: a1Error,
+                displayName: isLifestyleView
+                  ? primaryAssetDisplayLabel(a1, 'Optional A1')
+                  : (tidyTemplate(t.template) ||
+                    primaryAssetDisplayLabel(a1, '') ||
+                    String(t.template || '').trim()),
+                emptyTitle: isLifestyleView
+                  ? 'Optional — mostly not required'
+                  : (t.template ? ('Drop ' + tidyTemplate(t.template) + ' image') : 'Drop template image'),
+                emptyHint: isLifestyleView
+                  ? 'Lifestyle uses A2 scene + B · add A1 only if needed'
+                  : (a1Error || (primary.a1Cleared
+                    ? 'Cleared — Restore template from Drive, or drop JPG/PNG'
+                    : 'Auto-loads from template folder · or drop JPG/PNG'))
               }) +
             '</div>' +
-            '<div class="tw-foot-actions">' +
-              '<button type="button" class="tp-btn tp-btn-ghost" data-ws="noop">Mark shot blocked</button>' +
-              '<button type="button" class="tp-btn tp-btn-primary" data-ws="noop">Save shot (UI only)</button>' +
+
+            '<div class="wr-card">' +
+              '<div class="wr-card-head">' +
+                '<div class="wr-card-label">' +
+                  (isMainView
+                    ? 'A2 · Hero Front / 01 D (required) '
+                    : (isLifestyleView
+                      ? 'A2 · PDP Lifestyle reference '
+                      : 'A2 · PDP camera reference ')) +
+                  a2Badge +
+                '</div>' +
+                '<div class="wr-card-head-actions">' +
+                  (isMainView
+                    ? (mainHeroReady
+                      ? '<span class="wr-badge-ghost">From ' +
+                          esc((angleShotForMain && (angleShotForMain.code || angleShotForMain.name)) || 'H-FR') +
+                        '</span>'
+                      : '<span class="wr-badge-muted">Generate Hero Front first</span>')
+                    : (a2
+                      ? '<button type="button" class="wr-text-btn" data-ws="clear-primary-a2">Clear</button>'
+                      : '<button type="button" class="wr-text-btn" data-ws="browse-primary-a2">+ Browse</button>')) +
+                  (!isLifestyleView && !showA3
+                    ? '<button type="button" class="wr-text-btn" data-ws="add-primary-a3" title="Rare custom reference">+ A3</button>'
+                    : '') +
+                '</div>' +
+              '</div>' +
+              primaryRefFrameHtml('a2', i, {
+                asset: a2,
+                loading: !isMainView && (a2Loading || pdpLoading) && !(a2 && ensureAssetDisplayUrl(a2)),
+                error: !a2
+                  ? (isMainView
+                    ? ((angleShotForMain && (angleShotForMain.name || angleShotForMain.code))
+                      ? ('Generate ' + (angleShotForMain.name || angleShotForMain.code) + ' first')
+                      : 'Generate Hero Front / seq 01 first')
+                    : (pdpError || ''))
+                  : '',
+                displayName: isMainView
+                  ? primaryAssetDisplayLabel(a2, (angleShotForMain && (angleShotForMain.name || angleShotForMain.code)) || 'Hero Front D')
+                  : primaryA2DisplayName(shot, pdpMeta, a2),
+                canChange: !isMainView && pdpCount > 0,
+                emptyTitle: isMainView
+                  ? 'Waiting for Hero Front / 01 D'
+                  : (isLifestyleView ? 'PDP Lifestyle reference' : 'PDP camera reference'),
+                emptyHint: isMainView
+                  ? 'Same rule as Product Replacement — MAIN uses that generated D as camera / composition'
+                  : (isLifestyleView
+                    ? (pdpError
+                      ? pdpError
+                      : ('Lifestyle scene · shot seq ' + esc(String((shot && shot.seq) || (i + 1))) +
+                        (pdpMeta ? ' · PDP #' + pdpMeta.seq : '') +
+                        ' · replace product in this scene · or Change'))
+                    : (pdpError
+                      ? pdpError
+                      : ('Shot seq ' + esc(String((shot && shot.seq) || (i + 1))) +
+                        (pdpMeta ? ' · PDP #' + pdpMeta.seq : '') +
+                        ' · auto from presentation · or Change')))
+              }) +
+            '</div>' +
+
+            (showA3
+              ? '<div class="wr-card">' +
+                  '<div class="wr-card-head">' +
+                    '<div class="wr-card-label">A3 · Custom ref ' + a3Badge + '</div>' +
+                    '<div class="wr-card-head-actions">' +
+                      (a3
+                        ? '<button type="button" class="wr-text-btn" data-ws="clear-primary-a3">Clear</button>'
+                        : '<button type="button" class="wr-text-btn" data-ws="browse-primary-a3">+ Browse</button>') +
+                      '<button type="button" class="wr-text-btn" data-ws="hide-primary-a3" title="Hide optional A3">Hide</button>' +
+                    '</div>' +
+                  '</div>' +
+                  primaryRefFrameHtml('a3', i, {
+                    asset: a3,
+                    emptyTitle: 'Optional custom ref',
+                    emptyHint: 'Rare · one image · e.g. floor cushion extras'
+                  }) +
+                '</div>'
+              : '') +
+          '</div>' +
+
+          '<div class="wr-pair wr-pair-primary-bcd">' +
+            '<div class="wr-card">' +
+              '<div class="wr-card-head">' +
+                '<div class="wr-card-label">B · New product input ' +
+                  (cappedInputs.length
+                    ? '<span class="wr-badge-teal">' + cappedInputs.length + ' / 4</span>'
+                    : '') +
+                '</div>' +
+                (cappedInputs.length < 4
+                  ? '<button type="button" class="wr-text-btn" data-ws="add-input">+ Browse</button>'
+                  : '<span class="wr-badge-ghost">Max 4</span>') +
+              '</div>' +
+              '<div class="wr-in-grid wr-in-count-' + Math.max(1, Math.min(4, cappedInputs.length + (cappedInputs.length && cappedInputs.length < 4 ? 1 : 0))) +
+                (cappedInputs.length ? '' : ' is-empty') + '" data-ws-drop="inputs">' +
+                inputTiles +
+              '</div>' +
+            '</div>' +
+
+            '<div class="wr-card wr-card-prompt">' +
+              '<div class="wr-card-head">' +
+                '<div class="wr-card-label">C · Prompt</div>' +
+                '<div class="wr-prompt-head-actions">' +
+                  '<span class="wr-badge-ghost' +
+                    (promptOriginPreview === 'Custom' ? ' is-custom' : ' is-automated') +
+                    '" data-ws-prompt-origin="' + esc(promptOriginPreview) + '">' +
+                    esc(promptOriginPreview) +
+                  '</span>' +
+                  '<button type="button" class="wr-icon-btn wr-prompt-expand" data-ws="prompt-expand" title="Expand prompt" aria-label="Expand prompt">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>' +
+                  '</button>' +
+                '</div>' +
+              '</div>' +
+              '<div class="wr-prompt-wrap' +
+                (isPromptManualEdit(i) && normalizePromptCompare(promptText) &&
+                  normalizePromptCompare(promptText) !== normalizePromptCompare(
+                    storedPromptBaseline(i) || compiled.text)
+                  ? ' has-diff' : '') + '">' +
+                '<div class="wr-prompt-highlight" data-ws-prompt-highlight aria-hidden="true">' +
+                  (isPromptManualEdit(i)
+                    ? promptDiffHighlightHtml(promptText, storedPromptBaseline(i) || compiled.text)
+                    : formatPromptOverlayHtml(esc(promptText).replace(/\n/g, '<br>'))) +
+                '</div>' +
+                '<textarea class="wr-prompt" data-ws-prompt="' + i + '" rows="8" placeholder="Compiled Primary prompt">' + esc(promptText) + '</textarea>' +
+              '</div>' +
+              '<div class="wr-prompt-foot">' +
+                '<span class="wr-prompt-note">' +
+                  promptOriginNoteHtml(t, shot, compiled, promptOriginPreview, null) +
+                '</span>' +
+                '<div class="wr-prompt-actions">' +
+                  '<button type="button" class="wr-text-btn" data-ws="prompt-reset" title="Restore the compiled Primary prompt">Default</button>' +
+                  '<button type="button" class="wr-text-btn" data-ws="prompt-clear" title="Clear the prompt field">Clear</button>' +
+                  '<button type="button" class="wr-text-btn" data-ws="prompt-copy">Copy</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+
+            '<div class="wr-card wr-card-out">' +
+              '<div class="wr-card-head">' +
+                '<div class="wr-card-label">D · Output · Answerly</div>' +
+                '<span class="' + (isShotBusy(i) ? 'wr-badge-busy' : (shotError ? 'wr-badge-muted' : 'wr-badge-ok')) + '"' +
+                  (isShotBusy(i)
+                    ? ' title="' + esc((state.workspace.busyShots && state.workspace.busyShots[i]) || genStage || 'Working…') + '"'
+                    : '') + '>' +
+                  (isShotBusy(i)
+                    ? esc((state.workspace.busyShots && state.workspace.busyShots[i]) || genStage || 'Working…')
+                    : (shotError ? 'Failed' : (hasOutput ? 'Done' : 'Ready'))) +
+                '</span>' +
+              '</div>' +
+              '<div class="wr-out-controls">' +
+                '<label class="wr-size-label">Size <select class="wr-size-select">' +
+                  ['1K', '2K', '4K'].map((s) =>
+                    '<option value="' + s + '"' + (s === savedSize ? ' selected' : '') + '>' + s + '</option>'
+                  ).join('') +
+                '</select></label>' +
+                '<label class="wr-model-label">Model <select class="wr-model-select">' +
+                  modelOptions.map((opt) =>
+                    '<option value="' + esc(opt[0]) + '"' + (opt[0] === savedModel ? ' selected' : '') + '>' +
+                      esc(opt[1]) + '</option>'
+                  ).join('') +
+                '</select></label>' +
+              '</div>' +
+              '<div class="wr-out-frame' +
+                (isShotBusy(i) ? ' is-busy'
+                  : (shotError ? ' has-error'
+                    : (hasOutput ? ' has-result' : ''))) + '">' +
+                (isShotBusy(i)
+                  ? '<div class="wr-out-progress" aria-live="polite">' +
+                      '<div class="wr-out-progress-title">' +
+                        esc((state.workspace.busyShots && state.workspace.busyShots[i]) || genStage || 'Generating…') +
+                      '</div>' +
+                      '<div class="wr-out-progress-sub">Answerly is working on this shot</div>' +
+                      '<div class="tp-mono">' + esc(synthName) + '</div>' +
+                    '</div>'
+                  : shotError
+                    ? '<div class="wr-out-error" aria-live="assertive">' + esc(shotError) + '</div>' +
+                      '<div class="tp-mono">' + esc(synthName) + '</div>'
+                    : (outUrl
+                      ? '<img class="wr-out-img" src="' + esc(outUrl) + '" alt="Answerly output">' +
+                        '<button type="button" class="wr-out-download" data-ws="download-out" title="Download generated image" aria-label="Download generated image">' +
+                          ICON.download +
+                        '</button>' +
+                        '<div class="wr-out-meta">' +
+                          '<div class="tp-mono">' + esc(synthName) + '</div>' +
+                          (outAsset.w && outAsset.h
+                            ? '<div class="wr-out-dims">' + outAsset.w + ' × ' + outAsset.h + '</div>'
+                            : '') +
+                        '</div>'
+                      : '<div class="wr-out-ready">' +
+                          (!canGenerate
+                            ? 'Select Product Type to start'
+                            : (!primaryPayload.ok
+                              ? esc(primaryPayload.error || 'Inputs not ready')
+                              : (isShotBusy(i)
+                                ? 'Generation in progress…'
+                                : 'Ready — Generate this shot'))) +
+                        '</div><div class="tp-mono">' + esc(synthName) + '</div>')) +
+              '</div>' +
+              (isShotBusy(i)
+                ? '<button type="button" class="tp-btn tp-btn-ghost wr-gen-btn wr-cancel-btn" data-ws="cancel-gen" data-shot="' + i + '"' +
+                    ' title="Stop this Answerly job">' +
+                    ((state.workspace.cancelShots && state.workspace.cancelShots[i]) || state.workspace.cancelAll
+                      ? 'Cancelling…'
+                      : 'Cancel generation') +
+                  '</button>'
+                : '<button type="button" class="tp-btn tp-btn-primary wr-gen-btn" data-ws="gen-primary-shot"' +
+                    (!canRunShot ? ' disabled' : '') +
+                    ' title="' +
+                      (!canGenerate
+                        ? 'Select a Product Type first'
+                        : (!primaryPayload.ok
+                          ? esc(primaryPayload.error || 'Inputs not ready')
+                          : (hasOutput ? 'Regenerate with Answerly' : 'Generate with Answerly'))) +
+                    '">' +
+                    (hasOutput ? 'Regenerate this shot' : 'Generate this shot') +
+                  '</button>') +
             '</div>' +
           '</div>' +
+            '') +
+        '</section>' +
+        (!panelOpen
+          ? '<button type="button" class="wr-panel-tab" data-ws-panel="open" title="Open Detail &amp; Compare">Detail &amp; Compare</button>'
+          : '') +
         '</div>' +
+
+        (panelOpen
+          ? '<aside class="wr-panel' + (panelMax ? ' is-max' : '') + '">' +
+              '<div class="wr-panel-head">' +
+                '<div class="wr-panel-title">Detail &amp; Compare</div>' +
+                '<div class="wr-panel-tools">' +
+                  '<button type="button" class="wr-icon-btn" data-ws-panel="max" title="Maximize">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>' +
+                  '</button>' +
+                  '<button type="button" class="wr-icon-btn" data-ws-panel="close" title="Close">✕</button>' +
+                '</div>' +
+              '</div>' +
+              '<div class="wr-compare" data-ws-compare>' +
+                '<div class="wr-compare-base">' +
+                  (outUrl
+                    ? '<img class="wr-compare-img" src="' + esc(outUrl) + '" alt="Generated output">'
+                    : hasOutput
+                      ? '<div class="wr-compare-ph is-out">Generated</div>'
+                      : '<div class="wr-compare-ph">Generate to compare</div>') +
+                '</div>' +
+                '<div class="wr-compare-overlay" style="width:' + comparePos + '%">' +
+                  (a2 && ensureAssetDisplayUrl(a2)
+                    ? '<div class="wr-compare-overlay-inner is-override" title="' +
+                        (isMainView
+                          ? 'A2 · Hero Front / 01 D'
+                          : (isLifestyleView
+                            ? 'A2 · PDP Lifestyle reference'
+                            : 'A2 · PDP camera reference')) + '">' +
+                        '<img class="tp-img wr-compare-img" src="' + esc(ensureAssetDisplayUrl(a2)) +
+                          '" alt="' + esc(a2.name || 'A2') + '">' +
+                      '</div>'
+                    : (a1 && ensureAssetDisplayUrl(a1)
+                      ? '<div class="wr-compare-overlay-inner is-override" title="A1 · Template image">' +
+                          '<img class="tp-img wr-compare-img" src="' + esc(ensureAssetDisplayUrl(a1)) +
+                            '" alt="' + esc(a1.name || 'A1') + '">' +
+                        '</div>'
+                      : '<div class="wr-compare-ph">' +
+                          (isLifestyleView ? 'A2 Lifestyle' : 'A1 / A2') +
+                        '</div>')) +
+                '</div>' +
+                '<input class="wr-compare-range" type="range" min="0" max="100" value="' + comparePos + '" aria-label="Compare slider">' +
+                '<div class="wr-compare-handle" style="left:' + comparePos + '%" aria-hidden="true"></div>' +
+              '</div>' +
+              '<div class="wr-specs">' +
+                '<div class="wr-spec"><span>Resolution</span><span class="tp-mono">Square</span></div>' +
+                '<div class="wr-spec"><span>Target EAN</span>' + eanCopyHtml(t.ean) + '</div>' +
+                '<div class="wr-spec"><span>Refs</span><span class="tp-mono">' +
+                  (isLifestyleView
+                    ? ((a2 ? 'A2 Lifestyle' : '—') + (a1 ? ' · A1 opt' : ''))
+                    : ((a1 ? 'A1' : '—') + (a2 ? ' · A2' : '') + (showA3 && a3 ? ' · A3' : ''))) +
+                '</span></div>' +
+                '<div class="wr-spec"><span>Model</span><span class="tp-mono">' +
+                  esc((outAsset && outAsset.model) || savedModel) + '</span></div>' +
+              '</div>' +
+              '<div class="wr-panel-actions">' +
+                '<div class="wr-rating">' +
+                  '<span class="wr-rating-label">Quality Rating</span>' +
+                  '<div class="wr-stars" role="radiogroup" aria-label="Quality rating">' +
+                    [1, 2, 3, 4, 5].map((n) =>
+                      '<button type="button" class="wr-star' + (rating >= n ? ' is-on' : '') + '" data-ws-rating="' + n + '"' +
+                        (hasOutput ? '' : ' disabled') +
+                        ' aria-label="' + n + ' star' + (n > 1 ? 's' : '') + '">★</button>'
+                    ).join('') +
+                  '</div>' +
+                '</div>' +
+                '<button type="button" class="wr-btn-outline" data-ws="reroll-prompt"' +
+                  (hasOutput ? '' : ' disabled title="Generate an image first"') + '>Re-roll with prompt tweaks</button>' +
+                '<button type="button" class="tp-btn tp-btn-primary" data-ws="prompt-approve"' +
+                  (canApprove ? '' : ' disabled title="Generate and rate 4–5 stars first"') +
+                  '>Rate &amp; Approve</button>' +
+                (rating >= 1 && rating <= 3
+                  ? '<div class="wr-approve-hint">1–3 stars: re-roll only — Rate &amp; Approve stays off so low quality does not go to production.</div>'
+                  : '') +
+              '</div>' +
+            '</aside>'
+          : '') +
       '</div>' +
+
+      (canGenerate && shots.length ? approvedExportCardHtml(t, shots) : '') +
     '</div>';
   }
 
@@ -9353,7 +12809,7 @@
     const inputAssets = assets.inputs || [];
     const priorOverride = assets.priorOverride || null;
     const mainBorrowNote = isMainShot(shot) && !inputAssets.length && mainHasProductRefs(i, shots);
-    const compiled = compileReplacePrompt(t, shot, prior);
+    const compiled = compileReplacePrompt(t, shot, prior, { shotIndex: i });
     if (!state.workspace.prompts) state.workspace.prompts = {};
     if (!state.workspace.promptBaselines) state.workspace.promptBaselines = {};
     // First fill: prefer a prior Custom prompt from the same Sub-category + Template (+ shot).
@@ -9665,9 +13121,11 @@
           '<nav class="wr-rail-list">' + rail + '</nav>' +
           '<div class="wr-rail-foot">' +
             (anyShotBusy()
-              ? '<button type="button" class="wr-btn-outline wr-cancel-all-btn" data-ws="cancel-gen" data-cancel-all="1" title="Stop all in-flight Answerly jobs">' +
+              ? '<button type="button" class="wr-btn-outline wr-cancel-all-btn" data-ws="cancel-gen" data-cancel-all="1" title="Stop all in-flight Answerly jobs (other shots can still Generate in parallel until you cancel)">' +
                   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg>' +
-                  (state.workspace.genAllBatch ? 'Cancel all' : 'Cancel generation') +
+                  (busyShotIndexes().length > 1 || state.workspace.genAllBatch
+                    ? 'Cancel all (' + busyShotIndexes().length + ')'
+                    : 'Cancel generation') +
                 '</button>'
               : '<button type="button" class="wr-btn-outline" data-ws="gen-all"' +
                   (!canGenAll ? ' disabled' : '') +
@@ -9816,7 +13274,16 @@
                   '</button>' +
                 '</div>' +
               '</div>' +
-              '<div class="wr-prompt-wrap">' +
+              '<div class="wr-prompt-wrap' +
+                (isPromptManualEdit(i) && normalizePromptCompare(promptText) &&
+                  normalizePromptCompare(promptText) !== normalizePromptCompare(
+                    storedPromptBaseline(i) || compiled.text)
+                  ? ' has-diff' : '') + '">' +
+                '<div class="wr-prompt-highlight" data-ws-prompt-highlight aria-hidden="true">' +
+                  (isPromptManualEdit(i)
+                    ? promptDiffHighlightHtml(promptText, storedPromptBaseline(i) || compiled.text)
+                    : formatPromptOverlayHtml(esc(promptText).replace(/\n/g, '<br>'))) +
+                '</div>' +
                 '<textarea class="wr-prompt" data-ws-prompt="' + i + '" rows="8" placeholder="Compiled from Universal + Shoot Tracker + Naming">' + esc(promptText) + '</textarea>' +
               '</div>' +
               '<div class="wr-prompt-foot">' +
@@ -9834,7 +13301,10 @@
             '<div class="wr-card wr-card-out">' +
               '<div class="wr-card-head">' +
                 '<div class="wr-card-label">D · Output · Answerly</div>' +
-                '<span class="' + (isShotBusy(i) ? 'wr-badge-ghost' : (shotError ? 'wr-badge-muted' : 'wr-badge-ok')) + '">' +
+                '<span class="' + (isShotBusy(i) ? 'wr-badge-busy' : (shotError ? 'wr-badge-muted' : 'wr-badge-ok')) + '"' +
+                  (isShotBusy(i)
+                    ? ' title="' + esc((state.workspace.busyShots && state.workspace.busyShots[i]) || genStage || 'Working…') + '"' 
+                    : '') + '>' +
                   (isShotBusy(i)
                     ? esc((state.workspace.busyShots && state.workspace.busyShots[i]) || genStage || 'Working…')
                     : (shotError ? 'Failed' : (hasOutput ? 'Done' : 'Ready'))) +
@@ -9908,7 +13378,7 @@
                       : 'Cancel generation') +
                   '</button>'
                 : '<button type="button" class="tp-btn tp-btn-primary wr-gen-btn" data-ws="gen-shot"' +
-                    (!canRunShot || anyShotBusy() ? ' disabled' : '') +
+                    (!canRunShot || isShotBusy(i) ? ' disabled' : '') +
                     (!canGenerate
                       ? ' title="Select a Product Type first"'
                       : (isMainShot(shot) && !mainPriorOk
@@ -10233,6 +13703,11 @@
       genAllModal.remove();
       return;
     }
+    const a2Picker = document.getElementById('wr-primary-a2-picker');
+    if (a2Picker && !a2Picker.hidden) {
+      a2Picker.hidden = true;
+      return;
+    }
     const promptExpand = document.getElementById('wr-prompt-expand');
     if (promptExpand) {
       promptExpand.remove();
@@ -10250,11 +13725,15 @@
       persistCurrentReplaceDraft();
       renderWorkspace();
     }
-    else if (state.workspace && state.workspace.mode === 'replace' && state.workspace.panelMax) {
+    else if (state.workspace &&
+        (state.workspace.mode === 'replace' || state.workspace.mode === 'primary') &&
+        state.workspace.panelMax) {
       state.workspace.panelMax = false;
       renderWorkspace();
     }
-    else if (state.workspace && state.workspace.mode === 'replace' && state.workspace.panelOpen !== false) {
+    else if (state.workspace &&
+        (state.workspace.mode === 'replace' || state.workspace.mode === 'primary') &&
+        state.workspace.panelOpen !== false) {
       // Close Detail & Compare; do not leave Image Generation.
       state.workspace.panelOpen = false;
       state.workspace.panelMax = false;
@@ -10548,7 +14027,8 @@
   if (els.workspace) {
     els.workspace.addEventListener('mousedown', (e) => {
       const split = e.target.closest('[data-ws-rail-split]');
-      if (split && state.workspace && state.workspace.mode === 'replace') {
+      if (split && state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
         e.preventDefault();
         const grid = els.workspace.querySelector('.wr-grid');
         const startX = e.clientX;
@@ -10570,7 +14050,8 @@
         return;
       }
       const ptPick = e.target.closest('[data-ws-pt-pick]');
-      if (!ptPick || !state.workspace || state.workspace.mode !== 'replace') return;
+      if (!ptPick || !state.workspace ||
+          (state.workspace.mode !== 'replace' && state.workspace.mode !== 'primary')) return;
       e.preventDefault();
       const name = String(ptPick.dataset.wsPtPick || '');
       const type = namingProductTypes().find((t) => t.name === name);
@@ -10582,7 +14063,23 @@
       state.workspace.productTypeWarn = false;
       // New Product Type → new Naming shots; rebuild compiled prompts.
       state.workspace.prompts = {};
+      state.workspace.promptBaselines = {};
+      state.workspace.promptManualEdit = {};
+      const taskPt = taskByEan(state.workspace.ean);
+      state.workspaceShot = defaultWorkspaceShotIndex(shotListFor(taskPt || {}));
       writeProductTypePrefs(state.workspace.productTypeName, state.workspace.productTypeVariant);
+      if (state.workspace.mode === 'primary' && state.workspace.primary) {
+        // Remap A2 to the new shot list / PDP seq after type change.
+        const p = state.workspace.primary;
+        if (p.a2) {
+          Object.keys(p.a2).forEach((k) => {
+            if (p.a2Manual && p.a2Manual[k]) return;
+            revokeAssetUrl(p.a2[k]);
+            delete p.a2[k];
+          });
+        }
+        p.a2Loading = {};
+      }
       renderWorkspace();
       syncRoute({ replace: true });
     });
@@ -10745,6 +14242,9 @@
           state.workspace.panelOpen = true;
           state.workspace.panelMax = false;
         }
+        if (state.workspace.mode === 'replace' || state.workspace.mode === 'primary') {
+          persistCurrentReplaceDraft();
+        }
         renderWorkspace();
         return;
       }
@@ -10777,7 +14277,8 @@
         return;
       }
       const removeIn = e.target.closest('[data-ws-remove-input]');
-      if (removeIn && state.workspace && state.workspace.mode === 'replace') {
+      if (removeIn && state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
         e.preventDefault();
         e.stopPropagation();
         persistReplacePromptFromDom();
@@ -10788,7 +14289,8 @@
         return;
       }
       const cropTile = e.target.closest('[data-ws-crop-input]');
-      if (cropTile && state.workspace && state.workspace.mode === 'replace' &&
+      if (cropTile && state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary') &&
           !e.target.closest('[data-ws-remove-input]')) {
         e.preventDefault();
         e.stopPropagation();
@@ -10808,7 +14310,8 @@
         return;
       }
       const cropExport = e.target.closest('[data-ws-crop-export]');
-      if (cropExport && state.workspace && state.workspace.mode === 'replace' &&
+      if (cropExport && state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary') &&
           !e.target.closest('[data-ws-clear-export]') &&
           e.target.closest('.wr-approved-thumb')) {
         e.preventDefault();
@@ -10834,9 +14337,9 @@
       }
       // Prefer explicit shot clicks over Drive-index remapping so only one rail item stays active.
       const shotBtn = e.target.closest('[data-ws-shot]');
-      if (shotBtn) {
+      if (shotBtn && state.workspace) {
         captureRailScroll();
-        if (state.workspace && state.workspace.mode === 'replace') {
+        if (state.workspace.mode === 'replace' || state.workspace.mode === 'primary') {
           const promptEl = els.workspace.querySelector('[data-ws-prompt]');
           if (promptEl) {
             if (!state.workspace.prompts) state.workspace.prompts = {};
@@ -10845,19 +14348,28 @@
         }
         const taskNow = taskByEan(state.workspace.ean);
         const shotsNow = shotListFor(taskNow || {});
-        const clickIdx = Number(shotBtn.dataset.wsShot) || 0;
+        // Use getAttribute — avoid dataset edge cases; allow index 0 without || fallback to MAIN.
+        const rawShot = shotBtn.getAttribute('data-ws-shot');
+        const clickIdx = rawShot != null && rawShot !== '' ? Number(rawShot) : NaN;
+        if (isNaN(clickIdx)) return;
         // Always switch to the clicked shot. M-DIM editor only shows when M-DIM is selected;
         // base overrides are via drop / base select, not rail clicks.
         state.workspaceShot = clickIdx;
-        // Sync Drive prior index to this shot's mapped prior when available.
-        const priorNow = resolveWorkspaceMatch(taskNow).selected;
-        const mapNow = priorTargetCodeMap(priorNow, shotsNow);
-        const mapped = (mapNow.mapped || []).find((m) => m.shotIdx === state.workspaceShot);
-        if (mapped && mapped.imgIdx != null) {
-          state.workspace.driveImgIndex = mapped.imgIdx;
-          state.workspace.priorFetch = null;
+        if (state.workspace.mode === 'replace') {
+          // Sync Drive prior index to this shot's mapped prior when available.
+          const priorNow = resolveWorkspaceMatch(taskNow).selected;
+          const mapNow = priorTargetCodeMap(priorNow, shotsNow);
+          const mapped = (mapNow.mapped || []).find((m) => m.shotIdx === state.workspaceShot);
+          if (mapped && mapped.imgIdx != null) {
+            state.workspace.driveImgIndex = mapped.imgIdx;
+            state.workspace.priorFetch = null;
+          }
+          persistCurrentReplaceDraft();
+        } else if (state.workspace.mode === 'primary') {
+          maybeRefreshAutomatedPrimaryPrompt(clickIdx);
+          // Non-lifestyle shots may need template A1; lifestyle never loads it.
+          if (!isLifestyleShot(shotsNow[clickIdx])) schedulePrimaryA1Load(taskNow);
         }
-        persistCurrentReplaceDraft();
         renderWorkspace();
         syncRoute({ replace: true });
         return;
@@ -10891,7 +14403,8 @@
       // Browse / empty-slot for B — handle before generic [data-ws] so the file dialog
       // stays inside the user-gesture window (and is not lost to a later re-render).
       const addInputEl = e.target.closest('[data-ws="add-input"]');
-      if (addInputEl && state.workspace && state.workspace.mode === 'replace') {
+      if (addInputEl && state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
         e.preventDefault();
         e.stopPropagation();
         if (addInputEl.hasAttribute('disabled') || addInputEl.disabled) return;
@@ -10907,11 +14420,13 @@
       const actionEl = e.target.closest('[data-ws]');
       if (!actionEl || actionEl.hasAttribute('disabled') || actionEl.disabled) return;
       const action = actionEl.dataset.ws;
-      if (action === 'rail-zoom-out' && state.workspace && state.workspace.mode === 'replace') {
+      if (action === 'rail-zoom-out' && state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
         setRailZoomLevel(railZoomLevel() - RAIL_ZOOM_STEP);
         return;
       }
-      if (action === 'rail-zoom-in' && state.workspace && state.workspace.mode === 'replace') {
+      if (action === 'rail-zoom-in' && state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
         setRailZoomLevel(railZoomLevel() + RAIL_ZOOM_STEP);
         return;
       }
@@ -10920,21 +14435,183 @@
         if (state.workspace.mode === 'replace') {
           persistCurrentReplaceDraft();
           stashReplaceDraftInMemory();
+          state.workspace.focus = 'replace';
+        } else if (state.workspace.mode === 'primary') {
+          state.workspace.focus = 'primary';
         }
         state.workspace.mode = 'choose';
-        state.workspace.focus = 'replace';
         renderWorkspace();
         syncRoute({ replace: true });
         window.scrollTo(0, 0);
         return;
       }
       if (action === 'start-primary' && state.workspace) {
+        const taskPrimary = taskByEan(state.workspace.ean);
+        if (state.workspace.mode === 'replace') {
+          persistCurrentReplaceDraft();
+          stashReplaceDraftInMemory();
+        }
         state.workspace.mode = 'primary';
         state.workspace.focus = 'primary';
-        state.workspaceShot = 0;
+        state.workspace.draftsLoaded = false;
+        ensurePrimaryState(taskPrimary);
+        state.workspaceShot = defaultWorkspaceShotIndex(shotListFor(taskPrimary || {}));
+        state.railScrollTop = 0;
+        if (state.workspace.panelOpen == null) state.workspace.panelOpen = false;
+        if (state.workspace.panelMax == null) state.workspace.panelMax = false;
+        renderDrawer(null);
         renderWorkspace();
         syncRoute({ replace: true });
+        restorePrimaryDraftsIntoWorkspace().then(() => {
+          return hydrateMdimDraftForEan(false);
+        }).then(() => {
+          if (state.workspace && state.workspace.mode === 'primary') renderWorkspace();
+        });
+        ensureUniversalPrompts(true).then(() => {
+          if (state.workspace && state.workspace.mode === 'primary') renderWorkspace();
+        });
+        loadAnswerlyModels().then(() => {
+          if (state.workspace && state.workspace.mode === 'primary') renderWorkspace();
+        });
+        refreshAnswerlyTokenState().then(() => {
+          if (state.workspace && state.workspace.mode === 'primary') renderWorkspace();
+        });
         window.scrollTo(0, 0);
+        return;
+      }
+      if (action === 'browse-primary-a1' && state.workspace && state.workspace.mode === 'primary') {
+        openReplaceFilePicker({ kind: 'primary-a1', shotIndex: state.workspaceShot || 0 });
+        return;
+      }
+      if (action === 'browse-primary-a2' && state.workspace && state.workspace.mode === 'primary') {
+        openReplaceFilePicker({ kind: 'primary-a2', shotIndex: state.workspaceShot || 0 });
+        return;
+      }
+      if (action === 'browse-primary-a3' && state.workspace && state.workspace.mode === 'primary') {
+        openReplaceFilePicker({ kind: 'primary-a3', shotIndex: state.workspaceShot || 0 });
+        return;
+      }
+      if (action === 'change-primary-a2' && state.workspace && state.workspace.mode === 'primary') {
+        openPrimaryA2Picker(state.workspaceShot || 0);
+        return;
+      }
+      if (action === 'clear-primary-a1' && state.workspace && state.workspace.mode === 'primary') {
+        clearPrimarySlot('a1', state.workspaceShot || 0);
+        return;
+      }
+      if (action === 'restore-primary-a1' && state.workspace && state.workspace.mode === 'primary') {
+        const lifeShot = shotListFor(taskByEan(state.workspace.ean) || {})[state.workspaceShot || 0];
+        if (isLifestyleShot(lifeShot)) {
+          showToast('Lifestyle A1 stays optional — browse to add an image if needed.', false);
+          return;
+        }
+        restorePrimaryA1();
+        return;
+      }
+      if (action === 'clear-primary-a2' && state.workspace && state.workspace.mode === 'primary') {
+        clearPrimarySlot('a2', state.workspaceShot || 0);
+        return;
+      }
+      if (action === 'clear-primary-a3' && state.workspace && state.workspace.mode === 'primary') {
+        clearPrimarySlot('a3', state.workspaceShot || 0);
+        return;
+      }
+      if (action === 'add-primary-a3' && state.workspace && state.workspace.mode === 'primary') {
+        setPrimaryShowA3(state.workspaceShot || 0, true);
+        renderWorkspace();
+        return;
+      }
+      if (action === 'hide-primary-a3' && state.workspace && state.workspace.mode === 'primary') {
+        setPrimaryShowA3(state.workspaceShot || 0, false);
+        renderWorkspace();
+        return;
+      }
+      if (action === 'gen-primary-shot' && state.workspace && state.workspace.mode === 'primary') {
+        if (!hasWorkspaceProductType()) {
+          state.workspace.productTypeWarn = true;
+          state.workspace.productTypeOpen = true;
+          showToast('Select a Product Type before generating.', false);
+          renderWorkspace();
+          return;
+        }
+        persistReplacePromptFromDom();
+        const idx = state.workspaceShot || 0;
+        if (isShotBusy(idx)) {
+          showToast('This shot is already generating — switch to another shot to run more in parallel.', false);
+          return;
+        }
+        const plan = primaryInputPlan(idx);
+        if (plan.isLifestyle && !plan.hasA2) {
+          showToast('A2 PDP Lifestyle reference is required.', false, { error: true });
+          return;
+        }
+        if (!plan.isLifestyle && !plan.hasA1 && !plan.hasA2) {
+          showToast('A1 template or A2 PDP camera reference is required.', false, { error: true });
+          return;
+        }
+        if (!(shotAssets(idx).inputs && shotAssets(idx).inputs.length)) {
+          showToast('Drop at least one new product image onto B.', false, { error: true });
+          return;
+        }
+        const ready = pickAnswerlyPrimaryPayload(idx);
+        if (!ready.ok) {
+          showToast(ready.error || 'Primary inputs not ready.', false, { error: true });
+          return;
+        }
+        const promptEl = els.workspace.querySelector('[data-ws-prompt]');
+        const promptText = (state.workspace.prompts && state.workspace.prompts[idx] != null)
+          ? state.workspace.prompts[idx]
+          : ((promptEl && promptEl.value) || '');
+        if (!String(promptText || '').trim()) {
+          showToast('Prompt is empty — click Default or paste a prompt in C.', false, { error: true });
+          return;
+        }
+        const assets = shotAssets(idx);
+        assets.error = null;
+        if (state.workspace.cancelShots) delete state.workspace.cancelShots[idx];
+        delete state.workspace.cancelAll;
+        const previousOutput = assets.output;
+        const hadPreviousOutput = !!(state.workspace.outputs && state.workspace.outputs[idx]);
+        assets._previousOutput = previousOutput || assets._previousOutput || null;
+        assets.output = null;
+        if (state.workspace.outputs) delete state.workspace.outputs[idx];
+        // Mark busy immediately so other shots stay free to Generate in parallel.
+        markShotBusy(idx, 'Starting Primary…');
+        renderWorkspace();
+        runAnswerlyPrimaryForShot(idx, promptText).then((result) => {
+          if (!state.workspace || state.workspace.mode !== 'primary') return;
+          const prev = shotAssets(idx)._previousOutput;
+          if (prev && prev !== result.output) revokeAssetUrl(prev);
+          delete shotAssets(idx)._previousOutput;
+          clearShotBusy(idx);
+          persistCurrentPrimaryDraft();
+          showToast('Primary Answerly done · ' + esc((result.source && result.source.reason) || 'ok'), false);
+          renderWorkspace();
+        }).catch((err) => {
+          if (!state.workspace || state.workspace.mode !== 'primary') return;
+          const prev = shotAssets(idx)._previousOutput || previousOutput;
+          if (prev) {
+            shotAssets(idx).output = prev;
+            if (!state.workspace.outputs) state.workspace.outputs = {};
+            if (hadPreviousOutput || prev) state.workspace.outputs[idx] = true;
+          }
+          delete shotAssets(idx)._previousOutput;
+          const cancelled = isCancelError(err);
+          shotAssets(idx).error = cancelled ? null : ((err && err.message) || 'Generation failed');
+          clearShotBusy(idx);
+          if (state.workspace.cancelShots) delete state.workspace.cancelShots[idx];
+          persistCurrentPrimaryDraft();
+          showToast(
+            cancelled ? 'Primary generation cancelled.' : esc(shotAssets(idx).error || 'Primary generation failed'),
+            false,
+            cancelled ? undefined : { error: true }
+          );
+          renderWorkspace();
+          if (err && (err.code === 'no_token' || err.code === 'token_expired' ||
+              err.code === 'bridge_offline' || isStaleBridgeError(err.message || err))) {
+            openAnswerlyModal();
+          }
+        });
         return;
       }
       if (action === 'start-replace' && state.workspace) {
@@ -10946,8 +14623,15 @@
         const cachedMatch = state.replaceDraftCache && state.replaceDraftCache[state.workspace.ean]
           ? String(state.replaceDraftCache[state.workspace.ean].matchEan || '')
           : '';
+        if (state.workspace.mode === 'primary') {
+          persistCurrentPrimaryDraft();
+          stashPrimaryDraftInMemory();
+        }
         state.workspace.mode = 'replace';
         state.workspace.focus = 'replace';
+        // Prefer first non-MAIN shot (drafts may override after restore).
+        state.workspaceShot = defaultWorkspaceShotIndex(shotListFor(task || {}));
+        state.railScrollTop = 0;
         state.workspace.matchEan = lockedMatch;
         state.workspace.draftsLoaded = false;
         if (lockedMatch && cachedMatch &&
@@ -10999,8 +14683,9 @@
         }
         return;
       }
-      if (action === 'reset-ean' && state.workspace && state.workspace.mode === 'replace') {
-        resetEanReplaceDraft();
+      if (action === 'reset-ean' && state.workspace) {
+        if (state.workspace.mode === 'replace') resetEanReplaceDraft();
+        else if (state.workspace.mode === 'primary') resetEanPrimaryDraft();
         return;
       }
       if (action === 'export-upscale-toggle' && state.workspace) {
@@ -11021,42 +14706,108 @@
         showToast('Cleared export images for this EAN.', false);
         return;
       }
-      if (action === 'export-generate' && state.workspace && state.workspace.mode === 'replace') {
+      if (action === 'export-generate' && state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
         generateApprovedExportZip();
         return;
       }
-      if (action === 'prompt-reset' && state.workspace && state.workspace.mode === 'replace') {
+      if (action === 'gen-all-primary' && state.workspace && state.workspace.mode === 'primary') {
+        if (!hasWorkspaceProductType()) {
+          state.workspace.productTypeWarn = true;
+          state.workspace.productTypeOpen = true;
+          showToast('Select a Product Type before generating.', false);
+          renderWorkspace();
+          return;
+        }
+        if (anyShotBusy()) {
+          showToast('A generation is already running — Cancel it first.', false);
+          return;
+        }
+        const taskP = taskByEan(state.workspace.ean);
+        if (!taskP) {
+          showToast('Task not found for this EAN.', false, { error: true });
+          return;
+        }
+        const shotsP = shotListFor(taskP);
+        const pendingSkip = primaryGenAllPendingCandidates(taskP, shotsP, { includeDone: false });
+        const pendingAll = primaryGenAllPendingCandidates(taskP, shotsP, { includeDone: true });
+        const doneCount = countGeneratedPrimaryShots(shotsP);
+        if (!pendingAll.length) {
+          showToast(
+            'No shots ready — add product image(s) on B (and A1 or A2). Jobs will not run without B. M-DIM is skipped.',
+            false
+          );
+          return;
+        }
+        function beginPrimaryGenAll(mode) {
+          const includeDone = mode === 'regen';
+          const pending = includeDone ? pendingAll : pendingSkip;
+          if (!pending.length) {
+            showToast(includeDone
+              ? 'No shots with B to regenerate. Add product image(s) on B first.'
+              : 'Nothing left — shots with B already have D. Choose Regenerate all to overwrite, or add B on more shots.', false);
+            return;
+          }
+          ensureAnswerlyReadyForGenerate().then((ok) => {
+            if (!ok || !state.workspace || state.workspace.mode !== 'primary') return;
+            startGenerateAllPrimaryBatch(taskP, shotsP, pending, includeDone);
+          });
+        }
+        if (doneCount > 0) {
+          openGenAllChoiceModal(doneCount, pendingSkip.length, function () {
+            beginPrimaryGenAll('skip');
+          }, function () {
+            beginPrimaryGenAll('regen');
+          });
+          return;
+        }
+        beginPrimaryGenAll('skip');
+        return;
+      }
+      if (action === 'prompt-reset' && state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
         const idx = state.workspaceShot || 0;
         const task = taskByEan(state.workspace.ean) || { ean: state.workspace.ean };
         const shots = shotListFor(task);
         const shot = shots[idx] || shots[0];
-        const prior = resolveWorkspaceMatch(task).selected;
-        const compiled = compileReplacePrompt(task, shot, prior);
+        const compiled = state.workspace.mode === 'primary'
+          ? compilePrimaryPrompt(task, shot, { shotIndex: idx })
+          : compileReplacePrompt(task, shot, resolveWorkspaceMatch(task).selected, { shotIndex: idx });
         if (!state.workspace.prompts) state.workspace.prompts = {};
         state.workspace.prompts[idx] = compiled.text;
         rememberPromptBaseline(idx, compiled.text);
+        setPromptManualEdit(idx, false);
+        // Clear reuse stamp so badge/note follow the live compiled default.
+        if (state.workspace.promptReuse) delete state.workspace.promptReuse[idx];
         const promptEl = els.workspace.querySelector('[data-ws-prompt]');
         if (promptEl) promptEl.value = compiled.text;
-        persistCurrentReplaceDraft();
+        if (state.workspace.mode === 'primary') persistCurrentPrimaryDraft();
+        else persistCurrentReplaceDraft();
         renderWorkspace();
+        refreshPromptOriginUi();
         showToast('Prompt restored to Default · Universal ' + compiled.universalLabel + '.', false);
         return;
       }
-      if (action === 'prompt-clear' && state.workspace && state.workspace.mode === 'replace') {
+      if (action === 'prompt-clear' && state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
         const idx = state.workspaceShot || 0;
         if (!state.workspace.prompts) state.workspace.prompts = {};
         state.workspace.prompts[idx] = '';
+        setPromptManualEdit(idx, true);
         const promptEl = els.workspace.querySelector('[data-ws-prompt]');
         if (promptEl) {
           promptEl.value = '';
           promptEl.focus();
         }
-        persistCurrentReplaceDraft();
+        if (state.workspace.mode === 'primary') persistCurrentPrimaryDraft();
+        else persistCurrentReplaceDraft();
         renderWorkspace();
         showToast('Prompt cleared — paste a new one.', false);
         return;
       }
-      if (action === 'prompt-approve' && state.workspace && state.workspace.mode === 'replace') {
+      if (action === 'prompt-approve' && state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
+        const isPrimaryApprove = state.workspace.mode === 'primary';
         persistReplacePromptFromDom();
         const idx = state.workspaceShot || 0;
         const task = taskByEan(state.workspace.ean);
@@ -11065,7 +14816,7 @@
           return;
         }
         const assets = shotAssets(idx);
-        if (!(assets.output && assets.output.url)) {
+        if (!(assets.output && (assets.output.url || assets.output.blob || assets.output.file))) {
           showToast('Generate an image before Rate & Approve.', false, { error: true });
           return;
         }
@@ -11083,21 +14834,25 @@
         }
         const shots = shotListFor(task);
         const shot = shots[idx] || shots[0] || { name: '', code: '' };
-        const prior = resolveWorkspaceMatch(task).selected;
+        const prior = isPrimaryApprove ? null : resolveWorkspaceMatch(task).selected;
         // Always prefer the live textarea — state can lag behind typing.
         const promptEl = els.workspace.querySelector('[data-ws-prompt]');
         const promptText = promptEl
           ? String(promptEl.value || '')
           : ((state.workspace.prompts && state.workspace.prompts[idx] != null)
             ? state.workspace.prompts[idx]
-            : defaultReplacePrompt(task, shot, prior));
+            : (isPrimaryApprove
+              ? compilePrimaryPrompt(task, shot, { shotIndex: idx }).text
+              : defaultReplacePrompt(task, shot, prior)));
         if (!state.workspace.prompts) state.workspace.prompts = {};
         state.workspace.prompts[idx] = promptText;
         if (!String(promptText || '').trim()) {
           showToast('Prompt is empty.', false, { error: true });
           return;
         }
-        const compiled = compileReplacePrompt(task, shot, prior);
+        const compiled = isPrimaryApprove
+          ? compilePrimaryPrompt(task, shot, { shotIndex: idx })
+          : compileReplacePrompt(task, shot, prior);
         let origin = promptOriginForShot(task, shot, prior, promptText, idx);
         if (origin === 'Automated') {
           rememberPromptBaseline(idx, compiled.text);
@@ -11113,16 +14868,26 @@
             return;
           }
         }
-        const priorMeta = selectedDrivePriorMeta();
-        const priorImageName = (assets.priorOverride && assets.priorOverride.name) ||
-          (priorMeta && priorMeta.img && priorMeta.img.name) ||
-          (isMainShot(shot) ? 'Hero Front / seq 01 (angle source)' : '');
+        const primary = state.workspace.primary || {};
+        const a1 = primary.a1 || null;
+        const a2 = primarySlotAsset('a2', idx);
+        const a3 = primarySlotAsset('a3', idx);
+        const priorMeta = isPrimaryApprove ? null : selectedDrivePriorMeta();
+        const priorImageName = isPrimaryApprove
+          ? [
+              a1 && (a1.name || 'A1 template'),
+              a2 && (a2.name || 'A2 camera'),
+              a3 && (a3.name || 'A3 optional')
+            ].filter(Boolean).join(' · ')
+          : ((assets.priorOverride && assets.priorOverride.name) ||
+            (priorMeta && priorMeta.img && priorMeta.img.name) ||
+            (isMainShot(shot) ? 'Hero Front / seq 01 (angle source)' : ''));
         const productImageNames = (assets.inputs || []).map((a) => a.name || 'product.png').filter(Boolean);
         showToast('Saving approval to Prompt DB…', false);
         writePromptApprove({
           ean: task.ean,
           author: author,
-          workflow: 'Product replacement',
+          workflow: isPrimaryApprove ? 'Primary' : 'Product replacement',
           productType: state.workspace.productTypeName || '',
           productTypeVariant: state.workspace.productTypeVariant || '',
           subCategory: task.subCategory || '',
@@ -11147,7 +14912,7 @@
           answerlyResultUrl: (assets.output && assets.output.resultUrl) || '',
           workflowTool: (assets.output && assets.output.workflow) || '',
           priorSource: (assets.output && assets.output.priorSource) ||
-            (assets.priorOverride ? 'override' : ''),
+            (isPrimaryApprove ? 'primary' : (assets.priorOverride ? 'override' : '')),
           answerlyInputUrlA: (function () {
             const urls = (assets.output && assets.output.inputUrls) || [];
             return urls[0] || (assets.output && assets.output.inputUrl) || '';
@@ -11155,7 +14920,11 @@
           answerlyInputUrlB1: ((assets.output && assets.output.inputUrls) || [])[1] || '',
           answerlyInputUrlB2: ((assets.output && assets.output.inputUrls) || [])[2] || '',
           answerlyInputUrlB3: ((assets.output && assets.output.inputUrls) || [])[3] || '',
-          answerlyInputUrlB4: ((assets.output && assets.output.inputUrls) || [])[4] || ''
+          answerlyInputUrlB4: ((assets.output && assets.output.inputUrls) || [])[4] || '',
+          answerlyInputUrlB5: ((assets.output && assets.output.inputUrls) || [])[5] || '',
+          answerlyInputUrlB6: ((assets.output && assets.output.inputUrls) || [])[6] || '',
+          answerlyInputUrlB7: ((assets.output && assets.output.inputUrls) || [])[7] || '',
+          answerlyInputUrlB8: ((assets.output && assets.output.inputUrls) || [])[8] || ''
         }).then((data) => {
           if (!state.workspace) return;
           if (!state.workspace.approved) state.workspace.approved = {};
@@ -11189,7 +14958,8 @@
           };
           exportEntry.url = ensureExportDisplayUrl(exportEntry) || liveOutUrl;
           state.workspace.exportImages[idx] = exportEntry;
-          persistCurrentReplaceDraft();
+          if (isPrimaryApprove) persistCurrentPrimaryDraft();
+          else persistCurrentReplaceDraft();
           const savedOrigin = (data && data.promptOrigin) || origin;
           const chars = data && data.promptChars != null ? Number(data.promptChars) : 0;
           const savedRating = (data && data.qualityRating) || String(rating);
@@ -11212,14 +14982,15 @@
             ensureApprovedCustomPrompts(true).catch(() => {});
           }
           renderWorkspace();
-          // Hero Front / seq 01 Rate & Approve → auto-generate MAIN (prompt kept; no manual MAIN run).
+          // Hero Front / seq 01 Rate & Approve → auto-generate MAIN (Replace + Primary).
           return maybeAutoGenerateMain(idx);
         }).catch((err) => {
           showToast('Could not write All user: ' + esc((err && err.message) || err), false, { error: true });
         });
         return;
       }
-      if (action === 'prompt-expand' && state.workspace && state.workspace.mode === 'replace') {
+      if (action === 'prompt-expand' && state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
         persistReplacePromptFromDom();
         const idx = state.workspaceShot || 0;
         const promptEl = els.workspace.querySelector('[data-ws-prompt]');
@@ -11228,7 +14999,8 @@
         openPromptExpandModal(text, idx);
         return;
       }
-      if (action === 'reroll-prompt' && state.workspace && state.workspace.mode === 'replace') {
+      if (action === 'reroll-prompt' && state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
         persistReplacePromptFromDom();
         const idx = state.workspaceShot || 0;
         if (!(state.workspace.outputs && state.workspace.outputs[idx])) {
@@ -11240,10 +15012,16 @@
           promptEl.focus();
           promptEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        showToast('Tweak the prompt in C, then Generate this shot again.', false);
+        showToast(
+          state.workspace.mode === 'primary'
+            ? 'Tweak the prompt in C, then Generate this shot again.'
+            : 'Tweak the prompt in C, then Generate this shot again.',
+          false
+        );
         return;
       }
-      if (action === 'prompt-copy' && state.workspace && state.workspace.mode === 'replace') {
+      if (action === 'prompt-copy' && state.workspace &&
+          (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
         const promptEl = els.workspace.querySelector('[data-ws-prompt]');
         const text = promptEl ? promptEl.value : '';
         if (!text) {
@@ -11329,7 +15107,7 @@
           const anyMapped = (mapInfo.mapped || []).length > 0;
           showToast(
             anyMapped
-              ? 'No shots ready — add a product image on B for each shot you want (MAIN can use Hero Front / 01 B).'
+              ? 'No shots ready — add a product image on B for each shot you want. Jobs will not run without B (MAIN can use Hero Front / 01 B).'
               : (mapInfo.hasConflict
                 ? 'No mapped shots. Unmapped / new shots and dim-separate M-DIM were skipped.'
                 : 'No mapped shots to generate.'),
@@ -11343,7 +15121,7 @@
           const pending = includeDone ? pendingAll : pendingSkip;
           if (!pending.length) {
             showToast(includeDone
-              ? 'No shots with B to regenerate.'
+              ? 'No shots with B to regenerate. Add a product image on B first.'
               : 'Nothing left — shots with B already have D. Choose Regenerate all to overwrite, or add B on more shots.', false);
             return;
           }
@@ -11404,9 +15182,14 @@
         const promptText = (state.workspace.prompts && state.workspace.prompts[idx] != null)
           ? state.workspace.prompts[idx]
           : ((promptEl && promptEl.value) || '');
+        if (isShotBusy(idx)) {
+          showToast('This shot is already generating — switch to another shot to run more in parallel.', false);
+          return;
+        }
         const assets = shotAssets(idx);
         assets.error = null;
-        clearCancelFlags();
+        if (state.workspace.cancelShots) delete state.workspace.cancelShots[idx];
+        delete state.workspace.cancelAll;
         // Hide previous D while regenerating; keep blob on _previousOutput so drafts
         // survive EAN switches / reload if the job is still running or fails.
         const previousOutput = assets.output;
@@ -11414,9 +15197,8 @@
         assets._previousOutput = previousOutput || assets._previousOutput || null;
         assets.output = null;
         if (state.workspace.outputs) delete state.workspace.outputs[idx];
-        state.workspace.generating = idx;
-        state.workspace.genStage = 'Loading prior…';
-        state.workspace.panelOpen = true;
+        // Mark busy immediately so other shots stay free to Generate in parallel.
+        markShotBusy(idx, 'Loading prior…');
         renderWorkspace();
         // Manual Generate/Regenerate: prefer Hero Front D as A when present, but do not
         // hard-block if the user set an A override or Drive prior — only auto/gen-all requires hero D.
@@ -11427,9 +15209,7 @@
           const prev = shotAssets(idx)._previousOutput;
           if (prev && prev !== result.output) revokeAssetUrl(prev);
           delete shotAssets(idx)._previousOutput;
-          state.workspace.generating = null;
-          state.workspace.genStage = '';
-          clearCancelFlags();
+          clearShotBusy(idx);
           persistCurrentReplaceDraft();
           showToast('Answerly done · ' + esc((result.source && result.source.reason) || 'ok'), false);
           renderWorkspace();
@@ -11445,9 +15225,8 @@
           delete shotAssets(idx)._previousOutput;
           const cancelled = isCancelError(err);
           shotAssets(idx).error = cancelled ? null : ((err && err.message) || 'Generation failed');
-          state.workspace.generating = null;
-          state.workspace.genStage = '';
-          clearCancelFlags();
+          clearShotBusy(idx);
+          if (state.workspace.cancelShots) delete state.workspace.cancelShots[idx];
           persistCurrentReplaceDraft();
           showToast(
             cancelled ? 'Generation cancelled.' : esc(shotAssets(idx).error || 'Generation failed'),
@@ -11473,8 +15252,10 @@
     });
 
     els.workspace.addEventListener('change', (e) => {
-      if (!state.workspace || state.workspace.mode !== 'replace') return;
+      if (!state.workspace ||
+          (state.workspace.mode !== 'replace' && state.workspace.mode !== 'primary')) return;
       if (e.target.matches('[data-ws-dim-toggle]')) {
+        if (state.workspace.mode !== 'replace') return;
         state.workspace.dimSeparate = !!e.target.checked;
         renderWorkspace();
         return;
@@ -11490,24 +15271,42 @@
       if (e.target.matches('[data-ws-pt-variant]')) {
         state.workspace.productTypeVariant = e.target.value;
         state.workspace.prompts = {};
+        state.workspace.promptBaselines = {};
+        state.workspace.promptManualEdit = {};
+        const taskVar = taskByEan(state.workspace.ean);
+        state.workspaceShot = defaultWorkspaceShotIndex(shotListFor(taskVar || {}));
         writeProductTypePrefs(state.workspace.productTypeName, state.workspace.productTypeVariant);
+        if (state.workspace.mode === 'primary' && state.workspace.primary) {
+          const p = state.workspace.primary;
+          if (p.a2) {
+            Object.keys(p.a2).forEach((k) => {
+              if (p.a2Manual && p.a2Manual[k]) return;
+              revokeAssetUrl(p.a2[k]);
+              delete p.a2[k];
+            });
+          }
+          p.a2Loading = {};
+        }
         renderWorkspace();
         syncRoute({ replace: true });
       }
     });
 
     els.workspace.addEventListener('focusin', (e) => {
-      if (!state.workspace || state.workspace.mode !== 'replace') return;
+      if (!state.workspace ||
+          (state.workspace.mode !== 'replace' && state.workspace.mode !== 'primary')) return;
       if (!e.target.matches('[data-ws-pt-search]')) return;
       state.workspace.productTypeOpen = true;
       refreshProductTypeSuggestDom();
     });
 
     els.workspace.addEventListener('focusout', (e) => {
-      if (!state.workspace || state.workspace.mode !== 'replace') return;
+      if (!state.workspace ||
+          (state.workspace.mode !== 'replace' && state.workspace.mode !== 'primary')) return;
       if (!e.target.matches('[data-ws-pt-search]')) return;
       setTimeout(() => {
-        if (!state.workspace || state.workspace.mode !== 'replace') return;
+        if (!state.workspace ||
+            (state.workspace.mode !== 'replace' && state.workspace.mode !== 'primary')) return;
         const active = document.activeElement;
         if (active && els.workspace.contains(active) && active.closest('.wr-pt-combo')) return;
         const text = String(state.workspace.productTypeQuery || '').trim().toLowerCase();
@@ -11529,7 +15328,8 @@
     });
 
     els.workspace.addEventListener('input', (e) => {
-      if (!state.workspace || state.workspace.mode !== 'replace') return;
+      if (!state.workspace ||
+          (state.workspace.mode !== 'replace' && state.workspace.mode !== 'primary')) return;
       if (e.target.matches('[data-ws-pt-search]')) {
         const val = e.target.value;
         if (state.workspace.productTypeName && val !== state.workspace.productTypeName) {
@@ -11543,6 +15343,9 @@
         return;
       }
       if (e.target.matches('[data-ws-prompt]')) {
+        const key = e.target.getAttribute('data-ws-prompt');
+        const idx = key != null && key !== '' ? Number(key) : (state.workspaceShot || 0);
+        setPromptManualEdit(idx, true);
         persistReplacePromptFromDom();
         refreshPromptOriginUi();
         return;
@@ -11555,11 +15358,22 @@
       syncCompareSlider(compare, pos);
     });
 
+    els.workspace.addEventListener('scroll', (e) => {
+      if (!e.target || !e.target.matches || !e.target.matches('[data-ws-prompt]')) return;
+      const overlay = els.workspace.querySelector('[data-ws-prompt-highlight]');
+      if (!overlay) return;
+      overlay.scrollTop = e.target.scrollTop;
+      overlay.scrollLeft = e.target.scrollLeft;
+    }, true);
+
     els.workspace.addEventListener('focusout', (e) => {
-      if (!state.workspace || state.workspace.mode !== 'replace') return;
+      if (!state.workspace ||
+          (state.workspace.mode !== 'replace' && state.workspace.mode !== 'primary')) return;
       if (!e.target.matches('[data-ws-prompt]')) return;
       persistReplacePromptFromDom();
-      persistCurrentReplaceDraft();
+      if (state.workspace.mode === 'replace' || state.workspace.mode === 'primary') {
+        persistCurrentReplaceDraft();
+      }
     });
 
     function replaceDropHasFiles(e) {
@@ -11569,7 +15383,43 @@
     }
 
     function resolveReplaceDropTarget(el) {
-      if (!el || !state.workspace || state.workspace.mode !== 'replace') return null;
+      if (!el || !state.workspace) return null;
+      const mode = state.workspace.mode;
+      if (mode !== 'replace' && mode !== 'primary') return null;
+
+      if (mode === 'primary') {
+        const a1 = el.closest('[data-ws-drop="primary-a1"]');
+        if (a1) return { kind: 'primary-a1', shotIndex: state.workspaceShot || 0, highlight: a1 };
+        const a2 = el.closest('[data-ws-drop="primary-a2"]');
+        if (a2) return { kind: 'primary-a2', shotIndex: state.workspaceShot || 0, highlight: a2 };
+        const a3 = el.closest('[data-ws-drop="primary-a3"]');
+        if (a3) return { kind: 'primary-a3', shotIndex: state.workspaceShot || 0, highlight: a3 };
+        const inputTileP = el.closest('[data-ws-crop-input]');
+        if (inputTileP && inputTileP.getAttribute('data-ws-crop-input') !== '') {
+          return {
+            kind: 'inputs-replace',
+            shotIndex: state.workspaceShot || 0,
+            inputIndex: Number(inputTileP.getAttribute('data-ws-crop-input')) || 0,
+            highlight: inputTileP
+          };
+        }
+        const shotBtnP = el.closest('[data-ws-drop-shot]');
+        if (shotBtnP && shotBtnP.getAttribute('data-ws-drop-shot') !== '') {
+          return {
+            kind: 'inputs',
+            shotIndex: Number(shotBtnP.getAttribute('data-ws-drop-shot')) || 0,
+            highlight: shotBtnP,
+            switchShot: true,
+            keepDriveIndex: true
+          };
+        }
+        const inputsP = el.closest('[data-ws-drop="inputs"]');
+        if (inputsP) return { kind: 'inputs', shotIndex: state.workspaceShot || 0, highlight: inputsP };
+        const railP = el.closest('[data-ws-drop="rail"]');
+        if (railP) return { kind: 'inputs', shotIndex: state.workspaceShot || 0, highlight: railP };
+        return null;
+      }
+
       const exportSlot = el.closest('[data-ws-drop-export]');
       if (exportSlot && exportSlot.getAttribute('data-ws-drop-export') !== '') {
         return {
@@ -11690,6 +15540,9 @@
         setMdimBaseOverrideFromFile(files[0]);
       } else if (dest.kind === 'prior') {
         setPriorOverrideFromFile(dest.shotIndex, files[0]);
+      } else if (dest.kind === 'primary-a1' || dest.kind === 'primary-a2' || dest.kind === 'primary-a3') {
+        const slot = dest.kind === 'primary-a1' ? 'a1' : (dest.kind === 'primary-a3' ? 'a3' : 'a2');
+        setPrimarySlotFromFile(slot, dest.shotIndex, files[0]);
       } else if (dest.kind === 'inputs-replace') {
         replaceShotInput(dest.shotIndex, dest.inputIndex, files[0]);
       } else if (dest.kind === 'export') {
@@ -11830,7 +15683,11 @@
     } else {
       setAnswerlyStatus('Connected · paste a session token to continue', false);
     }
-    if (state.workspace && state.workspace.mode === 'replace') renderWorkspace();
+    syncAnswerlyTokenChip();
+    if (state.workspace &&
+        (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
+      renderWorkspace();
+    }
   }
 
   function openAnswerlyModal() {
@@ -11943,6 +15800,9 @@
   if (els.cropModal) {
     if (els.cropCancel) els.cropCancel.addEventListener('click', closeCropModal);
     if (els.cropConfirm) els.cropConfirm.addEventListener('click', () => { confirmCropModal(); });
+    if (els.cropKeepProportion) {
+      els.cropKeepProportion.addEventListener('change', onCropKeepProportionChange);
+    }
     if (els.cropReset) els.cropReset.addEventListener('click', resetCropBox);
     if (els.cropHead) els.cropHead.addEventListener('pointerdown', startCropWindowDrag);
     if (els.cropStage) {
@@ -11995,7 +15855,16 @@
             workspaceKind: saved.workspace.kind
           });
         }
+        // Drop stale “expired” chip immediately (Primary used to keep showing it until re-render).
+        if (state.answerlyToken) {
+          delete state.answerlyToken.error;
+          if (state.answerlyToken.hasToken && !state.answerlyToken.expired) {
+            state.answerlyToken.bridgeOffline = false;
+          }
+        }
+        syncAnswerlyTokenChip();
         await refreshAnswerlyStatus();
+        syncAnswerlyTokenChip();
         showToast('Answerly token saved · ' + formatTokenExpiryDetail(state.answerlyToken), false);
         closeAnswerlyModal();
       } catch (err) {
@@ -12005,7 +15874,8 @@
   }
 
   function syncAnswerlyTokenChip() {
-    if (!els.workspace || !state.workspace || state.workspace.mode !== 'replace') return;
+    if (!els.workspace || !state.workspace) return;
+    if (state.workspace.mode !== 'replace' && state.workspace.mode !== 'primary') return;
     const chip = els.workspace.querySelector('.wr-token-chip');
     if (!chip) return;
     const tok = state.answerlyToken;
@@ -12014,9 +15884,10 @@
     chip.textContent = formatTokenExpiry(tok);
   }
 
-  // Keep expiry chip fresh while Replacement is open (avoid full re-render so the prompt isn't disrupted).
+  // Keep expiry chip fresh while Replace / Primary is open (avoid full re-render so the prompt isn't disrupted).
   setInterval(() => {
-    if (!state.workspace || state.workspace.mode !== 'replace') return;
+    if (!state.workspace) return;
+    if (state.workspace.mode !== 'replace' && state.workspace.mode !== 'primary') return;
     if (document.visibilityState !== 'visible') return;
     refreshAnswerlyTokenState().then(() => syncAnswerlyTokenChip());
   }, 60000);
@@ -12149,7 +16020,8 @@
             mdimWorkspaceBlob: state.workspace.mdimWorkspaceBlob,
             mdimSourceAsset: state.workspace.mdimSourceAsset,
             mdimWsCache: state.workspace.mdimWsCache,
-            promptBaselines: state.workspace.promptBaselines
+            promptBaselines: state.workspace.promptBaselines,
+            promptManualEdit: state.workspace.promptManualEdit
           }
         : null;
       await applyFeedData(data);
@@ -12177,6 +16049,7 @@
         state.workspace.mdimSourceAsset = keepWs.mdimSourceAsset || state.workspace.mdimSourceAsset;
         state.workspace.mdimWsCache = keepWs.mdimWsCache || state.workspace.mdimWsCache;
         state.workspace.promptBaselines = keepWs.promptBaselines || state.workspace.promptBaselines;
+        state.workspace.promptManualEdit = keepWs.promptManualEdit || state.workspace.promptManualEdit;
         state.workspace.draftsLoaded = !!keepWs.draftsLoaded;
         if (keepWs.matchEan) state.workspace.matchEan = keepWs.matchEan;
         if (keepWs.shot != null) state.workspaceShot = keepWs.shot;
@@ -12229,6 +16102,7 @@
 
   renderUser();
   syncCatalogUi();
+  ensurePrimaryPromptCoreScript();
   {
     // No hash → #renamer so the live index.html URL opens Renamer (same as before V1.2).
     const initial = hashView() || 'renamer';
@@ -12242,13 +16116,14 @@
   }, ASSIGN_POLL_MS);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') refreshAssigns();
-    if (document.visibilityState === 'hidden' &&
-        state.workspace && state.workspace.mode === 'replace') {
+    if (document.visibilityState === 'hidden' && state.workspace &&
+        (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
       persistCurrentReplaceDraft();
     }
   });
   window.addEventListener('pagehide', () => {
-    if (state.workspace && state.workspace.mode === 'replace') {
+    if (state.workspace &&
+        (state.workspace.mode === 'replace' || state.workspace.mode === 'primary')) {
       persistCurrentReplaceDraft();
     }
   });
