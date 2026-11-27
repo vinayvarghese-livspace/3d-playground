@@ -3092,7 +3092,7 @@
     if (window.PrimaryPromptCore && window.PrimaryPromptCore.compilePrompt) return;
     if (document.querySelector('script[data-primary-prompt-core]')) return;
     const s = document.createElement('script');
-    s.src = 'primary-prompt/primary-prompt-core.js?v=6';
+    s.src = 'primary-prompt/primary-prompt-core.js?v=7';
     s.setAttribute('data-primary-prompt-core', '1');
     s.onload = function () {
       if (!(window.PrimaryPromptCore && window.PrimaryPromptCore.compilePrompt)) return;
@@ -3178,13 +3178,16 @@
       : Math.max(1, Math.min(4, inputs.length || 1));
 
     // Lifestyle replace-style order: A2 scene = url_1, optional A1, then B (matches Replacement).
+    const refKeyFor = (n) => (window.PrimaryPromptCore && window.PrimaryPromptCore.answerlyRefKey)
+      ? window.PrimaryPromptCore.answerlyRefKey(n)
+      : (n === 1 ? 'reference_image_url' : n === 2 ? 'second_reference_url' : n === 3 ? 'third_reference_url' : ('reference_' + n + '_url'));
     if (lifestyle) {
       const slots = [];
       let n = 1;
       if (a2) {
         slots.push({
           role: 'a2',
-          refKey: 'reference_image_url_' + n,
+          refKey: refKeyFor(n),
           inputImage: n,
           label: 'LIFESTYLE SCENE / CAMERA REFERENCE',
           asset: a2
@@ -3194,7 +3197,7 @@
       if (a1) {
         slots.push({
           role: 'a1',
-          refKey: 'reference_image_url_' + n,
+          refKey: refKeyFor(n),
           inputImage: n,
           label: 'OPTIONAL REFERENCE',
           asset: a1
@@ -3206,7 +3209,7 @@
         slots.push({
           role: 'b',
           bIndex: i,
-          refKey: 'reference_image_url_' + n,
+          refKey: refKeyFor(n),
           inputImage: n,
           label: 'PRODUCT REFERENCE',
           asset: inputs[i] || null
@@ -3251,21 +3254,21 @@
     if (!slots.length) {
       let n = 1;
       if (a1) {
-        slots.push({ role: 'a1', refKey: 'reference_image_url_' + n, inputImage: n, label: 'MASTER BACKGROUND', asset: a1 });
+        slots.push({ role: 'a1', refKey: refKeyFor(n), inputImage: n, label: 'MASTER BACKGROUND', asset: a1 });
         n += 1;
       }
       if (a2) {
-        slots.push({ role: 'a2', refKey: 'reference_image_url_' + n, inputImage: n, label: 'CAMERA REFERENCE ONLY', asset: a2 });
+        slots.push({ role: 'a2', refKey: refKeyFor(n), inputImage: n, label: 'CAMERA REFERENCE ONLY', asset: a2 });
         n += 1;
       }
       if (a3) {
-        slots.push({ role: 'a3', refKey: 'reference_image_url_' + n, inputImage: n, label: 'OPTIONAL REFERENCE', asset: a3 });
+        slots.push({ role: 'a3', refKey: refKeyFor(n), inputImage: n, label: 'OPTIONAL REFERENCE', asset: a3 });
         n += 1;
       }
       const bStart = n;
       for (let i = 0; i < bCount; i++) {
         slots.push({
-          role: 'b', bIndex: i, refKey: 'reference_image_url_' + n, inputImage: n,
+          role: 'b', bIndex: i, refKey: refKeyFor(n), inputImage: n,
           label: 'PRODUCT REFERENCE', asset: inputs[i] || null
         });
         n += 1;
@@ -3357,8 +3360,8 @@
     });
     base = String(base || '')
       .replace(
-        /\*\*INPUT IMAGE 1\s*[—\-]\s*`reference_image_url_1`\s*[—\-]\s*PRIOR\s*\/\s*MASTER\*\*/gi,
-        '**INPUT IMAGE 1 — `reference_image_url_1` — LIFESTYLE SCENE / CAMERA REFERENCE**'
+        /\*\*INPUT IMAGE 1\s*[—\-]\s*`reference_image_url(?:_1)?`\s*[—\-]\s*PRIOR\s*\/\s*MASTER\*\*/gi,
+        '**INPUT IMAGE 1 — `reference_image_url` — LIFESTYLE SCENE / CAMERA REFERENCE**'
       )
       .replace(
         /The original scene to be edited\. Preserve this image exactly, except for the main product\./gi,
@@ -3371,7 +3374,7 @@
     if (hasOptA1) {
       base = base.replace(
         /(\*\*INPUT IMAGE 1[^*\n]*\*\*[\s\S]*?)(\n\*\*INPUT IMAGE)/i,
-        '$1\n\n**INPUT IMAGE 2 — `reference_image_url_2` — OPTIONAL REFERENCE (A1)**\n\n' +
+        '$1\n\n**INPUT IMAGE 2 — `second_reference_url` — OPTIONAL REFERENCE (A1)**\n\n' +
           'Optional supporting reference only. Do not let it override product identity from the product reference images.\n$2'
       );
     }
@@ -6267,7 +6270,7 @@
     localStorage.setItem(ANSWERLY_MODEL_KEY, model);
 
     // Order: INPUT IMAGE 1 = prior/master, 2+ = each product B as its own Answerly reference slot
-    // (second_reference_url, third_reference_url, fourth_reference_url, …).
+    // (second_reference_url, third_reference_url, reference_4_url, reference_5_url, …).
     // Krea / Grok accept at most 1 reference — send prior only; product stays in the prompt text.
     const maxRefs = modelMaxReferenceImages(model);
     const productInputs = source.inputs.slice(0, Math.max(0, maxRefs - 1));
@@ -8043,6 +8046,17 @@
     return text + '\n\nFully remove the prior product silhouette from INPUT IMAGE 1 and insert the new product. Do not leave remnants or blend products.';
   }
 
+  function answerlyRefKeyLocal(n) {
+    if (window.PrimaryPromptCore && window.PrimaryPromptCore.answerlyRefKey) {
+      return window.PrimaryPromptCore.answerlyRefKey(n);
+    }
+    const i = Math.max(1, Math.floor(Number(n) || 1));
+    if (i === 1) return 'reference_image_url';
+    if (i === 2) return 'second_reference_url';
+    if (i === 3) return 'third_reference_url';
+    return 'reference_' + i + '_url';
+  }
+
   /** Build product-reference bullets for only the B images that are actually present. */
   function productReferenceBlockForCount(productCount, productStartNum) {
     const count = Math.max(0, Math.min(4, Number(productCount) || 0));
@@ -8050,14 +8064,14 @@
     const ordinals = ['first', 'second', 'third', 'fourth'];
     if (count <= 0) {
       return (
-        '**INPUT IMAGE ' + start + ' — `reference_image_url_' + start + '` — PRODUCT REFERENCE**\n\n' +
+        '**INPUT IMAGE ' + start + ' — `' + answerlyRefKeyLocal(start) + '` — PRODUCT REFERENCE**\n\n' +
         'Add at least one product reference image.'
       );
     }
     if (count === 1) {
       return (
-        '**INPUT IMAGE ' + start + ' — `reference_image_url_' + start + '` — PRODUCT REFERENCE**\n\n' +
-        'This product photo is INPUT IMAGE ' + start + ' — `reference_image_url_' + start + '`.'
+        '**INPUT IMAGE ' + start + ' — `' + answerlyRefKeyLocal(start) + '` — PRODUCT REFERENCE**\n\n' +
+        'This product photo is INPUT IMAGE ' + start + ' — `' + answerlyRefKeyLocal(start) + '`.'
       );
     }
     const nums = [];
@@ -8066,7 +8080,7 @@
       const n = start + i;
       nums.push(String(n));
       bullets.push(
-        '- INPUT IMAGE ' + n + ' — `reference_image_url_' + n + '` — ' +
+        '- INPUT IMAGE ' + n + ' — `' + answerlyRefKeyLocal(n) + '` — ' +
           ordinals[i] + ' product reference'
       );
     }
@@ -8074,7 +8088,7 @@
       ? (nums[0] + ' and ' + nums[1])
       : (nums.slice(0, -1).join(', ') + ', and ' + nums[nums.length - 1]);
     return (
-      '**INPUT IMAGES ' + numList + ' — `reference_image_url_' + start +
+      '**INPUT IMAGES ' + numList + ' — `' + answerlyRefKeyLocal(start) +
         '` onward — PRODUCT REFERENCES**\n\n' +
       'Each product photo is its own input image, numbered in order:\n' +
       bullets.join('\n')
@@ -8083,7 +8097,7 @@
 
   /**
    * Adapt Universal Product-replacement Final successful wording:
-   * - modernize old second_reference_url keys
+   * - normalize ref keys to Answerly field names
    * - list only product refs that are actually present (no “if provided”)
    * - drop the generic “Together, these product reference images…” paragraph
    */
@@ -8095,12 +8109,18 @@
     if (!text) return text;
 
     text = text.replace(
-      /\*\*INPUT IMAGE 1\s*[—\-]\s*`reference_image_url`\*\*/gi,
-      '**INPUT IMAGE 1 — `reference_image_url_1` — PRIOR / MASTER**'
+      /\*\*INPUT IMAGE 1\s*[—\-]\s*`reference_image_url(?:_1)?`\*\*/gi,
+      '**INPUT IMAGE 1 — `reference_image_url` — PRIOR / MASTER**'
     );
-    text = text.replace(/`second_reference_url`/gi, '`reference_image_url_2`');
-    text = text.replace(/`third_reference_url`/gi, '`reference_image_url_3`');
-    text = text.replace(/`fourth_reference_url`/gi, '`reference_image_url_4`');
+    // Old numbered tokens → Answerly API / Jobs UI names.
+    text = text.replace(/`reference_image_url_1`/gi, '`reference_image_url`');
+    text = text.replace(/`reference_image_url_2`/gi, '`second_reference_url`');
+    text = text.replace(/`reference_image_url_3`/gi, '`third_reference_url`');
+    text = text.replace(/`reference_image_url_(\d+)`/gi, function (_, n) {
+      return '`' + answerlyRefKeyLocal(n) + '`';
+    });
+    text = text.replace(/`fourth_reference_url`/gi, '`reference_4_url`');
+    text = text.replace(/`fifth_reference_url`/gi, '`reference_5_url`');
 
     const productBlock = productReferenceBlockForCount(productCount, productStartNum);
 
@@ -12396,7 +12416,7 @@
           const answerlyNum = bStartNum + n;
           return '<div class="wr-in-tile' + (asset.cropped ? ' is-cropped' : '') +
             '" data-ws-crop-input="' + n + '" title="Click to crop">' +
-            '<span class="wr-in-num" title="reference_image_url_' + answerlyNum +
+            '<span class="wr-in-num" title="' + answerlyRefKeyLocal(answerlyNum) +
               ' · Answerly INPUT IMAGE ' + answerlyNum + ' (product B' + (n + 1) + ')">' +
               answerlyNum +
             '</span>' +

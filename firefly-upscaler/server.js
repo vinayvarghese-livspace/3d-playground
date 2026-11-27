@@ -346,6 +346,7 @@ async function runAnswerlyJob(job) {
       ' keys=' + refKeys.map((k) => k + (Array.isArray(input[k]) ? '[' + input[k].length + ']' : '')).join(','));
     const queued = await answerly.queueWorkflow(job.workflow, input, {
       title: job.title || '',
+      display_name: job.title || '',
       parent_execution_id: job.parentExecutionId || '',
       metadata: job.metadata || undefined
     });

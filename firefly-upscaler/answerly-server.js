@@ -206,11 +206,16 @@ async function runAnswerlyJob(job) {
       ' keys=' + refKeys.map((k) => k + (Array.isArray(input[k]) ? '[' + input[k].length + ']' : '')).join(','));
     const queued = await answerly.queueWorkflow(job.workflow, input, {
       title: job.title || '',
+      display_name: job.title || '',
       parent_execution_id: job.parentExecutionId || '',
       metadata: job.metadata || undefined
     });
     throwIfAnswerlyCancelled(job);
     job.executionId = queued.execution_id || queued.id || null;
+    if (job.title) {
+      log('[answerly] ' + job.id + ': named \"' + String(job.title).slice(0, 80) +
+        '\" (display_name=' + (queued.display_name || '?') + ')');
+    }
     job.rootExecutionId = queued.root_execution_id ||
       queued.parent_execution_id ||
       job.parentExecutionId ||

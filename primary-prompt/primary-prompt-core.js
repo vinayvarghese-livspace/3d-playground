@@ -15,6 +15,40 @@
   }
 
   /**
+   * Answerly Image-to-Image API / Jobs UI field names (1-based slot index).
+   * 1: reference_image_url
+   * 2: second_reference_url
+   * 3: third_reference_url
+   * 4+: reference_4_url, reference_5_url, …
+   */
+  function answerlyRefKey(n) {
+    const i = Math.max(1, Math.floor(Number(n) || 1));
+    if (i === 1) return 'reference_image_url';
+    if (i === 2) return 'second_reference_url';
+    if (i === 3) return 'third_reference_url';
+    return 'reference_' + i + '_url';
+  }
+
+  /** Canonical catalog index from a prompt ref token (old _N or live Answerly names). */
+  function canonNumFromRefToken(token) {
+    const k = String(token || '').trim();
+    if (!k) return null;
+    if (k === 'reference_image_url') return 1;
+    if (k === 'second_reference_url') return 2;
+    if (k === 'third_reference_url') return 3;
+    let m = k.match(/^reference_(\d+)_url$/);
+    if (m) return Number(m[1]);
+    m = k.match(/^reference_image_url_(\d+)$/);
+    if (m) return Number(m[1]);
+    if (k === 'fourth_reference_url') return 4;
+    if (k === 'fifth_reference_url') return 5;
+    if (k === 'sixth_reference_url') return 6;
+    if (k === 'seventh_reference_url') return 7;
+    if (k === 'eighth_reference_url') return 8;
+    return null;
+  }
+
+  /**
    * @param {{ hasA1?: boolean, hasA2?: boolean, hasA3?: boolean, bCount?: number }} opts
    */
   function buildPlan(opts) {
@@ -26,15 +60,15 @@
     const slots = [];
     let n = 1;
     if (hasA1) {
-      slots.push({ role: 'a1', refKey: 'reference_image_url_' + n, inputImage: n, label: 'MASTER BACKGROUND' });
+      slots.push({ role: 'a1', refKey: answerlyRefKey(n), inputImage: n, label: 'MASTER BACKGROUND' });
       n += 1;
     }
     if (hasA2) {
-      slots.push({ role: 'a2', refKey: 'reference_image_url_' + n, inputImage: n, label: 'CAMERA REFERENCE' });
+      slots.push({ role: 'a2', refKey: answerlyRefKey(n), inputImage: n, label: 'CAMERA REFERENCE' });
       n += 1;
     }
     if (hasA3) {
-      slots.push({ role: 'a3', refKey: 'reference_image_url_' + n, inputImage: n, label: 'OPTIONAL REFERENCE' });
+      slots.push({ role: 'a3', refKey: answerlyRefKey(n), inputImage: n, label: 'OPTIONAL REFERENCE' });
       n += 1;
     }
     const bStartNum = n;
@@ -42,7 +76,7 @@
       slots.push({
         role: 'b',
         bIndex: i,
-        refKey: 'reference_image_url_' + n,
+        refKey: answerlyRefKey(n),
         inputImage: n,
         label: 'PRODUCT REFERENCE'
       });
@@ -325,8 +359,9 @@
   }
 
   function stripInputBlockByLabel(text, labelRe) {
+    // Accept old reference_image_url_N and live Answerly keys in the heading.
     const re = new RegExp(
-      '\\*\\*INPUT IMAGE\\s+\\d+\\s*[—\\-]\\s*`reference_image_url_\\d+`\\s*[—\\-]\\s*' +
+      '\\*\\*INPUT IMAGE\\s+\\d+\\s*[—\\-]\\s*`[^`]+`\\s*[—\\-]\\s*' +
         labelRe.source +
         '\\*\\*[\\s\\S]*?(?=\\n\\*\\*INPUT IMAGE|\\n\\*\\*PRODUCT REFERENCES|\\n##\\s|$)',
       'i'
@@ -344,7 +379,7 @@
 
   /**
    * Adapt a Prompt-DB Universal Primary master (canonical A1=1…B=4+) to the live
-   * slot plan: drop missing A* blocks/sections and renumber reference_image_url_N.
+   * slot plan: drop missing A* blocks/sections and remap to Answerly field names.
    * @param {string} dbText
    * @param {{ hasA1?: boolean, hasA2?: boolean, hasA3?: boolean, bCount?: number, slots?: array }|object} planOrOpts
    */
@@ -375,21 +410,42 @@
       else liveByRole[s.role] = s.inputImage;
     });
 
-    // Tokenize canonical refs so remaps do not collide (4→3 then 3→2…).
-    t = t.replace(/reference_image_url_(\d+)/g, function (_, n) {
-      const role = canonRoleForNum(n);
+    function remapCanonToLive(canonNum) {
+      const role = canonRoleForNum(canonNum);
       if (!role || liveByRole[role] == null) return '__DROP_REF__';
       return '__LIVE_REF_' + liveByRole[role] + '__';
+    }
+
+    // Tokenize every known ref token (old _N + Answerly names) so remaps do not collide.
+    t = t.replace(/`([^`]+)`/g, function (full, inner) {
+      const canon = canonNumFromRefToken(inner);
+      if (canon == null) return full;
+      return '`' + remapCanonToLive(canon) + '`';
     });
+    // Bare tokens outside backticks (rare).
+    t = t.replace(
+      /\b(reference_image_url_\d+|reference_image_url|second_reference_url|third_reference_url|reference_\d+_url|fourth_reference_url|fifth_reference_url|sixth_reference_url|seventh_reference_url|eighth_reference_url)\b/g,
+      function (tok) {
+        const canon = canonNumFromRefToken(tok);
+        if (canon == null) return tok;
+        return remapCanonToLive(canon);
+      }
+    );
     t = t.split('\n').filter(function (line) {
       return line.indexOf('__DROP_REF__') < 0;
     }).join('\n');
-    t = t.replace(/__LIVE_REF_(\d+)__/g, 'reference_image_url_$1');
+    t = t.replace(/__LIVE_REF_(\d+)__/g, function (_, n) {
+      return answerlyRefKey(n);
+    });
 
-    // Align "INPUT IMAGE N" with the remapped reference_image_url_N.
+    // Align "INPUT IMAGE N — `answerlyKey`" with the remapped slot index.
     t = t.replace(
-      /\*\*INPUT IMAGE\s+\d+\s*[—\-]\s*`reference_image_url_(\d+)`/gi,
-      '**INPUT IMAGE $1 — `reference_image_url_$1`'
+      /\*\*INPUT IMAGE\s+\d+\s*[—\-]\s*`([^`]+)`/gi,
+      function (full, key) {
+        const liveN = canonNumFromRefToken(key);
+        if (liveN == null) return full;
+        return '**INPUT IMAGE ' + liveN + ' — `' + answerlyRefKey(liveN) + '`';
+      }
     );
 
     const rangeHead = productRefRangeHeading(plan);
@@ -456,6 +512,8 @@
     compileFromUniversal: compileFromUniversal,
     productRefRange: productRefRange,
     productRefsPhrase: productRefsPhrase,
-    clampBCount: clampBCount
+    clampBCount: clampBCount,
+    answerlyRefKey: answerlyRefKey,
+    canonNumFromRefToken: canonNumFromRefToken
   };
 })(typeof window !== 'undefined' ? window : globalThis);

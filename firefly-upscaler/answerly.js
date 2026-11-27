@@ -412,10 +412,11 @@ function buildInput(workflowMeta, opts) {
       ? opts.imageUrls.filter(Boolean)
       : (opts.imageUrl ? [opts.imageUrl] : []);
     if (!urls.length) throw new Error(workflowMeta.label + ' needs an input image');
-    // Image to Image multi-ref:
-    // - Named slots (second/third/…) are capped by the Answerly workflow schema (~3 total).
-    // - reference_image_urls[] is the full ordered list (up to 8) so A1+A2+A3+B×4 all arrive.
-    // Do not also set *_reference_image_url aliases — those duplicate rows in Jobs UI.
+    // Image to Image multi-ref — field names match Answerly Jobs UI / API:
+    //   1: reference_image_url
+    //   2: second_reference_url
+    //   3: third_reference_url
+    //   4+: reference_4_url, reference_5_url, … (NOT fourth_reference_url)
     if (workflowMeta.id === 'image-to-image-workflow') {
       const modelLow = String(opts.model || '').toLowerCase();
       // Krea / Grok / xAI accept at most 1 reference — never set extra slots.
@@ -423,19 +424,25 @@ function buildInput(workflowMeta, opts) {
       const maxRefs = /krea|grok|xai\//.test(modelLow) ? 1 : 8;
       const take = urls.slice(0, maxRefs);
       [
-        'second_reference_url', 'third_reference_url', 'fourth_reference_url', 'fifth_reference_url',
+        'second_reference_url', 'third_reference_url',
+        'fourth_reference_url', 'fifth_reference_url',
         'sixth_reference_url', 'seventh_reference_url', 'eighth_reference_url',
+        'reference_4_url', 'reference_5_url', 'reference_6_url', 'reference_7_url', 'reference_8_url',
         'second_reference_image_url', 'third_reference_image_url', 'fourth_reference_image_url',
         'fifth_reference_image_url', 'sixth_reference_image_url', 'seventh_reference_image_url',
         'eighth_reference_image_url', 'reference_image_urls'
       ].forEach((k) => { delete input[k]; });
       input.reference_image_url = take[0];
       if (maxRefs > 1 && take.length > 1) {
-        input.reference_image_urls = take.slice();
-        // Keep the first few named slots for older Jobs UI that only reads those fields.
+        // Exact slot names observed on live Answerly executions (GPT Image etc.).
         const slotKeys = [
-          'second_reference_url', 'third_reference_url', 'fourth_reference_url', 'fifth_reference_url',
-          'sixth_reference_url', 'seventh_reference_url', 'eighth_reference_url'
+          'second_reference_url',
+          'third_reference_url',
+          'reference_4_url',
+          'reference_5_url',
+          'reference_6_url',
+          'reference_7_url',
+          'reference_8_url'
         ];
         for (let i = 1; i < take.length && i - 1 < slotKeys.length; i++) {
           if (take[i]) input[slotKeys[i - 1]] = take[i];
@@ -446,6 +453,21 @@ function buildInput(workflowMeta, opts) {
     }
   }
   return input;
+}
+
+/**
+ * Set the Jobs UI name (the editable field that defaults to "Image to Image").
+ * Answerly ignores title/name on create — only display_name sticks (via PATCH).
+ */
+async function setExecutionDisplayName(executionId, displayName) {
+  const id = String(executionId || '').trim();
+  const name = String(displayName || '').trim().slice(0, 255);
+  if (!id || !name) return null;
+  return api('/api/v2/workflow-executions/' + encodeURIComponent(id), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ display_name: name })
+  });
 }
 
 /**
@@ -463,8 +485,12 @@ async function queueWorkflow(workflowId, input, opts) {
     workspace_id: workspaceId,
     input
   };
-  const title = String(options.title || options.name || '').trim();
+  const title = String(
+    options.display_name || options.displayName || options.title || options.name || ''
+  ).trim().slice(0, 255);
   if (title) {
+    // Send every known alias; Answerly still often ignores these on POST.
+    body.display_name = title;
     body.title = title;
     body.name = title;
   }
@@ -477,11 +503,25 @@ async function queueWorkflow(workflowId, input, opts) {
   if (options.metadata && typeof options.metadata === 'object') {
     body.metadata = options.metadata;
   }
-  return api('/api/v2/workflow-executions', {
+  const queued = await api('/api/v2/workflow-executions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
+  // Jobs UI reads display_name — PATCH immediately so the first gen shows the EAN
+  // (and follow-ups show shoot · code) instead of the default "Image to Image".
+  const execId = queued && (queued.execution_id || queued.id);
+  if (title && execId) {
+    try {
+      const patched = await setExecutionDisplayName(execId, title);
+      if (patched && patched.display_name) queued.display_name = patched.display_name;
+      else queued.display_name = title;
+    } catch (err) {
+      // Non-fatal: generation still runs; name stays at Answerly default.
+      console.warn('[answerly] display_name patch failed:', err && err.message ? err.message : err);
+    }
+  }
+  return queued;
 }
 
 async function getExecution(executionId) {
@@ -543,6 +583,7 @@ module.exports = {
   uploadImage,
   buildInput,
   queueWorkflow,
+  setExecutionDisplayName,
   getExecution,
   cancelExecution,
   pickResultUrl,

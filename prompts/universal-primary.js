@@ -2,10 +2,11 @@
 // Live rows from PROMPT_DB_URL (action=universal) take precedence when available.
 // Preview always rebuilds C via PrimaryPromptCore with live A1→A2→A3→B renumbering;
 // this master is the catalog copy (blank Image Name / short code). Extra B refs
-// become reference_image_url_5… when more product images are attached.
+// become reference_5_url… when more product images are attached.
+// Ref keys match Answerly Jobs UI / API field names.
 window.UNIVERSAL_PRIMARY_PROMPTS = {
   source: 'Prompt_Database_-_Universal.csv',
-  updatedAt: '2026-11-26',
+  updatedAt: '2026-11-27',
   rows: [
     {
       workflow: 'Primary',
@@ -17,13 +18,13 @@ window.UNIVERSAL_PRIMARY_PROMPTS = {
         '',
         '## 1. IMAGE INPUTS AND THEIR ROLES',
         '',
-        '**INPUT IMAGE 1 — `reference_image_url_1` — MASTER BACKGROUND**',
+        '**INPUT IMAGE 1 — `reference_image_url` — MASTER BACKGROUND**',
         '',
         'The source of the background and environment for the final image.',
         '',
         'Preserve its existing elements, including architecture, furniture, props, surfaces, colours, materials, textures, and overall design. Do not unnecessarily add, remove, or redesign anything.',
         '',
-        '**INPUT IMAGE 2 — `reference_image_url_2` — CAMERA REFERENCE**',
+        '**INPUT IMAGE 2 — `second_reference_url` — CAMERA REFERENCE**',
         '',
         'Use this image exclusively to determine the final camera setup:',
         '- Camera angle, viewpoint, position, and orientation.',
@@ -33,11 +34,11 @@ window.UNIVERSAL_PRIMARY_PROMPTS = {
         '',
         'Do not use any visual content from this image, including its products, objects, background, colours, materials, textures, or lighting.',
         '',
-        '**INPUT IMAGE 3 — `reference_image_url_3` — OPTIONAL REFERENCE**',
+        '**INPUT IMAGE 3 — `third_reference_url` — OPTIONAL REFERENCE**',
         '',
         'Use only for the specific purpose described in the additional instructions for that generation. Do not assume its role.',
         '',
-        '**PRODUCT REFERENCES — `reference_image_url_4` (and `_5`… when more product images are supplied)**',
+        '**PRODUCT REFERENCES — `reference_4_url` (and `reference_5_url`… when more product images are supplied)**',
         '',
         'These images define the product\'s identity and appearance. Use all available product references together to understand its design accurately.',
         '',
@@ -46,10 +47,10 @@ window.UNIVERSAL_PRIMARY_PROMPTS = {
         '## 2. MAIN GENERATION OBJECTIVE',
         '',
         'Create one highly photorealistic product composition using:',
-        '- The environment from `reference_image_url_1`.',
-        '- The camera setup from `reference_image_url_2`.',
-        '- The product from `reference_image_url_4` (and further product refs when supplied).',
-        '- `reference_image_url_3` only as explicitly instructed.',
+        '- The environment from `reference_image_url`.',
+        '- The camera setup from `second_reference_url`.',
+        '- The product from `reference_4_url` (and further product refs when supplied).',
+        '- `third_reference_url` only as explicitly instructed.',
         '',
         'The product and background must appear as parts of one professionally photographed scene.',
         '',
@@ -63,7 +64,7 @@ window.UNIVERSAL_PRIMARY_PROMPTS = {
         '',
         '## 4. CAMERA, PERSPECTIVE AND FRAMING',
         '',
-        'Apply the camera setup from `reference_image_url_2` consistently to the **entire final composition, including the product and background**.',
+        'Apply the camera setup from `second_reference_url` consistently to the **entire final composition, including the product and background**.',
         '',
         'Match its camera angle, viewpoint, elevation, position, FOV, zoom, perspective, framing, and exact crop.',
         '',
@@ -82,7 +83,7 @@ window.UNIVERSAL_PRIMARY_PROMPTS = {
         '',
         '## 5. BACKGROUND PRESERVATION',
         '',
-        'Maintain the visual identity and design of the environment in `reference_image_url_1`.',
+        'Maintain the visual identity and design of the environment in `reference_image_url`.',
         '',
         'Preserve its existing furniture, props, architecture, surfaces, colours, materials, textures, and spatial arrangement. Adapt their visible perspective to the specified camera setup without changing their design.',
         '',
@@ -116,10 +117,10 @@ window.UNIVERSAL_PRIMARY_PROMPTS = {
         '',
         'Maintain strict separation between the references:',
         '',
-        '- `reference_image_url_1` — Background and environment.',
-        '- `reference_image_url_2` — Camera properties, perspective, framing, and crop only.',
-        '- `reference_image_url_3` — Explicitly specified purpose only.',
-        '- `reference_image_url_4` (and further product refs) — Product identity and appearance only.',
+        '- `reference_image_url` — Background and environment.',
+        '- `second_reference_url` — Camera properties, perspective, framing, and crop only.',
+        '- `third_reference_url` — Explicitly specified purpose only.',
+        '- `reference_4_url` (and further product refs) — Product identity and appearance only.',
         '',
         'Product accuracy and background design preservation must be maintained while adapting the complete composition to the specified camera setup.',
         '',
@@ -132,7 +133,7 @@ window.UNIVERSAL_PRIMARY_PROMPTS = {
         'Do not transfer unintended visual content between references or introduce unrequested changes.',
         '',
         '---',
-        'NOTE FOR AUTHORS: Preview renumbers `reference_image_url_N` live from the slots actually present (A1 → A2 → A3 → B1…B4). Missing A* slots shift later numbers down. This Universal master is the full-slot catalog copy.'
+        'NOTE FOR AUTHORS: Preview remaps Answerly field names live from the slots actually present (A1 → A2 → A3 → B1…B4): `reference_image_url`, `second_reference_url`, `third_reference_url`, `reference_4_url`…. Missing A* slots shift later numbers down. This Universal master is the full-slot catalog copy.'
       ].join('\n')
     }
   ]

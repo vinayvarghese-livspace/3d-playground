@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Primary prompt lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1419; --panel: #171d25; --line: #2a3441; --text: #e8eef5;
+      --muted: #8b9aab; --accent: #3d9a8b;
+      --a1: #5b8def; --a2: #c47a4a; --a3: #9b7bde; --b: #3d9a8b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; color: var(--text);
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      background:
+        radial-gradient(900px 480px at 8% -8%, rgba(61,154,139,.12), transparent 55%),
+        var(--bg);
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 22px 16px 40px; }
+    h1 { margin: 0 0 4px; font-size: 20px; letter-spacing: -.02em; }
+    .sub { margin: 0 0 16px; color: var(--muted); font-size: 13px; line-height: 1.4; }
+    .sub a { color: var(--accent); }
+    .grid { display: grid; grid-template-columns: 260px 1fr; gap: 12px; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+    .panel {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px;
+    }
+    .panel h2 {
+      margin: 0 0 10px; font-size: 10px; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .tog {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      padding: 8px 10px; margin-bottom: 6px; border-radius: 8px; border: 1px solid var(--line);
+    }
+    .tog label { font-size: 13px; font-weight: 600; display: flex; gap: 8px; align-items: center; cursor: pointer; }
+    .chip {
+      font: 600 10px "IBM Plex Mono", monospace; padding: 2px 6px; border-radius: 999px;
+      border: 1px solid transparent;
+    }
+    .chip-a1 { color: var(--a1); background: rgba(91,141,239,.12); border-color: rgba(91,141,239,.35); }
+    .chip-a2 { color: var(--a2); background: rgba(196,122,74,.12); border-color: rgba(196,122,74,.35); }
+    .chip-a3 { color: var(--a3); background: rgba(155,123,222,.12); border-color: rgba(155,123,222,.35); }
+    .b-row label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 6px; }
+    .b-row select {
+      width: 100%; height: 34px; border-radius: 8px; border: 1px solid var(--line);
+      background: #0f1419; color: var(--text); font: inherit; padding: 0 8px;
+    }
+    .hint {
+      margin-top: 10px; font-size: 11px; color: var(--muted); line-height: 1.4;
+      padding: 8px; border-radius: 8px; border: 1px solid rgba(61,154,139,.28);
+      background: rgba(61,154,139,.08);
+    }
+    .slots { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .slot {
+      font: 11px "IBM Plex Mono", monospace; padding: 5px 8px; border-radius: 8px;
+      border: 1px solid var(--line); background: rgba(255,255,255,.03);
+    }
+    .slot.role-a1 { border-color: rgba(91,141,239,.45); }
+    .slot.role-a2 { border-color: rgba(196,122,74,.45); }
+    .slot.role-a3 { border-color: rgba(155,123,222,.45); }
+    .slot.role-b { border-color: rgba(61,154,139,.45); }
+    .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .head h2 { margin: 0; }
+    .head button, .seg button {
+      height: 28px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line);
+      background: transparent; color: var(--text); font: inherit; font-size: 12px; cursor: pointer;
+    }
+    .head button:hover, .seg button:hover { border-color: var(--accent); color: var(--accent); }
+    .seg { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+    .seg button.is-on { border-color: var(--accent); color: var(--accent); background: rgba(61,154,139,.12); }
+    pre {
+      margin: 0; max-height: min(68vh, 760px); overflow: auto; padding: 12px;
+      border-radius: 10px; border: 1px solid var(--line); background: #0c1015; color: #d7e0ea;
+      font: 11.5px/1.5 "IBM Plex Mono", monospace; white-space: pre-wrap; word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Primary prompt lab</h1>
+    <p class="sub">
+      Slot renumbering + compiled C prompt (camera / framing sections included).
+      Primary only — <a href="../preview.html">preview</a>
+    </p>
+    <div class="grid">
+      <aside class="panel">
+        <h2>Inputs</h2>
+        <div class="tog">
+          <label><input type="checkbox" id="hasA1" checked> A1 background</label>
+          <span class="chip chip-a1">A1</span>
+        </div>
+        <div class="tog">
+          <label><input type="checkbox" id="hasA2" checked> A2 camera</label>
+          <span class="chip chip-a2">A2</span>
+        </div>
+        <div class="tog">
+          <label><input type="checkbox" id="hasA3"> A3 optional</label>
+          <span class="chip chip-a3">A3</span>
+        </div>
+        <div class="b-row">
+          <label for="bCount">B product images</label>
+          <select id="bCount">
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+        <p class="hint">
+          Missing A* slots are skipped; B follows. Ref keys match Answerly:
+          <code>reference_image_url</code>, <code>second_reference_url</code>,
+          <code>third_reference_url</code>, <code>reference_4_url</code>….
+          A2 adds entire-scene camera + strict framing/crop. Need A1 or A2 for generate.
+        </p>
+      </aside>
+      <section class="panel">
+        <h2>Slot plan</h2>
+        <div class="slots" id="slots"></div>
+        <div class="head">
+          <h2>Compiled prompt</h2>
+          <button type="button" id="copyBtn">Copy</button>
+        </div>
+        <div class="seg" id="viewSeg" role="group" aria-label="Prompt view">
+          <button type="button" data-view="full" class="is-on">Full</button>
+          <button type="button" data-view="short">Short (sections)</button>
+        </div>
+        <pre id="promptOut"></pre>
+      </section>
+    </div>
+  </div>
+  <script src="primary-prompt-core.js?v=7"></script>
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const els = {
+        hasA1: $('hasA1'), hasA2: $('hasA2'), hasA3: $('hasA3'), bCount: $('bCount'),
+        slots: $('slots'), promptOut: $('promptOut'), copyBtn: $('copyBtn'), viewSeg: $('viewSeg')
+      };
+      let view = 'full';
+      let lastText = '';
+
+      function shortPrompt(text) {
+        const keep = [
+          '# PHOTOREALISTIC',
+          '## 1. IMAGE INPUTS',
+          '## 2. MAIN GENERATION',
+          '## 3. PRODUCT ACCURACY',
+          '## 4. CAMERA',
+          '## 5. BACKGROUND',
+          '## 6. LIGHTING',
+          '## 7. PHOTOREALISM',
+          '## 8. REFERENCE PRIORITY',
+          '## 9. FINAL',
+          '## SHOT-SPECIFIC'
+        ];
+        const lines = String(text || '').split('\n');
+        const out = [];
+        let take = 0;
+        lines.forEach((line) => {
+          const isHead = keep.some((k) => line.indexOf(k) === 0);
+          if (isHead) {
+            if (out.length) out.push('');
+            out.push(line);
+            take = 3;
+            return;
+          }
+          if (take > 0 && line.trim()) {
+            out.push(line);
+            take -= 1;
+          }
+        });
+        return out.join('\n').trim() + '\n\n… (Full view for complete wording)';
+      }
+
+      function render() {
+        const opts = {
+          hasA1: els.hasA1.checked,
+          hasA2: els.hasA2.checked,
+          hasA3: els.hasA3.checked,
+          bCount: Number(els.bCount.value) || 1
+        };
+        const result = window.PrimaryPromptCore.compilePrompt(opts);
+        lastText = result.text;
+        els.slots.innerHTML = result.plan.slots.map((s) =>
+          '<span class="slot role-' + s.role + '"><b>' + s.refKey + '</b> · ' +
+            s.role.toUpperCase() + (s.role === 'b' ? (s.bIndex + 1) : '') +
+            ' · ' + s.label + '</span>'
+        ).join('');
+        els.promptOut.textContent = view === 'short' ? shortPrompt(lastText) : lastText;
+      }
+
+      ['hasA1', 'hasA2', 'hasA3', 'bCount'].forEach((id) => {
+        els[id].addEventListener('change', render);
+      });
+      els.viewSeg.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-view]');
+        if (!btn) return;
+        view = btn.getAttribute('data-view') || 'full';
+        els.viewSeg.querySelectorAll('[data-view]').forEach((b) => {
+          b.classList.toggle('is-on', b === btn);
+        });
+        els.promptOut.textContent = view === 'short' ? shortPrompt(lastText) : lastText;
+      });
+      els.copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(lastText || '').then(() => {
+          els.copyBtn.textContent = 'Copied';
+          setTimeout(() => { els.copyBtn.textContent = 'Copy'; }, 1100);
+        });
+      });
+      render();
+    })();
+  </script>
+</body>
+</html>
