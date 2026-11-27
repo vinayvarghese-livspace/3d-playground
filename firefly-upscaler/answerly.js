@@ -413,24 +413,30 @@ function buildInput(workflowMeta, opts) {
       : (opts.imageUrl ? [opts.imageUrl] : []);
     if (!urls.length) throw new Error(workflowMeta.label + ' needs an input image');
     // Image to Image: one field per slot only — aliases duplicate rows in Answerly Jobs UI.
-    // Primary = reference_image_url; products = second/third/fourth/fifth_reference_url.
+    // Slot 1 = reference_image_url; slots 2–8 = second… / third… (Primary A* + up to 4 B).
     if (workflowMeta.id === 'image-to-image-workflow') {
       input.reference_image_url = urls[0];
       const modelLow = String(opts.model || '').toLowerCase();
       // Krea / Grok / xAI accept at most 1 reference — never set extra slots.
-      const maxRefs = /krea|grok|xai\//.test(modelLow) ? 1 : 5; // A + up to 4 B
+      const maxRefs = /krea|grok|xai\//.test(modelLow) ? 1 : 8;
       const take = urls.slice(0, maxRefs);
       // Strip every multi-ref key (including legacy aliases) so Jobs UI stays clean.
       [
         'second_reference_url', 'third_reference_url', 'fourth_reference_url', 'fifth_reference_url',
+        'sixth_reference_url', 'seventh_reference_url', 'eighth_reference_url',
         'second_reference_image_url', 'third_reference_image_url', 'fourth_reference_image_url',
-        'fifth_reference_image_url', 'reference_image_urls'
+        'fifth_reference_image_url', 'sixth_reference_image_url', 'seventh_reference_image_url',
+        'eighth_reference_image_url', 'reference_image_urls'
       ].forEach((k) => { delete input[k]; });
       if (maxRefs > 1) {
-        if (take[1]) input.second_reference_url = take[1];
-        if (take[2]) input.third_reference_url = take[2];
-        if (take[3]) input.fourth_reference_url = take[3];
-        if (take[4]) input.fifth_reference_url = take[4];
+        // Short form matches Jobs UI + model (same as Replace: prior + B).
+        const slotKeys = [
+          'second_reference_url', 'third_reference_url', 'fourth_reference_url', 'fifth_reference_url',
+          'sixth_reference_url', 'seventh_reference_url', 'eighth_reference_url'
+        ];
+        for (let i = 1; i < take.length && i - 1 < slotKeys.length; i++) {
+          if (take[i]) input[slotKeys[i - 1]] = take[i];
+        }
       }
     } else {
       input[workflowMeta.imageField] = urls[0];
@@ -461,8 +467,9 @@ async function queueWorkflow(workflowId, input, opts) {
   }
   const parentId = String(options.parent_execution_id || options.parentExecutionId || '').trim();
   if (parentId) {
+    // Thread under the first job only — do not force root_execution_id (Answerly
+    // derives it; forcing parent-as-root can make Jobs UI show the wrong inputs).
     body.parent_execution_id = parentId;
-    body.root_execution_id = parentId;
   }
   if (options.metadata && typeof options.metadata === 'object') {
     body.metadata = options.metadata;

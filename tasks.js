@@ -6339,8 +6339,10 @@
       }
       revokeAssetUrl(assets.output);
       const dims = await measureBlobDims(outBlob);
-      const execId = job.rootExecutionId || job.executionId || '';
-      rememberAnswerlyRootExecution(execId || job.executionId);
+      // Open-in-Answerly must use THIS shot's execution — not the thread root
+      // (root would show the first job's inputs and hide later B refs).
+      const thisExecId = String(job.executionId || '').trim();
+      rememberAnswerlyRootExecution(job.rootExecutionId || thisExecId);
       assets.output = {
         blob: outBlob,
         url: outUrl,
@@ -6351,7 +6353,7 @@
         workflow: source.workflow,
         approved: false,
         jobId: job.id || '',
-        executionId: execId || job.executionId || '',
+        executionId: thisExecId,
         resultUrl: job.resultUrl || '',
         inputUrl: job.inputUrl || (Array.isArray(job.inputUrls) && job.inputUrls[0]) || '',
         inputUrls: Array.isArray(job.inputUrls)
@@ -6499,8 +6501,10 @@
       const activeShot = shotForJob;
       revokeAssetUrl(assets.output);
       const dims = await measureBlobDims(outBlob);
-      const execId = job.rootExecutionId || job.executionId || '';
-      rememberAnswerlyRootExecution(execId || job.executionId);
+      // Open-in-Answerly must use THIS shot's execution — not the thread root
+      // (root would show the first job's inputs and hide later B refs).
+      const thisExecId = String(job.executionId || '').trim();
+      rememberAnswerlyRootExecution(job.rootExecutionId || thisExecId);
       assets.output = {
         blob: outBlob,
         url: outUrl,
@@ -6511,7 +6515,7 @@
         workflow: source.workflow,
         approved: false,
         jobId: job.id || '',
-        executionId: execId || job.executionId || '',
+        executionId: thisExecId,
         resultUrl: job.resultUrl || '',
         inputUrl: job.inputUrl || (Array.isArray(job.inputUrls) && job.inputUrls[0]) || '',
         inputUrls: Array.isArray(job.inputUrls)

@@ -170,8 +170,8 @@ async function runAnswerlyJob(job) {
       ? job.images
       : (job.buffer ? [{ buffer: job.buffer, name: job.imageName, mime: job.imageMime }] : []);
     const modelLow = String(job.model || '').toLowerCase();
-    // prior + up to 4 product B as separate Answerly reference slots (2nd–5th).
-    const maxRefs = /krea|grok|xai\//.test(modelLow) ? 1 : 5;
+    // Primary: A1+A2+A3 + up to 4 B (8). Replace: prior + up to 4 B (5). Cap at 8.
+    const maxRefs = /krea|grok|xai\//.test(modelLow) ? 1 : 8;
     if (maxRefs === 1 && images.length > 1) images = images.slice(0, 1);
     else if (images.length > maxRefs) images = images.slice(0, maxRefs);
 

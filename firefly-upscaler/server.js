@@ -305,7 +305,8 @@ async function runAnswerlyJob(job) {
     // Krea / Grok accept at most 1 reference — never upload or attach a second image.
     // Otherwise send prior + each product B as separate Answerly slots (2nd–5th).
     const modelLow = String(job.model || '').toLowerCase();
-    const maxRefs = /krea|grok|xai\//.test(modelLow) ? 1 : 5;
+    // Primary may send A1+A2+A3 + 4 B (8). Replace needs prior + 4 B (5).
+    const maxRefs = /krea|grok|xai\//.test(modelLow) ? 1 : 8;
     if (maxRefs === 1 && images.length > 1) {
       const skipped = images.length - 1;
       images = images.slice(0, 1);
