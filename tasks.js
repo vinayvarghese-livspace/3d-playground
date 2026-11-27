@@ -857,10 +857,110 @@
 
   let mtsLoading = false;
   let mtsAuthWatch = null;
+  let pdpAuthWatch = null;
 
   function mtsAuthPageUrl() {
     if (!MTS_FEED_URL) return '';
     return MTS_FEED_URL + (MTS_FEED_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=ping';
+  }
+
+  function pdpAuthPageUrl() {
+    if (!PDP_SLIDES_URL) return '';
+    return PDP_SLIDES_URL + (PDP_SLIDES_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=ping';
+  }
+
+  function pdpNeedsAuth(err) {
+    const msg = String((err && err.message) || err || '');
+    return msg === 'NO_ACCESS' || /authoriz|permission|access denied|login/i.test(msg);
+  }
+
+  function ensurePdpAuthDialog() {
+    let dlg = document.getElementById('pdp-auth-dialog');
+    if (dlg) return dlg;
+    dlg = document.createElement('div');
+    dlg.id = 'pdp-auth-dialog';
+    dlg.className = 'mts-auth-dialog';
+    dlg.hidden = true;
+    dlg.innerHTML =
+      '<div class="mts-auth-card" role="dialog" aria-modal="true" aria-labelledby="pdp-auth-title">' +
+        '<h2 id="pdp-auth-title">Allow Google access</h2>' +
+        '<p>Primary A2 loads camera references from the PDP Google Slides deck. The first time you open it, Google asks for permission.</p>' +
+        '<ol>' +
+          '<li>Click <strong>Allow access</strong>.</li>' +
+          '<li>In the Google window, choose your Livspace account and click <strong>Allow</strong>.</li>' +
+          '<li>Close that window. PDP images load on their own.</li>' +
+        '</ol>' +
+        '<button type="button" class="tp-btn tp-btn-primary mts-auth-allow" id="pdp-auth-allow">Allow access</button>' +
+        '<button type="button" class="tp-btn mts-auth-retry" id="pdp-auth-retry">I already allowed it</button>' +
+        '<p class="mts-auth-status" id="pdp-auth-status"></p>' +
+        '<a class="mts-auth-fallback" id="pdp-auth-fallback" hidden target="_blank" rel="noopener">Open the access page in a new tab</a>' +
+      '</div>';
+    document.body.appendChild(dlg);
+    dlg.querySelector('#pdp-auth-allow').addEventListener('click', openPdpAuthPopup);
+    dlg.querySelector('#pdp-auth-retry').addEventListener('click', () => {
+      setPdpAuthStatus('Checking access…');
+      retryPdpSlidesAfterAuth();
+    });
+    return dlg;
+  }
+
+  function setPdpAuthStatus(text) {
+    const note = document.getElementById('pdp-auth-status');
+    if (note) note.textContent = text || '';
+  }
+
+  function showPdpAuthDialog(status) {
+    const dlg = ensurePdpAuthDialog();
+    dlg.hidden = false;
+    setPdpAuthStatus(status || '');
+  }
+
+  function hidePdpAuthDialog() {
+    const dlg = document.getElementById('pdp-auth-dialog');
+    if (dlg) dlg.hidden = true;
+    setPdpAuthStatus('');
+  }
+
+  function openPdpAuthPopup() {
+    const url = pdpAuthPageUrl();
+    if (!url) {
+      showPdpAuthDialog('PDP slides URL is not configured.');
+      return;
+    }
+    const fallback = document.getElementById('pdp-auth-fallback');
+    const popup = window.open(url, 'pdpSlidesAuth', 'popup=yes,width=560,height=720');
+    if (!popup) {
+      if (fallback) {
+        fallback.hidden = false;
+        fallback.href = url;
+      }
+      showPdpAuthDialog('The Google window was blocked. Use the link below.');
+      return;
+    }
+    if (fallback) fallback.hidden = true;
+    showPdpAuthDialog('Finish Allow in the Google window, then close it.');
+    if (pdpAuthWatch) clearInterval(pdpAuthWatch);
+    pdpAuthWatch = setInterval(() => {
+      if (popup && !popup.closed) return;
+      clearInterval(pdpAuthWatch);
+      pdpAuthWatch = null;
+      retryPdpSlidesAfterAuth();
+    }, 600);
+  }
+
+  function retryPdpSlidesAfterAuth() {
+    if (!state.workspace || state.workspace.mode !== 'primary' || !state.workspace.primary) {
+      hidePdpAuthDialog();
+      return;
+    }
+    setPdpAuthStatus('Checking access…');
+    const p = state.workspace.primary;
+    p.pdpAttempted = false;
+    p.pdpLoading = false;
+    p.pdpError = '';
+    p.pdp = null;
+    const t = taskByEan(state.workspace.ean);
+    schedulePrimaryPdpLoad(t);
   }
 
   function ensureMtsAuthDialog() {
@@ -1801,7 +1901,7 @@
         ' already in the Render Tracker (left unchanged).', false, { error: true });
       // Sheet already has them — sync local model so the task leaves Available.
       applyAssignments(eans, who);
-      render();
+    render();
       return;
     }
     if (!written) {
@@ -2727,6 +2827,10 @@
         if (!state.workspace || !state.workspace.primary) return;
         if (state.workspace.primary.a2Loading) delete state.workspace.primary.a2Loading[key];
         console.warn('PDP A2 load', err);
+        if (pdpNeedsAuth(err)) {
+          state.workspace.primary.pdpError = 'PDP slides need Google access.';
+          showPdpAuthDialog('PDP image download needs your permission. Click Allow access.');
+        }
         if (state.workspace.mode === 'primary') renderWorkspace();
       });
   }
@@ -2873,6 +2977,7 @@
     jsonp(q, 120000, PDP_SLIDES_URL)
       .then((data) => {
         if (!state.workspace || state.workspace.mode !== 'primary' || !state.workspace.primary) return;
+        hidePdpAuthDialog();
         state.workspace.primary.pdp = data || null;
         state.workspace.primary.pdpLoading = false;
         const count = (data && data.images && data.images.length) || 0;
@@ -2895,7 +3000,14 @@
       .catch((err) => {
         if (!state.workspace || !state.workspace.primary) return;
         state.workspace.primary.pdpLoading = false;
-        state.workspace.primary.pdpError = (err && err.message) || 'Could not load PDP slide images.';
+        if (pdpNeedsAuth(err)) {
+          // Allow retry after the Google Allow popup — do not leave Attempted locked.
+          state.workspace.primary.pdpAttempted = false;
+          state.workspace.primary.pdpError = 'PDP slides need Google access.';
+          showPdpAuthDialog('PDP camera refs need your permission. Click Allow access.');
+        } else {
+          state.workspace.primary.pdpError = (err && err.message) || 'Could not load PDP slide images.';
+        }
         if (state.workspace.mode === 'primary') renderWorkspace();
       });
   }
@@ -10788,8 +10900,8 @@
         if (byStatus) return byStatus;
       }
       if (!isMts()) {
-        if (!a.template !== !b.template) return a.template ? -1 : 1;
-        return compareTasks(a.tasks[0], b.tasks[0]) || templateOrder(a.template) - templateOrder(b.template);
+      if (!a.template !== !b.template) return a.template ? -1 : 1;
+      return compareTasks(a.tasks[0], b.tasks[0]) || templateOrder(a.template) - templateOrder(b.template);
       }
       const an = (a.productName || a.subCategory || '').toLowerCase();
       const bn = (b.productName || b.subCategory || '').toLowerCase();
@@ -10886,12 +10998,12 @@
               : '<div class="tp-state"><strong>No tasks assigned to you yet</strong>' +
                 '<span class="tp-state-line">Pick tasks from Available Tasks — they will show up here.</span></div>';
       } else {
-        els.list.innerHTML = q
-          ? '<div class="tp-state">' + searchMissHtml(q) + '</div>'
+      els.list.innerHTML = q
+        ? '<div class="tp-state">' + searchMissHtml(q) + '</div>'
           : pool.length
-            ? '<div class="tp-state"><strong>No tasks match these filters</strong>' + filterMissHtml() +
-              '<div class="tp-state-actions"><button type="button" class="tp-btn tp-btn-ghost" data-clear-filters>Clear filters</button></div></div>'
-            : '<div class="tp-state"><strong>No available tasks</strong>' + emptyReason() + '</div>' + dataCheckHtml();
+          ? '<div class="tp-state"><strong>No tasks match these filters</strong>' + filterMissHtml() +
+            '<div class="tp-state-actions"><button type="button" class="tp-btn tp-btn-ghost" data-clear-filters>Clear filters</button></div></div>'
+          : '<div class="tp-state"><strong>No available tasks</strong>' + emptyReason() + '</div>' + dataCheckHtml();
       }
       renderDrawer(null);
       return;
@@ -10917,7 +11029,7 @@
   function emptyReason() {
     const s = state.model.stats;
     if (isMts()) {
-      const lines = [
+    const lines = [
         s.products + ' products read from MTS Furniture (Sheet1).',
         s.withDrive + ' have a GDRIVE folder link, ' + (s.withPdp || 0) + ' have a PDP guideline link, ' +
           s.ready + ' have both (Available).',
@@ -11233,7 +11345,7 @@
     const crumb = [t.department, t.sheetCategory, t.subCategory].filter(Boolean).join(' > ');
     const kv = mts
       ? [
-          ['EAN code', t.ean, true],
+      ['EAN code', t.ean, true],
           [isSet(t) ? 'Set / EACH' : '', isSet(t) ? t.setLabel : ''],
           ['Collection shoot', collectionShootLabel(t.collectionShoot)],
           ['Range', t.range],
@@ -11245,11 +11357,11 @@
       : [
           ['EAN code', t.ean, true],
           [isSet(t) ? 'Set / PCs' : '', isSet(t) ? t.setLabel : ''],
-          ['Style', t.style && t.style !== t.title ? t.style : ''],
-          ['Product size', t.size],
-          ['Product dimensions', t.dimensions !== t.size ? t.dimensions : ''],
-          ['Product capacity', t.capacity]
-        ].filter((r) => r[1]);
+      ['Style', t.style && t.style !== t.title ? t.style : ''],
+      ['Product size', t.size],
+      ['Product dimensions', t.dimensions !== t.size ? t.dimensions : ''],
+      ['Product capacity', t.capacity]
+    ].filter((r) => r[1]);
 
     let propBody = '';
     if (t.prop && t.prop.kind === 'image') {
@@ -12511,9 +12623,11 @@
                           esc((angleShotForMain && (angleShotForMain.code || angleShotForMain.name)) || 'H-FR') +
                         '</span>'
                       : '<span class="wr-badge-muted">Generate Hero Front first</span>')
-                    : (a2
-                      ? '<button type="button" class="wr-text-btn" data-ws="clear-primary-a2">Clear</button>'
-                      : '<button type="button" class="wr-text-btn" data-ws="browse-primary-a2">+ Browse</button>')) +
+                    : (pdpNeedsAuth({ message: pdpError })
+                      ? '<button type="button" class="wr-text-btn" data-ws="pdp-allow-access" title="Grant Google access for PDP slides">Allow access</button>'
+                      : (a2
+                        ? '<button type="button" class="wr-text-btn" data-ws="clear-primary-a2">Clear</button>'
+                        : '<button type="button" class="wr-text-btn" data-ws="browse-primary-a2">+ Browse</button>'))) +
                   (!isLifestyleView && !showA3
                     ? '<button type="button" class="wr-text-btn" data-ws="add-primary-a3" title="Rare custom reference">+ A3</button>'
                     : '') +
@@ -14524,6 +14638,10 @@
       if (action === 'hide-primary-a3' && state.workspace && state.workspace.mode === 'primary') {
         setPrimaryShowA3(state.workspaceShot || 0, false);
         renderWorkspace();
+        return;
+      }
+      if (action === 'pdp-allow-access' && state.workspace && state.workspace.mode === 'primary') {
+        showPdpAuthDialog('PDP camera refs need your permission. Click Allow access.');
         return;
       }
       if (action === 'gen-primary-shot' && state.workspace && state.workspace.mode === 'primary') {
